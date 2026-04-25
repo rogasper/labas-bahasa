@@ -1,0 +1,24 @@
+{
+  "name": "@labas/auth",
+  "type": "module",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {},
+  "dependencies": {
+    "@labas/db": "workspace:*",
+    "@labas/env": "workspace:*",
+    "better-auth": "catalog:",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@labas/config": "workspace:*",
+    "typescript": "catalog:"
+  }
+}
