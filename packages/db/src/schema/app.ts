@@ -427,3 +427,43 @@ export const questionRatingRelations = relations(questionRating, ({ one }) => ({
     references: [question.id],
   }),
 }));
+
+// ── Generation Jobs (Background AI Jobs) ───────────────────
+
+export const generationJob = pgTable(
+  "generation_job",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"), // "pending" | "running" | "completed" | "failed"
+    mode: text("mode").notNull().default("quick"), // "quick" | "agentic"
+    examTypeId: text("exam_type_id").notNull(),
+    sectionTypeId: text("section_type_id").notNull(),
+    questionCount: integer("question_count").notNull(),
+    progress: integer("progress").default(0).notNull(), // 0-100
+    progressMessage: text("progress_message"),
+    resultJson: jsonb("result_json"), // GenerationResult
+    errorMessage: text("error_message"),
+    tokensUsed: integer("tokens_used"),
+    durationMs: integer("duration_ms"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+    completedAt: timestamp("completed_at"),
+  },
+  (table) => [
+    index("generationJob_userId_idx").on(table.userId),
+    index("generationJob_status_idx").on(table.status),
+  ],
+);
+
+export const generationJobRelations = relations(generationJob, ({ one }) => ({
+  user: one(user, {
+    fields: [generationJob.userId],
+    references: [user.id],
+  }),
+}));

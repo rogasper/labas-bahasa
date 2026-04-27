@@ -1,5 +1,7 @@
 import { protectedProcedure, publicProcedure, router } from "../index";
 import { aiRouter } from "./ai";
+import { attemptRouter } from "./attempt";
+import { comboRouter } from "./combo";
 import { questionRouter } from "./question";
 import { packageRouter } from "./package";
 import { ratingRouter } from "./rating";
@@ -16,6 +18,8 @@ export const appRouter = router({
     };
   }),
   ai: aiRouter,
+  attempt: attemptRouter,
+  combo: comboRouter,
   question: questionRouter,
   package: packageRouter,
   rating: ratingRouter,

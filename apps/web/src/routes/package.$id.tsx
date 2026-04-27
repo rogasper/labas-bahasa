@@ -140,10 +140,8 @@ function PackageDetailComponent() {
               ) : (
                 <div className="space-y-3">
                   {section.questions.map((q: any, idx: number) => (
-                    <Link
+                    <div
                       key={q.id}
-                      to="/bank/$id"
-                      params={{ id: q.id }}
                       className="block p-4 rounded-[var(--radius-lg)] bg-[var(--oat-light)] hover:bg-[var(--matcha-300)]/10 transition-colors"
                     >
                       <div className="flex items-start gap-3">
@@ -164,7 +162,7 @@ function PackageDetailComponent() {
                           </div>
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   ))}
                 </div>
               )}
@@ -175,10 +173,12 @@ function PackageDetailComponent() {
 
       {/* Actions */}
       <div className="flex gap-3 mt-8">
-        <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)]">
-          <MaterialIcon name="play_arrow" />
-          <span className="ml-2">Mulai Latihan</span>
-        </Button>
+        <Link to="/package/$id/take" params={{ id }}>
+          <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)]">
+            <MaterialIcon name="play_arrow" />
+            <span className="ml-2">Mulai Latihan</span>
+          </Button>
+        </Link>
         {isOwner && (
           <Button
             variant="outline"

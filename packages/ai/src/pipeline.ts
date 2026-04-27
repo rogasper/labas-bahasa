@@ -6,47 +6,89 @@ import {
   type GenerationResult,
 } from "./schemas";
 
+export interface QuickModeCallbacks {
+  onToken?: (token: string) => void;
+}
+
+function log(level: "info" | "error" | "warn", message: string, meta?: Record<string, unknown>) {
+  const timestamp = new Date().toISOString();
+  const metaStr = meta ? ` ${JSON.stringify(meta)}` : "";
+  // eslint-disable-next-line no-console
+  console[level](`[${timestamp}] [PIPELINE] ${level.toUpperCase()}: ${message}${metaStr}`);
+}
+
 export async function generateQuestionsQuick(
   input: GenerationInput,
+  callbacks?: QuickModeCallbacks,
 ): Promise<GenerationResult> {
   const start = Date.now();
+  log("info", "Quick mode generation started", {
+    model: input.apiKeyConfig.model,
+    baseUrl: input.apiKeyConfig.baseUrl,
+    examType: input.examType,
+    section: input.section,
+    questionCount: input.questionCount,
+    formats: input.formats,
+    maxTokens: input.apiKeyConfig.maxTokens,
+  });
+
   const client = new OpenAICompatibleClient(
     input.apiKeyConfig.baseUrl,
     input.apiKeyConfig.apiKey,
   );
 
   const prompt = buildQuickModePrompt(input);
+  log("info", "Prompt built", { promptLength: prompt.length });
 
-  const response = await client.chatCompletion({
-    model: input.apiKeyConfig.model,
-    messages: [
+  let result;
+  try {
+    result = await client.chatCompletion(
       {
-        role: "system",
-        content:
-          "You are a precise exam question generator. You always return valid JSON. You never include markdown formatting around the JSON.",
+        model: input.apiKeyConfig.model,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a precise exam question generator. You always return valid JSON. You never include markdown formatting around the JSON.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.7,
+        max_tokens: input.apiKeyConfig.maxTokens,
       },
-      { role: "user", content: prompt },
-    ],
-    temperature: 0.7,
-    max_tokens: 4096,
-    response_format: { type: "json_object" },
-  });
-
-  const content = response.choices[0]?.message.content;
-  if (!content) {
-    throw new Error("Empty response from AI");
+      callbacks?.onToken
+        ? { onToken: callbacks.onToken }
+        : undefined,
+    );
+  } catch (err: any) {
+    log("error", "chatCompletion failed in quick mode", { error: err.message });
+    throw err;
   }
+
+  const content = result.content;
+  log("info", "Raw response received", { contentLength: content.length, preview: content.slice(0, 200) });
 
   let parsed: unknown;
   try {
     parsed = JSON.parse(content);
-  } catch {
-    // Sometimes LLM wraps in markdown — strip it
+    log("info", "JSON parsed successfully (direct)");
+  } catch (parseErr: any) {
+    log("warn", "Direct JSON parse failed, trying markdown strip", { error: parseErr.message });
     const cleaned = content
       .replace(/^```json\s*/, "")
       .replace(/```\s*$/, "")
       .trim();
-    parsed = JSON.parse(cleaned);
+    try {
+      parsed = JSON.parse(cleaned);
+      log("info", "JSON parsed successfully after markdown strip");
+    } catch (stripErr: any) {
+      log("error", "JSON parse failed even after markdown strip", {
+        error: stripErr.message,
+        cleanedPreview: cleaned.slice(0, 500),
+        originalPreview: content.slice(0, 500),
+      });
+      throw new Error(`Failed to parse AI response as JSON: ${stripErr.message}. Preview: ${content.slice(0, 200)}`);
+    }
   }
 
   if (!parsed || typeof parsed !== "object") {
@@ -55,29 +97,42 @@ export async function generateQuestionsQuick(
 
   const raw = parsed as Record<string, unknown>;
   if (!Array.isArray(raw.questions)) {
+    log("error", "Missing questions array in parsed JSON", { keys: Object.keys(raw) });
     throw new Error("Missing 'questions' array in AI response");
   }
 
+  log("info", "Validating questions", { rawCount: raw.questions.length });
+
   const questions = raw.questions
-    .map((q: unknown) => {
+    .map((q: unknown, idx: number) => {
       try {
         return questionSchema.parse(q);
-      } catch (e) {
-        console.warn("Question validation failed:", e);
+      } catch (e: any) {
+        log("warn", `Question ${idx} validation failed`, {
+          error: e.message,
+          questionPreview: JSON.stringify(q).slice(0, 200),
+        });
         return null;
       }
     })
     .filter((q): q is NonNullable<typeof q> => q !== null);
 
   if (questions.length === 0) {
+    log("error", "No valid questions after validation", { rawCount: raw.questions.length });
     throw new Error("No valid questions generated");
   }
+
+  log("info", "Quick mode generation completed", {
+    validCount: questions.length,
+    rawCount: raw.questions.length,
+    durationMs: Date.now() - start,
+  });
 
   return {
     questions,
     meta: {
       model: input.apiKeyConfig.model,
-      tokensUsed: response.usage?.total_tokens,
+      tokensUsed: result.usage?.total_tokens,
       durationMs: Date.now() - start,
       mode: "quick",
     },

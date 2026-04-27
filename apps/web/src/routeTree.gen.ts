@@ -12,12 +12,14 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PackagesRouteImport } from './routes/packages'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as GenerateRouteImport } from './routes/generate'
-import { Route as BuilderRouteImport } from './routes/builder'
 import { Route as BankRouteImport } from './routes/bank'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PackageIdRouteImport } from './routes/package.$id'
-import { Route as BankIdRouteImport } from './routes/bank.$id'
+import { Route as BuilderComboRouteImport } from './routes/builder.combo'
+import { Route as AttemptIdRouteImport } from './routes/attempt.$id'
+import { Route as PackageIdTakeRouteImport } from './routes/package.$id.take'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -34,14 +36,14 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const JobsRoute = JobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GenerateRoute = GenerateRouteImport.update({
   id: '/generate',
   path: '/generate',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BuilderRoute = BuilderRouteImport.update({
-  id: '/builder',
-  path: '/builder',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BankRoute = BankRouteImport.update({
@@ -59,91 +61,114 @@ const PackageIdRoute = PackageIdRouteImport.update({
   path: '/package/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BankIdRoute = BankIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => BankRoute,
+const BuilderComboRoute = BuilderComboRouteImport.update({
+  id: '/combo',
+  path: '/combo',
+  getParentRoute: () => BuilderRoute,
+} as any)
+const AttemptIdRoute = AttemptIdRouteImport.update({
+  id: '/attempt/$id',
+  path: '/attempt/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PackageIdTakeRoute = PackageIdTakeRouteImport.update({
+  id: '/take',
+  path: '/take',
+  getParentRoute: () => PackageIdRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/bank': typeof BankRouteWithChildren
-  '/builder': typeof BuilderRoute
+  '/bank': typeof BankRoute
   '/generate': typeof GenerateRoute
+  '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/packages': typeof PackagesRoute
   '/settings': typeof SettingsRoute
-  '/bank/$id': typeof BankIdRoute
-  '/package/$id': typeof PackageIdRoute
+  '/attempt/$id': typeof AttemptIdRoute
+  '/builder/combo': typeof BuilderComboRoute
+  '/package/$id': typeof PackageIdRouteWithChildren
+  '/package/$id/take': typeof PackageIdTakeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/bank': typeof BankRouteWithChildren
-  '/builder': typeof BuilderRoute
+  '/bank': typeof BankRoute
   '/generate': typeof GenerateRoute
+  '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/packages': typeof PackagesRoute
   '/settings': typeof SettingsRoute
-  '/bank/$id': typeof BankIdRoute
-  '/package/$id': typeof PackageIdRoute
+  '/attempt/$id': typeof AttemptIdRoute
+  '/builder/combo': typeof BuilderComboRoute
+  '/package/$id': typeof PackageIdRouteWithChildren
+  '/package/$id/take': typeof PackageIdTakeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/bank': typeof BankRouteWithChildren
-  '/builder': typeof BuilderRoute
+  '/bank': typeof BankRoute
   '/generate': typeof GenerateRoute
+  '/jobs': typeof JobsRoute
   '/login': typeof LoginRoute
   '/packages': typeof PackagesRoute
   '/settings': typeof SettingsRoute
-  '/bank/$id': typeof BankIdRoute
-  '/package/$id': typeof PackageIdRoute
+  '/attempt/$id': typeof AttemptIdRoute
+  '/builder/combo': typeof BuilderComboRoute
+  '/package/$id': typeof PackageIdRouteWithChildren
+  '/package/$id/take': typeof PackageIdTakeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/bank'
-    | '/builder'
     | '/generate'
+    | '/jobs'
     | '/login'
     | '/packages'
     | '/settings'
-    | '/bank/$id'
+    | '/attempt/$id'
+    | '/builder/combo'
     | '/package/$id'
+    | '/package/$id/take'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/bank'
-    | '/builder'
     | '/generate'
+    | '/jobs'
     | '/login'
     | '/packages'
     | '/settings'
-    | '/bank/$id'
+    | '/attempt/$id'
+    | '/builder/combo'
     | '/package/$id'
+    | '/package/$id/take'
   id:
     | '__root__'
     | '/'
     | '/bank'
-    | '/builder'
     | '/generate'
+    | '/jobs'
     | '/login'
     | '/packages'
     | '/settings'
-    | '/bank/$id'
+    | '/attempt/$id'
+    | '/builder/combo'
     | '/package/$id'
+    | '/package/$id/take'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  BankRoute: typeof BankRouteWithChildren
-  BuilderRoute: typeof BuilderRoute
+  BankRoute: typeof BankRoute
   GenerateRoute: typeof GenerateRoute
+  JobsRoute: typeof JobsRoute
   LoginRoute: typeof LoginRoute
   PackagesRoute: typeof PackagesRoute
   SettingsRoute: typeof SettingsRoute
-  PackageIdRoute: typeof PackageIdRoute
+  AttemptIdRoute: typeof AttemptIdRoute
+  PackageIdRoute: typeof PackageIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -169,18 +194,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/jobs': {
+      id: '/jobs'
+      path: '/jobs'
+      fullPath: '/jobs'
+      preLoaderRoute: typeof JobsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/generate': {
       id: '/generate'
       path: '/generate'
       fullPath: '/generate'
       preLoaderRoute: typeof GenerateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/builder': {
-      id: '/builder'
-      path: '/builder'
-      fullPath: '/builder'
-      preLoaderRoute: typeof BuilderRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bank': {
@@ -204,35 +229,52 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PackageIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/bank/$id': {
-      id: '/bank/$id'
-      path: '/$id'
-      fullPath: '/bank/$id'
-      preLoaderRoute: typeof BankIdRouteImport
-      parentRoute: typeof BankRoute
+    '/builder/combo': {
+      id: '/builder/combo'
+      path: '/combo'
+      fullPath: '/builder/combo'
+      preLoaderRoute: typeof BuilderComboRouteImport
+      parentRoute: typeof BuilderRoute
+    }
+    '/attempt/$id': {
+      id: '/attempt/$id'
+      path: '/attempt/$id'
+      fullPath: '/attempt/$id'
+      preLoaderRoute: typeof AttemptIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/package/$id/take': {
+      id: '/package/$id/take'
+      path: '/take'
+      fullPath: '/package/$id/take'
+      preLoaderRoute: typeof PackageIdTakeRouteImport
+      parentRoute: typeof PackageIdRoute
     }
   }
 }
 
-interface BankRouteChildren {
-  BankIdRoute: typeof BankIdRoute
+interface PackageIdRouteChildren {
+  PackageIdTakeRoute: typeof PackageIdTakeRoute
 }
 
-const BankRouteChildren: BankRouteChildren = {
-  BankIdRoute: BankIdRoute,
+const PackageIdRouteChildren: PackageIdRouteChildren = {
+  PackageIdTakeRoute: PackageIdTakeRoute,
 }
 
-const BankRouteWithChildren = BankRoute._addFileChildren(BankRouteChildren)
+const PackageIdRouteWithChildren = PackageIdRoute._addFileChildren(
+  PackageIdRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  BankRoute: BankRouteWithChildren,
-  BuilderRoute: BuilderRoute,
+  BankRoute: BankRoute,
   GenerateRoute: GenerateRoute,
+  JobsRoute: JobsRoute,
   LoginRoute: LoginRoute,
   PackagesRoute: PackagesRoute,
   SettingsRoute: SettingsRoute,
-  PackageIdRoute: PackageIdRoute,
+  AttemptIdRoute: AttemptIdRoute,
+  PackageIdRoute: PackageIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

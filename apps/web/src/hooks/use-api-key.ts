@@ -8,6 +8,7 @@ export interface StoredApiKey {
   baseUrl: string;
   apiKey: string;
   modelName: string;
+  maxTokens?: number;
 }
 
 export function useApiKey() {

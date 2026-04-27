@@ -70,7 +70,7 @@ function PackagesComponent() {
               Kumpulan paket latihan dari komunitas.
             </p>
           </div>
-          <Link to="/builder">
+          <Link to="/bank">
             <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)] h-11">
               <MaterialIcon name="add" />
               <span className="ml-2 hidden sm:inline">Buat Paket</span>

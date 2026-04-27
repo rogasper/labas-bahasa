@@ -152,8 +152,8 @@ INSTRUCTIONS:
 - Each question must have:
   * a reading passage (passageText)
   * a clear question prompt (questionText)
-  * a correct answer (correctAnswer)
-  * an explanation (explanation)
+  * a correct answer (correctAnswer) - dijelaskan dengan bahasa Indonesia
+  * an explanation (explanation) - dijelaskan dengan bahasa Indonesia
   * difficulty level (${difficulty})
   * relevant skill tags (skillTags)
 - Questions should test real comprehension, not just surface-level recall.

@@ -5,9 +5,10 @@ import { useSidebar } from "@/hooks/use-sidebar";
 const navItems = [
   { to: "/", label: "Dashboard", icon: "dashboard" },
   { to: "/generate", label: "AI Lab", icon: "auto_awesome" },
+  { to: "/jobs", label: "Jobs", icon: "schedule" },
   { to: "/bank", label: "Bank Soal", icon: "database" },
   { to: "/packages", label: "Paket", icon: "folder" },
-  { to: "/builder", label: "Builder", icon: "construction" },
+  { to: "/builder/combo", label: "Combo", icon: "join_inner" },
   { to: "/analytics", label: "Analytics", icon: "analytics" },
 ];
 
@@ -46,7 +47,7 @@ export function Sidebar() {
 
         <nav className="flex-1 space-y-1 w-full">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+            const isActive = location.pathname === item.to || (location.pathname.startsWith(`${item.to}/`) && item.to !== "/builder");
             return (
               <Link
                 key={item.to}

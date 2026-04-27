@@ -37,13 +37,14 @@ function RouteComponent() {
   const [baseUrl, setBaseUrl] = useState(storedKey?.baseUrl ?? "https://api.openai.com/v1");
   const [apiKey, setApiKey] = useState("");
   const [modelName, setModelName] = useState(storedKey?.modelName ?? "gpt-4o-mini");
+  const [maxTokens, setMaxTokens] = useState<number>(storedKey?.maxTokens ?? 16384);
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
     if (!apiKey) return;
     setIsSaving(true);
     try {
-      await saveKey({ provider, baseUrl, apiKey, modelName });
+      await saveKey({ provider, baseUrl, apiKey, modelName, maxTokens });
       setApiKey("");
     } finally {
       setIsSaving(false);
@@ -114,15 +115,30 @@ function RouteComponent() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="baseUrl" className="text-[var(--clay-black)]">Base URL</Label>
-                <Input
-                  id="baseUrl"
-                  value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder="https://api.openai.com/v1"
-                  className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-[var(--clay-black)]"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="baseUrl" className="text-[var(--clay-black)]">Base URL</Label>
+                  <Input
+                    id="baseUrl"
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
+                    placeholder="https://api.openai.com/v1"
+                    className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-[var(--clay-black)]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxTokens" className="text-[var(--clay-black)]">Max Tokens</Label>
+                  <Input
+                    id="maxTokens"
+                    type="number"
+                    min={1}
+                    max={65536}
+                    value={maxTokens}
+                    onChange={(e) => setMaxTokens(Number(e.target.value))}
+                    placeholder="16384"
+                    className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-[var(--clay-black)]"
+                  />
+                </div>
               </div>
 
               <div className="space-y-2">

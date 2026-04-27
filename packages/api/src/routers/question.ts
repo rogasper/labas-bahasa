@@ -14,6 +14,7 @@ export const questionRouter = router({
           format: z.string().optional(),
           difficulty: z.number().optional(),
           isPublic: z.boolean().optional(),
+          creatorUserId: z.string().optional(),
           search: z.string().optional(),
           skillTags: z.array(z.string()).optional(),
           limit: z.number().min(1).max(50).default(20),
@@ -35,9 +36,17 @@ export const questionRouter = router({
         );
       }
 
-      if (input?.isPublic !== undefined) {
+      if (input?.creatorUserId) {
+        conditions.push(eq(question.creatorUserId, input.creatorUserId));
+      } else if (input?.isPublic !== undefined) {
         conditions.push(eq(question.isPublic, input.isPublic));
-      } else if (!userId) {
+      } else if (userId) {
+        // Default for authenticated users: show public questions + their own private questions
+        conditions.push(
+          or(eq(question.isPublic, true), eq(question.creatorUserId, userId)),
+        );
+      } else {
+        // Default for guests: only public questions
         conditions.push(eq(question.isPublic, true));
       }
 

@@ -29,6 +29,7 @@ export const aiKeyConfigSchema = z.object({
   baseUrl: z.string().url(),
   apiKey: z.string().min(1),
   model: z.string().min(1),
+  maxTokens: z.number().int().min(1).max(65536).default(16384),
 });
 
 // ── Question Option Schemas ────────────────────────────────

@@ -17,8 +17,11 @@
     "@labas/env": "workspace:*",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
+    "bullmq": "^5.76.2",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
+    "ioredis": "^5.10.1",
+    "winston": "^3.19.0",
     "zod": "catalog:"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
@@ -69,86 +69,87 @@ function RouteComponent() {
   const [weaknessAlign, setWeaknessAlign] = useState(75);
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saveMode, setSaveMode] = useState<"questions" | "package">("questions");
-  const [packageTitle, setPackageTitle] = useState("");
-  const [packageDesc, setPackageDesc] = useState("");
-  const [isPublicPackage, setIsPublicPackage] = useState(false);
+  const [mode, setMode] = useState<"quick" | "agentic">("quick");
+  const [jobId, setJobIdState] = useState<string | null>(null);
+  const [generatedPackageId, setGeneratedPackageId] = useState<string | null>(null);
+
+  // Persist jobId to sessionStorage so it survives navigation
+  const setJobId = (id: string | null) => {
+    setJobIdState(id);
+    if (id) {
+      sessionStorage.setItem("labas_active_job", id);
+    } else {
+      sessionStorage.removeItem("labas_active_job");
+    }
+  };
+
+  // On mount: recover from sessionStorage
+  useEffect(() => {
+    const saved = sessionStorage.getItem("labas_active_job");
+    if (saved) {
+      setJobIdState(saved);
+    }
+  }, []);
+
+  // Also check myJobs for any pending/running jobs (fallback / cross-tab sync)
+  const myJobsQuery = useQuery(
+    trpc.ai.myJobs.queryOptions({ limit: 10, offset: 0 }),
+  );
+
+  useEffect(() => {
+    if (!jobId && myJobsQuery.data) {
+      const active = myJobsQuery.data.find(
+        (j: any) => j.status === "pending" || j.status === "running",
+      );
+      if (active) {
+        setJobId(active.id);
+      }
+    }
+  }, [myJobsQuery.data, jobId]);
 
   const generate = useMutation({
     ...trpc.ai.generate.mutationOptions(),
     onSuccess: (data) => {
-      setResult(data);
+      setJobId(data.jobId);
       setError(null);
+      setResult(null);
     },
     onError: (err) => {
       setError(err.message);
-      setResult(null);
+      setJobId(null);
     },
   });
 
-  const saveQuestions = useMutation({
-    ...trpc.ai.saveQuestions.mutationOptions(),
-    onSuccess: () => {
-      alert("Soal berhasil disimpan!");
+  // Poll job status
+  const jobQuery = useQuery({
+    ...trpc.ai.getJobStatus.queryOptions(
+      { jobId: jobId! },
+      { enabled: !!jobId },
+    ),
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return 1000;
+      if (data.status === "completed" || data.status === "failed") return false;
+      return 1000;
     },
   });
 
-  const createPackage = useMutation({
-    ...trpc.package.create.mutationOptions(),
-  });
+  const isGenerating =
+    jobId !== null &&
+    (!jobQuery.data || (jobQuery.data.status !== "completed" && jobQuery.data.status !== "failed"));
 
-  const addSection = useMutation({
-    ...trpc.package.addSection.mutationOptions(),
-  });
-
-  const addQuestion = useMutation({
-    ...trpc.package.addQuestion.mutationOptions(),
-  });
-
-  const handleSaveAsPackage = async () => {
-    if (!result || !packageTitle) return;
-
-    try {
-      // 1. Create package
-      const pkg = await createPackage.mutateAsync({
-        title: packageTitle,
-        description: packageDesc,
-        examTypeId: examType,
-        isPublic: isPublicPackage,
-        estimatedDurationMin: result.questions.length * 2,
-      });
-
-      // 2. Add section
-      const sec = await addSection.mutateAsync({
-        packageId: pkg.id,
-        sectionTypeId: section,
-        title: `${SECTIONS.find((s) => s.id === section)?.name} Section`,
-        orderIndex: 0,
-      });
-
-      // 3. Save questions and add to section
-      const saved = await saveQuestions.mutateAsync({
-        examTypeId: examType,
-        sectionTypeId: section,
-        questions: result.questions,
-        isPublic: isPublicPackage,
-      });
-
-      for (let i = 0; i < saved.length; i++) {
-        await addQuestion.mutateAsync({
-          sectionId: sec.id,
-          questionId: saved[i].id,
-          orderIndex: i,
-        });
-      }
-
-      alert(`Paket "${packageTitle}" berhasil dibuat!`);
-      setPackageTitle("");
-      setPackageDesc("");
-    } catch (err: any) {
-      alert("Gagal membuat paket: " + err.message);
+  useEffect(() => {
+    if (jobQuery.data?.status === "completed" && jobQuery.data.resultJson) {
+      const res = jobQuery.data.resultJson as GenerationResult & { generatedPackageId?: string | null };
+      setResult(res);
+      setGeneratedPackageId(res.generatedPackageId ?? null);
+      setJobId(null);
     }
-  };
+    if (jobQuery.data?.status === "failed") {
+      setError(jobQuery.data.errorMessage ?? "Generation failed");
+      setJobId(null);
+    }
+  }, [jobQuery.data]);
 
   const toggleFormat = (id: string) => {
     setSelectedFormats((prev) =>
@@ -168,6 +169,10 @@ function RouteComponent() {
       return;
     }
 
+    setResult(null);
+    setError(null);
+    setJobId(null);
+
     generate.mutate({
       examType: examType as any,
       section: section as any,
@@ -175,11 +180,12 @@ function RouteComponent() {
       difficulty: difficulty + 1,
       topics: selectedTopics,
       questionCount,
-      mode: "quick",
+      mode,
       apiKeyConfig: {
         baseUrl: storedKey.baseUrl,
         apiKey: storedKey.apiKey,
         model: storedKey.modelName,
+        maxTokens: storedKey.maxTokens ?? 16384,
       },
     });
   };
@@ -426,15 +432,83 @@ function RouteComponent() {
                 </p>
               </div>
 
+              {/* Mode Toggle */}
+              <div className="flex gap-1 p-1 rounded-[var(--radius-lg)] bg-[var(--oat-light)]">
+                <button
+                  onClick={() => setMode("quick")}
+                  className={`flex-1 py-2 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all ${
+                    mode === "quick"
+                      ? "bg-[var(--pure-white)] text-[var(--clay-black)] clay-shadow"
+                      : "text-[var(--warm-charcoal)] hover:text-[var(--clay-black)]"
+                  }`}
+                >
+                  <MaterialIcon name="flash_on" className="text-sm mr-1" />
+                  Quick
+                </button>
+                <button
+                  onClick={() => setMode("agentic")}
+                  className={`flex-1 py-2 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all ${
+                    mode === "agentic"
+                      ? "bg-[var(--pure-white)] text-[var(--clay-black)] clay-shadow"
+                      : "text-[var(--warm-charcoal)] hover:text-[var(--clay-black)]"
+                  }`}
+                >
+                  <MaterialIcon name="psychology" className="text-sm mr-1" />
+                  Agentic
+                </button>
+              </div>
+
+              {mode === "agentic" && (
+                <div className="p-3 rounded-[var(--radius-md)] bg-[var(--badge-blue-bg)] border-2 border-[var(--badge-blue-bg)] text-xs text-[var(--badge-blue-text)]">
+                  <div className="flex items-center gap-2 mb-1">
+                    <MaterialIcon name="info" className="text-sm" />
+                    <span className="font-semibold">Mode Agentic</span>
+                  </div>
+                  <p>Multi-step validation: passage → validate → questions → self-check → quality score. Lebih lambat tapi kualitas lebih terjamin.</p>
+                </div>
+              )}
+
               {/* Primary CTA */}
               <Button
                 className="w-full py-5 rounded-[var(--radius-lg)] bg-[var(--clay-black)] text-[var(--pure-white)] font-bold text-lg flex items-center justify-center gap-3 clay-shadow clay-hover hover:bg-[var(--warm-charcoal)] transition-all active:scale-95 h-auto"
                 onClick={handleGenerate}
-                disabled={generate.isPending || selectedFormats.length === 0 || !hasKey}
+                disabled={isGenerating || generate.isPending || selectedFormats.length === 0 || !hasKey}
               >
                 <MaterialIcon name="auto_awesome" className="group-hover:rotate-12 transition-transform" />
-                {generate.isPending ? "Generating..." : "Generate & Launch"}
+                {isGenerating
+                  ? mode === "agentic"
+                    ? `Agentic... ${jobQuery.data?.progress ?? 0}%`
+                    : `Generating... ${jobQuery.data?.progress ?? 0}%`
+                  : "Generate & Launch"}
               </Button>
+
+              {/* Progress */}
+              {isGenerating && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3 p-3 rounded-[var(--radius-md)] bg-[var(--matcha-300)]/20 border-2 border-[var(--matcha-300)]">
+                    <MaterialIcon name="psychology" className="text-[var(--matcha-600)] animate-pulse" />
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--matcha-800)]">
+                        {jobQuery.data?.progressMessage ?? "Sedang berjalan..."}
+                      </p>
+                      <p className="text-xs text-[var(--warm-charcoal)]">
+                        {mode === "agentic"
+                          ? "Passage → Validate → Questions → Self-Check → Score"
+                          : "Quick generation mode"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="w-full h-2 bg-[var(--oat-border)] rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[var(--matcha-600)] transition-all duration-500"
+                      style={{ width: `${jobQuery.data?.progress ?? 5}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-[var(--warm-charcoal)] text-center">
+                    Bisa ditinggal — hasil akan muncul otomatis
+                  </p>
+                </div>
+              )}
 
               {error && (
                 <div className="p-4 rounded-[var(--radius-md)] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)] text-sm border-2 border-[var(--badge-blue-bg)]">
@@ -450,85 +524,32 @@ function RouteComponent() {
       {result && (
         <div className="mt-16 space-y-6">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <h2 className="text-2xl font-headline font-bold text-[var(--clay-black)]">Hasil Generate</h2>
-
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setSaveMode(saveMode === "questions" ? "package" : "questions")}
-                variant="outline"
-                className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
-              >
-                <MaterialIcon name={saveMode === "package" ? "list" : "folder"} />
-                <span className="ml-2">{saveMode === "package" ? "Simpan Satuan" : "Simpan Paket"}</span>
-              </Button>
-
-              {saveMode === "questions" ? (
-                <Button
-                  onClick={() =>
-                    saveQuestions.mutate({
-                      examTypeId: examType,
-                      sectionTypeId: section,
-                      questions: result.questions,
-                      isPublic: false,
-                    })
-                  }
-                  disabled={saveQuestions.isPending}
-                  className="bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-800)] clay-hover rounded-[var(--radius-lg)]"
-                >
-                  {saveQuestions.isPending ? "Menyimpan..." : "Simpan ke Bank"}
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleSaveAsPackage}
-                  disabled={createPackage.isPending || !packageTitle}
-                  className="bg-[var(--blueberry-800)] text-[var(--pure-white)] hover:bg-[var(--ube-800)] clay-hover rounded-[var(--radius-lg)]"
-                >
-                  {createPackage.isPending ? "Membuat..." : "Buat Paket"}
-                </Button>
+            <div>
+              <h2 className="text-2xl font-headline font-bold text-[var(--clay-black)]">Hasil Generate</h2>
+              <p className="text-sm text-[var(--warm-charcoal)] mt-1">
+                Paket latihan berhasil dibuat! Soal juga tersimpan di Bank Soal (privat). Jawaban & penjelasan disembunyikan agar latihan tetap fair.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              {generatedPackageId && (
+                <Link to="/package/$id" params={{ id: generatedPackageId }}>
+                  <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)]">
+                    <MaterialIcon name="play_arrow" className="mr-2" />
+                    Lihat Paket
+                  </Button>
+                </Link>
               )}
+              <Link to="/bank">
+                <Button className="bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-800)] clay-hover rounded-[var(--radius-lg)]">
+                  <MaterialIcon name="database" className="mr-2" />
+                  Bank Soal
+                </Button>
+              </Link>
             </div>
           </div>
 
-          {/* Package Form */}
-          {saveMode === "package" && (
-            <Card className="clay-shadow bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)]">
-              <CardContent className="p-5 space-y-4">
-                <h3 className="font-headline font-bold text-[var(--clay-black)]">Detail Paket</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-[var(--clay-black)] block mb-1">Judul Paket</label>
-                    <Input
-                      value={packageTitle}
-                      onChange={(e) => setPackageTitle(e.target.value)}
-                      placeholder="e.g. IELTS Reading - Science & Tech"
-                      className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-[var(--clay-black)] block mb-1">Deskripsi (opsional)</label>
-                    <Input
-                      value={packageDesc}
-                      onChange={(e) => setPackageDesc(e.target.value)}
-                      placeholder="Deskripsi singkat..."
-                      className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)]"
-                    />
-                  </div>
-                </div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={isPublicPackage}
-                    onChange={(e) => setIsPublicPackage(e.target.checked)}
-                    className="w-4 h-4 rounded border-[var(--oat-border)]"
-                  />
-                  <span className="text-sm text-[var(--warm-charcoal)]">Publikasikan ke Bank Soal</span>
-                </label>
-              </CardContent>
-            </Card>
-          )}
-
           <div className="text-sm text-[var(--warm-charcoal)] mb-4 font-mono">
-            Model: {result.meta.model} · Tokens: {result.meta.tokensUsed ?? "?"} · Waktu: {result.meta.durationMs}ms
+            Model: {result.meta.model} · Tokens: {result.meta.tokensUsed ?? "?"} · Waktu: {result.meta.durationMs}ms · {result.questions.length} soal
           </div>
 
           {result.questions.map((q, idx) => (
@@ -551,41 +572,18 @@ function RouteComponent() {
                 {"options" in q && q.options && (
                   <div className="space-y-2">
                     {q.options.map((opt) => (
-                      <label
+                      <div
                         key={opt.key}
-                        className={`flex items-center p-4 rounded-[var(--radius-lg)] border-2 cursor-pointer transition-all clay-hover ${
-                          opt.key === q.correctAnswer
-                            ? "border-[var(--clay-black)] bg-[var(--oat-light)]"
-                            : "border-[var(--oat-border)] bg-[var(--oat-light)] hover:bg-[var(--matcha-300)]/30"
-                        }`}
+                        className="flex items-center p-4 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--oat-light)]"
                       >
-                        <span className="w-5 h-5 rounded-full border-2 border-[var(--oat-border)] flex items-center justify-center mr-4">
-                          {opt.key === q.correctAnswer && (
-                            <span className="w-2.5 h-2.5 rounded-full bg-[var(--clay-black)]" />
-                          )}
+                        <span className="w-6 h-6 rounded-full border-2 border-[var(--oat-border)] flex items-center justify-center mr-3 text-xs font-bold text-[var(--warm-charcoal)]">
+                          {opt.key}
                         </span>
-                        <span className={`${opt.key === q.correctAnswer ? "font-semibold text-[var(--clay-black)]" : "text-[var(--clay-black)]"}`}>
-                          {opt.text}
-                        </span>
-                        {opt.key === q.correctAnswer && (
-                          <span className="ml-auto text-xs font-bold text-[var(--matcha-800)] bg-[var(--matcha-300)] px-2 py-1 rounded-full">
-                            Benar
-                          </span>
-                        )}
-                      </label>
+                        <span className="text-[var(--clay-black)]">{opt.text}</span>
+                      </div>
                     ))}
                   </div>
                 )}
-                {!("options" in q) && (
-                  <div className="p-4 rounded-[var(--radius-md)] border-2 border-[var(--matcha-300)] bg-[var(--matcha-300)]/30 text-sm">
-                    <span className="font-semibold text-[var(--matcha-800)]">Jawaban: </span>
-                    <span className="text-[var(--matcha-800)]">{q.correctAnswer}</span>
-                  </div>
-                )}
-                <div className="text-sm text-[var(--warm-charcoal)]">
-                  <span className="font-medium text-[var(--clay-black)]">Penjelasan: </span>
-                  {q.explanation}
-                </div>
                 <div className="flex gap-2 flex-wrap">
                   {q.skillTags.map((tag) => (
                     <span
