@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@labas/ui/components/select";
+import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
 export const Route = createFileRoute("/packages")({
   component: PackagesComponent,
@@ -33,10 +34,6 @@ const EXAM_TYPES = [
   { id: "HSK", name: "HSK" },
   { id: "GOETHE", name: "German" },
 ];
-
-function MaterialIcon({ name, className = "" }: { name: string; className?: string }) {
-  return <span className={`material-symbols-outlined ${className}`}>{name}</span>;
-}
 
 function PackagesComponent() {
   const [search, setSearch] = useState("");

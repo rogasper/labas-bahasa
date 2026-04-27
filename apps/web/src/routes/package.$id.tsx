@@ -4,6 +4,8 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
+import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { formatLabel } from "@/lib/format";
 
 export const Route = createFileRoute("/package/$id")({
   component: PackageDetailComponent,
@@ -15,14 +17,6 @@ export const Route = createFileRoute("/package/$id")({
     return { session };
   },
 });
-
-function MaterialIcon({ name, className = "" }: { name: string; className?: string }) {
-  return <span className={`material-symbols-outlined ${className}`}>{name}</span>;
-}
-
-function formatLabel(fmt: string) {
-  return fmt.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-}
 
 function PackageDetailComponent() {
   const { id } = Route.useParams();

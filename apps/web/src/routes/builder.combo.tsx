@@ -6,14 +6,7 @@ import { trpc } from "@/utils/trpc";
 import { Input } from "@labas/ui/components/input";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@labas/ui/components/select";
+import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
 export const Route = createFileRoute("/builder/combo")({
   component: ComboBuilderComponent,
@@ -25,10 +18,6 @@ export const Route = createFileRoute("/builder/combo")({
     return { session };
   },
 });
-
-function MaterialIcon({ name, className = "" }: { name: string; className?: string }) {
-  return <span className={`material-symbols-outlined ${className}`}>{name}</span>;
-}
 
 interface SelectedSection {
   sourcePackageId: string;

@@ -4,6 +4,8 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
+import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { formatTime } from "@/lib/time";
 
 export const Route = createFileRoute("/attempt/$id")({
   component: AttemptResultComponent,
@@ -15,16 +17,6 @@ export const Route = createFileRoute("/attempt/$id")({
     return { session };
   },
 });
-
-function MaterialIcon({ name, className = "" }: { name: string; className?: string }) {
-  return <span className={`material-symbols-outlined ${className}`}>{name}</span>;
-}
-
-function formatTime(totalSeconds: number) {
-  const m = Math.floor(totalSeconds / 60);
-  const s = totalSeconds % 60;
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-}
 
 function AttemptResultComponent() {
   const { id: attemptId } = Route.useParams();

@@ -62,9 +62,9 @@ const PackageIdRoute = PackageIdRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const BuilderComboRoute = BuilderComboRouteImport.update({
-  id: '/combo',
-  path: '/combo',
-  getParentRoute: () => BuilderRoute,
+  id: '/builder/combo',
+  path: '/builder/combo',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AttemptIdRoute = AttemptIdRouteImport.update({
   id: '/attempt/$id',
@@ -168,6 +168,7 @@ export interface RootRouteChildren {
   PackagesRoute: typeof PackagesRoute
   SettingsRoute: typeof SettingsRoute
   AttemptIdRoute: typeof AttemptIdRoute
+  BuilderComboRoute: typeof BuilderComboRoute
   PackageIdRoute: typeof PackageIdRouteWithChildren
 }
 
@@ -231,10 +232,10 @@ declare module '@tanstack/react-router' {
     }
     '/builder/combo': {
       id: '/builder/combo'
-      path: '/combo'
+      path: '/builder/combo'
       fullPath: '/builder/combo'
       preLoaderRoute: typeof BuilderComboRouteImport
-      parentRoute: typeof BuilderRoute
+      parentRoute: typeof rootRouteImport
     }
     '/attempt/$id': {
       id: '/attempt/$id'
@@ -274,6 +275,7 @@ const rootRouteChildren: RootRouteChildren = {
   PackagesRoute: PackagesRoute,
   SettingsRoute: SettingsRoute,
   AttemptIdRoute: AttemptIdRoute,
+  BuilderComboRoute: BuilderComboRoute,
   PackageIdRoute: PackageIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport

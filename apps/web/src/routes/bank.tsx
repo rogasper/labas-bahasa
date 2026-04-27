@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { Input } from "@labas/ui/components/input";
@@ -14,6 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@labas/ui/components/select";
+import { EXAM_TYPES, SECTIONS, FORMATS, DIFFICULTIES } from "@/lib/exam-constants";
+import { formatLabel } from "@/lib/format";
+import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { useQuestionSelection } from "@/hooks/use-question-selection";
+import { usePackageBuilder } from "@/hooks/use-package-builder";
+import { CreatePackageModal } from "@/components/bank/CreatePackageModal";
+import { AutoBundleModal } from "@/components/bank/AutoBundleModal";
+import { QuestionDetailModal } from "@/components/bank/QuestionDetailModal";
 
 export const Route = createFileRoute("/bank")({
   component: BankComponent,
@@ -26,593 +34,11 @@ export const Route = createFileRoute("/bank")({
   },
 });
 
-const EXAM_TYPES = [
-  { id: "IELTS", name: "IELTS" },
-  { id: "TOEFL", name: "TOEFL" },
-  { id: "JLPT", name: "JLPT" },
-  { id: "HSK", name: "HSK" },
-  { id: "GOETHE", name: "German" },
-];
-
-const SECTIONS = [
-  { id: "READING", name: "Reading" },
-  { id: "WRITING", name: "Writing" },
-];
-
-const FORMATS = [
-  "multiple_choice",
-  "true_false_not_given",
-  "fill_blank",
-  "synonym",
-  "grammar_in_context",
-  "sentence_completion",
-  "cloze",
-  "reference",
-  "author_view",
-  "matching_headings",
-  "kanji_reading",
-  "particle_choice",
-  "article_case",
-];
-
-const DIFFICULTIES = [
-  { value: 1, label: "Beginner" },
-  { value: 2, label: "Elementary" },
-  { value: 3, label: "Intermediate" },
-  { value: 4, label: "Advanced" },
-  { value: 5, label: "Expert" },
-];
-
-function MaterialIcon({ name, className = "" }: { name: string; className?: string }) {
-  return <span className={`material-symbols-outlined ${className}`}>{name}</span>;
-}
-
-function formatLabel(fmt: string) {
-  return fmt.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
-}
-
-function StarRating({ value }: { value: number | null }) {
-  return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((star) => (
-        <MaterialIcon
-          key={star}
-          name={(value ?? 0) >= star ? "star" : "star_outline"}
-          className={`text-xl ${(value ?? 0) >= star ? "text-[var(--lemon-500)]" : "text-[var(--oat-border)]"}`}
-        />
-      ))}
-    </div>
-  );
-}
-
-// ── Create Package Modal ────────────────────────────────────
-
-function CreatePackageModal({
-  selectedCount,
-  onClose,
-  onCreate,
-  isPending,
-  examTypeName,
-  lowCount,
-}: {
-  selectedCount: number;
-  onClose: () => void;
-  onCreate: (data: { title: string; description: string; isPublic: boolean; examTypeId: string }) => void;
-  isPending: boolean;
-  examTypeName: string;
-  lowCount: boolean;
-}) {
-  const dateStr = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short" });
-  const [title, setTitle] = useState(`${examTypeName} Bundle — ${selectedCount} Soal`);
-  const [description, setDescription] = useState("");
-  const [isPublic, setIsPublic] = useState(false);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="bg-[var(--warm-cream)] w-full max-w-lg rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] clay-shadow p-6 md:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-headline font-bold text-[var(--clay-black)]">
-            Buat Paket Soal
-          </h2>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-[var(--oat-light)] hover:bg-[var(--oat-border)] flex items-center justify-center transition-colors"
-          >
-            <MaterialIcon name="close" className="text-[var(--clay-black)]" />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 mb-4">
-          <span className="px-3 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-sm font-semibold">
-            {examTypeName}
-          </span>
-          <span className="text-sm text-[var(--warm-charcoal)]">
-            {selectedCount} soal
-          </span>
-        </div>
-
-        {lowCount && (
-          <div className="mb-4 p-3 rounded-[var(--radius-md)] bg-[var(--lemon-400)]/20 border-2 border-[var(--lemon-500)]/30 text-sm text-[var(--lemon-800)] flex items-start gap-2">
-            <MaterialIcon name="info" className="text-sm mt-0.5 shrink-0" />
-            <span>
-              Soal yang tersedia sedikit ({selectedCount} soal). Paket tetap bisa dibuat, tapi disarankan untuk menambah soal.
-            </span>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-[var(--clay-black)] block mb-1">
-              Judul Paket
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. IELTS Reading Bundle"
-              className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)]"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-[var(--clay-black)] block mb-1">
-              Deskripsi
-            </label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Deskripsi singkat..."
-              className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)]"
-            />
-          </div>
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isPublic}
-              onChange={(e) => setIsPublic(e.target.checked)}
-              className="w-4 h-4 rounded border-[var(--oat-border)]"
-            />
-            <span className="text-sm text-[var(--warm-charcoal)]">
-              Publikasikan ke Bank Soal
-            </span>
-          </label>
-        </div>
-
-        <div className="mt-6 flex gap-3">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="flex-1 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
-          >
-            Batal
-          </Button>
-          <Button
-            onClick={() => onCreate({ title, description, isPublic, examTypeId: "" })}
-            disabled={!title || isPending}
-            className="flex-1 bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)]"
-          >
-            {isPending ? "Membuat..." : "Buat Paket"}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Auto Bundle Modal ───────────────────────────────────────
-
-function AutoBundleModal({
-  availableCount,
-  examTypeId,
-  examTypeName,
-  sectionTypeId,
-  sectionTypeName,
-  onClose,
-  onCreate,
-  isPending,
-}: {
-  availableCount: number;
-  examTypeId: string;
-  examTypeName: string;
-  sectionTypeId: string;
-  sectionTypeName: string;
-  onClose: () => void;
-  onCreate: (data: {
-    title: string;
-    description: string;
-    isPublic: boolean;
-    examTypeId: string;
-    sectionTypeId: string;
-    count: number;
-    sortOrder: "random" | "difficulty";
-  }) => void;
-  isPending: boolean;
-}) {
-  const dateStr = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short" });
-  const [count, setCount] = useState(Math.min(availableCount, 10));
-  const [title, setTitle] = useState(`${examTypeName} ${sectionTypeName} Bundle — ${dateStr}`);
-  const [description, setDescription] = useState("");
-  const [isPublic, setIsPublic] = useState(false);
-  const [sortOrder, setSortOrder] = useState<"random" | "difficulty">("random");
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="bg-[var(--warm-cream)] w-full max-w-lg rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] clay-shadow p-6 md:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-headline font-bold text-[var(--clay-black)]">
-            Auto Bundle
-          </h2>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-[var(--oat-light)] hover:bg-[var(--oat-border)] flex items-center justify-center transition-colors"
-          >
-            <MaterialIcon name="close" className="text-[var(--clay-black)]" />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2 mb-4">
-          <span className="px-3 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-sm font-semibold">
-            {examTypeName}
-          </span>
-          {sectionTypeName && (
-            <span className="px-3 py-1 rounded-full bg-[var(--slushie-500)]/20 text-[var(--slushie-800)] text-sm font-semibold">
-              {sectionTypeName}
-            </span>
-          )}
-          <span className="text-sm text-[var(--warm-charcoal)]">
-            {availableCount} soal tersedia
-          </span>
-        </div>
-
-        {availableCount < 5 && (
-          <div className="mb-4 p-3 rounded-[var(--radius-md)] bg-[var(--lemon-400)]/20 border-2 border-[var(--lemon-500)]/30 text-sm text-[var(--lemon-800)] flex items-start gap-2">
-            <MaterialIcon name="info" className="text-sm mt-0.5 shrink-0" />
-            <span>
-              Soal yang tersedia sedikit ({availableCount} soal). Paket tetap bisa dibuat, tapi disarankan untuk menambah soal.
-            </span>
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <div>
-            <label className="text-sm font-medium text-[var(--clay-black)] block mb-1">
-              Judul Paket
-            </label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. IELTS Reading Bundle"
-              className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)]"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-[var(--clay-black)] block mb-1">
-              Deskripsi
-            </label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Deskripsi singkat..."
-              className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)]"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-[var(--clay-black)] block mb-1">
-              Jumlah Soal: {count}
-            </label>
-            <input
-              type="range"
-              min={1}
-              max={availableCount}
-              value={count}
-              onChange={(e) => setCount(Number(e.target.value))}
-              className="w-full h-2 bg-[var(--warm-silver)] rounded-full appearance-none cursor-pointer accent-[var(--clay-black)]"
-            />
-          </div>
-
-          <div>
-            <label className="text-sm font-medium text-[var(--clay-black)] block mb-1">
-              Urutan Soal
-            </label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setSortOrder("random")}
-                className={`flex-1 py-2 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all ${
-                  sortOrder === "random"
-                    ? "bg-[var(--clay-black)] text-[var(--pure-white)] clay-shadow"
-                    : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] border-2 border-[var(--oat-border)] hover:bg-[var(--oat-light)]"
-                }`}
-              >
-                <MaterialIcon name="shuffle" className="text-sm mr-1" />
-                Acak
-              </button>
-              <button
-                onClick={() => setSortOrder("difficulty")}
-                className={`flex-1 py-2 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all ${
-                  sortOrder === "difficulty"
-                    ? "bg-[var(--clay-black)] text-[var(--pure-white)] clay-shadow"
-                    : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] border-2 border-[var(--oat-border)] hover:bg-[var(--oat-light)]"
-                }`}
-              >
-                <MaterialIcon name="trending_up" className="text-sm mr-1" />
-                Difficulty
-              </button>
-            </div>
-          </div>
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isPublic}
-              onChange={(e) => setIsPublic(e.target.checked)}
-              className="w-4 h-4 rounded border-[var(--oat-border)]"
-            />
-            <span className="text-sm text-[var(--warm-charcoal)]">
-              Publikasikan ke Bank Soal
-            </span>
-          </label>
-        </div>
-
-        <div className="mt-6 flex gap-3">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            className="flex-1 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
-          >
-            Batal
-          </Button>
-          <Button
-            onClick={() => onCreate({
-              title,
-              description,
-              isPublic,
-              examTypeId,
-              sectionTypeId: sectionTypeId || "READING",
-              count,
-              sortOrder,
-            })}
-            disabled={!title || isPending || count < 1}
-            className="flex-1 bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)]"
-          >
-            {isPending ? "Membuat..." : "Buat Paket"}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Question Detail Modal ───────────────────────────────────
-
-function QuestionDetailModal({
-  question,
-  onClose,
-  isSelected,
-  onToggleSelect,
-  isSelectable,
-}: {
-  question: any;
-  onClose: () => void;
-  isSelected: boolean;
-  onToggleSelect: () => void;
-  isSelectable: boolean;
-}) {
-  const { data: session } = authClient.useSession();
-  const isOwner = question.creatorUserId === session?.user.id;
-
-  const ratingQuery = useQuery(
-    trpc.rating.getQuestionRating.queryOptions({ questionId: question.id }),
-  );
-
-  const rateMutation = useMutation({
-    ...trpc.rating.rateQuestion.mutationOptions(),
-    onSuccess: () => ratingQuery.refetch(),
-  });
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="bg-[var(--warm-cream)] w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] clay-shadow p-6 md:p-8">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex gap-2 flex-wrap">
-            <span className="px-3 py-1.5 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-sm font-semibold">
-              {question.examTypeName}
-            </span>
-            <span className="px-3 py-1.5 rounded-full bg-[var(--slushie-500)]/20 text-[var(--slushie-800)] text-sm font-semibold">
-              {question.sectionTypeName}
-            </span>
-            <span className="px-3 py-1.5 rounded-full bg-[var(--lemon-400)]/30 text-[var(--lemon-800)] text-sm font-semibold">
-              {formatLabel(question.format)}
-            </span>
-            <span className="px-3 py-1.5 rounded-full bg-[var(--oat-light)] text-[var(--warm-charcoal)] text-sm font-semibold">
-              Level {question.difficulty}
-            </span>
-          </div>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-[var(--oat-light)] hover:bg-[var(--oat-border)] flex items-center justify-center transition-colors"
-          >
-            <MaterialIcon name="close" className="text-[var(--clay-black)]" />
-          </button>
-        </div>
-
-        {/* Passage */}
-        <Card className="clay-shadow bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] mb-6">
-          <CardContent className="p-6">
-            <h2 className="font-headline text-lg font-bold text-[var(--clay-black)] mb-4 flex items-center gap-2">
-              <MaterialIcon name="menu_book" />
-              Teks Bacaan
-            </h2>
-            <div className="text-[var(--clay-black)] leading-relaxed whitespace-pre-wrap text-sm">
-              {question.passageText}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Question */}
-        <Card className="clay-shadow bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] mb-6">
-          <CardContent className="p-6">
-            <h2 className="font-headline text-lg font-bold text-[var(--clay-black)] mb-4 flex items-center gap-2">
-              <MaterialIcon name="help_outline" />
-              Pertanyaan
-            </h2>
-            <p className="text-lg text-[var(--clay-black)] font-medium mb-4">
-              {question.questionText}
-            </p>
-
-            {!!question.options &&
-              Array.isArray(question.options as unknown[]) &&
-              (question.options as unknown[]).length > 0 && (
-                <div className="space-y-2 mt-4">
-                  {(question.options as Array<{ key: string; text: string }>).map(
-                    (opt) => (
-                      <div
-                        key={opt.key}
-                        className="flex items-center p-4 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--oat-light)]"
-                      >
-                        <span className="w-6 h-6 rounded-full border-2 border-[var(--oat-border)] flex items-center justify-center mr-3 text-xs font-bold text-[var(--warm-charcoal)]">
-                          {opt.key}
-                        </span>
-                        <span className="text-[var(--clay-black)]">{opt.text}</span>
-                      </div>
-                    ),
-                  )}
-                </div>
-              )}
-
-            {!question.options && (
-              <div className="p-4 rounded-[var(--radius-md)] border-2 border-[var(--oat-border)] bg-[var(--oat-light)] mt-4 text-sm text-[var(--warm-charcoal)]">
-                <span className="font-semibold text-[var(--clay-black)]">
-                  Jenis soal:{" "}
-                </span>
-                {formatLabel(question.format)}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Lock card */}
-        <Card className="clay-shadow bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] mb-6">
-          <CardContent className="p-6">
-            <h2 className="font-headline text-lg font-bold text-[var(--clay-black)] mb-2 flex items-center gap-2">
-              <MaterialIcon name="lock" />
-              Jawaban & Penjelasan
-            </h2>
-            <p className="text-sm text-[var(--warm-charcoal)]">
-              Jawaban dan penjelasan akan tersedia setelah kamu mencoba mengerjakan
-              soal ini dalam paket latihan.
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Rating */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button
-                key={star}
-                onClick={() => rateMutation.mutate({ questionId: question.id, score: star })}
-                className="transition-transform hover:scale-110"
-              >
-                <MaterialIcon
-                  name={(ratingQuery.data?.myRating ?? 0) >= star ? "star" : "star_outline"}
-                  className={`text-xl ${(ratingQuery.data?.myRating ?? 0) >= star ? "text-[var(--lemon-500)]" : "text-[var(--oat-border)]"}`}
-                />
-              </button>
-            ))}
-          </div>
-          {ratingQuery.data?.avgRating && (
-            <span className="text-sm text-[var(--warm-charcoal)]">
-              {ratingQuery.data.avgRating}/5 ({question.usageCount}x digunakan)
-            </span>
-          )}
-          {!ratingQuery.data?.avgRating && (
-            <span className="text-sm text-[var(--warm-charcoal)]">
-              {question.usageCount}x digunakan
-            </span>
-          )}
-        </div>
-
-        {/* Meta & Owner Actions */}
-        <div className="flex flex-wrap items-center justify-between gap-4 text-sm text-[var(--warm-charcoal)] border-t border-[var(--oat-border)] pt-4">
-          <div className="flex gap-4">
-            <span>Dibuat oleh {question.creatorName ?? "Anonim"}</span>
-            <span>•</span>
-            <span className="capitalize">{question.source}</span>
-          </div>
-          {isOwner && (
-            <div className="flex gap-2 items-center">
-              <span
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-                  question.isPublic
-                    ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
-                    : "bg-[var(--oat-light)] text-[var(--warm-charcoal)]"
-                }`}
-              >
-                {question.isPublic ? "Publik" : "Privat"}
-              </span>
-            </div>
-          )}
-        </div>
-
-        {/* Footer Actions */}
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <Button
-            variant="outline"
-            onClick={onToggleSelect}
-            disabled={!isSelectable}
-            className={`rounded-[var(--radius-lg)] border-2 clay-hover ${
-              !isSelectable
-                ? "opacity-40 cursor-not-allowed border-[var(--oat-border)] text-[var(--warm-silver)]"
-                : isSelected
-                  ? "border-[var(--pomegranate-400)] text-[var(--pomegranate-600)] bg-[var(--pomegranate-50)]"
-                  : "border-[var(--oat-border)] text-[var(--warm-charcoal)]"
-            }`}
-          >
-            <MaterialIcon name={isSelected ? "remove" : "add"} className="mr-2" />
-            {!isSelectable
-              ? "Jenis ujian berbeda"
-              : isSelected
-                ? "Hapus dari Pilihan"
-                : "Tambah ke Paket"}
-          </Button>
-          <Button
-            onClick={onClose}
-            className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)]"
-          >
-            Tutup
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Bank Component ──────────────────────────────────────────
-
 type Tab = "mine" | "public";
 
 function BankComponent() {
   const { data: session } = authClient.useSession();
   const userId = session?.user.id;
-  const navigate = useNavigate();
 
   const [tab, setTab] = useState<Tab>("mine");
   const [search, setSearch] = useState("");
@@ -623,9 +49,7 @@ function BankComponent() {
   const [page, setPage] = useState(0);
   const [selectedQuestion, setSelectedQuestion] = useState<any | null>(null);
 
-  // Multi-select state
-  const [isSelectMode, setIsSelectMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // Modals
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isAutoBundleOpen, setIsAutoBundleOpen] = useState(false);
 
@@ -650,6 +74,19 @@ function BankComponent() {
   const total = query.data?.total ?? 0;
   const totalPages = Math.ceil(total / limit);
 
+  const {
+    isSelectMode,
+    setIsSelectMode,
+    selectedIds,
+    lockedExamType,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    exitSelectMode,
+  } = useQuestionSelection(questions);
+
+  const { isPending: isPackagePending, handleCreatePackage, handleAutoBundle } = usePackageBuilder();
+
   const togglePublic = useMutation({
     ...trpc.question.togglePublic.mutationOptions(),
     onSuccess: () => query.refetch(),
@@ -659,10 +96,6 @@ function BankComponent() {
     ...trpc.question.delete.mutationOptions(),
     onSuccess: () => query.refetch(),
   });
-
-  const createPackage = useMutation(trpc.package.create.mutationOptions());
-  const addSection = useMutation(trpc.package.addSection.mutationOptions());
-  const addQuestion = useMutation(trpc.package.addQuestion.mutationOptions());
 
   const clearFilters = () => {
     setSearch("");
@@ -675,159 +108,42 @@ function BankComponent() {
 
   const hasFilters = search || examType || section || format || difficulty !== undefined;
 
-  // Strict exam type guard: derive the locked exam type from first selection
-  const lockedExamType = useMemo(() => {
-    if (selectedIds.size === 0) return null;
-    const firstId = Array.from(selectedIds)[0];
-    const firstQ = questions.find((q) => q.id === firstId);
-    return firstQ?.examTypeId ?? null;
-  }, [selectedIds, questions]);
+  const autoBundleExamType = examType || null;
+  const autoBundleSectionType = section || null;
 
-  const toggleSelection = (id: string) => {
-    const q = questions.find((item) => item.id === id);
-    if (!q) return;
-
-    // Strict guard: cannot select different exam type
-    if (lockedExamType && q.examTypeId !== lockedExamType) return;
-
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const selectAll = () => {
-    // Only select questions that match the locked exam type
-    if (lockedExamType) {
-      setSelectedIds(new Set(questions.filter((q) => q.examTypeId === lockedExamType).map((q) => q.id)));
-    } else {
-      setSelectedIds(new Set(questions.map((q) => q.id)));
-    }
-  };
-
-  const clearSelection = () => {
-    setSelectedIds(new Set());
-  };
-
-  const exitSelectMode = () => {
-    setIsSelectMode(false);
-    setSelectedIds(new Set());
-  };
-
-  const handleCreatePackage = async (data: {
+  const onCreatePackage = async (data: {
     title: string;
     description: string;
     isPublic: boolean;
-    examTypeId: string;
   }) => {
-    if (selectedIds.size === 0) return;
-
-    // Derive examTypeId from first selected question
-    const firstId = Array.from(selectedIds)[0];
-    const firstQ = questions.find((q) => q.id === firstId);
-    const examTypeId = firstQ?.examTypeId ?? data.examTypeId;
-
-    try {
-      const pkg = await createPackage.mutateAsync({
-        title: data.title,
-        description: data.description,
-        examTypeId,
-        isPublic: data.isPublic,
-        estimatedDurationMin: selectedIds.size * 2,
-      });
-
-      const sec = await addSection.mutateAsync({
-        packageId: pkg.id,
-        sectionTypeId: firstQ?.sectionTypeId ?? "READING",
-        title: `${firstQ?.sectionTypeName ?? "Reading"} Section`,
-        orderIndex: 0,
-      });
-
-      const ids = Array.from(selectedIds);
-      for (let i = 0; i < ids.length; i++) {
-        await addQuestion.mutateAsync({
-          sectionId: sec.id,
-          questionId: ids[i],
-          orderIndex: i,
-        });
-      }
-
-      setIsCreateModalOpen(false);
-      setIsSelectMode(false);
-      setSelectedIds(new Set());
-      navigate({ to: "/package/$id", params: { id: pkg.id } });
-    } catch (err: any) {
-      alert("Gagal membuat paket: " + err.message);
-    }
+    await handleCreatePackage({
+      selectedIds,
+      questions,
+      title: data.title,
+      description: data.description,
+      isPublic: data.isPublic,
+    });
+    setIsCreateModalOpen(false);
+    setIsSelectMode(false);
+    clearSelection();
   };
 
-  const handleAutoBundle = async (data: {
+  const onAutoBundle = async (data: {
     title: string;
     description: string;
     isPublic: boolean;
-    examTypeId: string;
-    sectionTypeId: string;
     count: number;
     sortOrder: "random" | "difficulty";
   }) => {
-    // Fetch all questions for this exam type (not just current page)
     const allQuestions = await query.refetch();
-    const available = (allQuestions.data?.questions ?? []).filter(
-      (q) => q.examTypeId === data.examTypeId,
-    );
-
-    let picked = available;
-    if (data.sortOrder === "random") {
-      picked = [...available].sort(() => Math.random() - 0.5);
-    } else {
-      picked = [...available].sort((a, b) => a.difficulty - b.difficulty);
-    }
-    picked = picked.slice(0, data.count);
-
-    if (picked.length === 0) {
-      alert("Tidak ada soal tersedia untuk ujian ini.");
-      return;
-    }
-
-    try {
-      const pkg = await createPackage.mutateAsync({
-        title: data.title,
-        description: data.description,
-        examTypeId: data.examTypeId,
-        isPublic: data.isPublic,
-        estimatedDurationMin: picked.length * 2,
-      });
-
-      const sec = await addSection.mutateAsync({
-        packageId: pkg.id,
-        sectionTypeId: data.sectionTypeId,
-        title: `${data.sectionTypeId} Section`,
-        orderIndex: 0,
-      });
-
-      for (let i = 0; i < picked.length; i++) {
-        await addQuestion.mutateAsync({
-          sectionId: sec.id,
-          questionId: picked[i].id,
-          orderIndex: i,
-        });
-      }
-
-      setIsAutoBundleOpen(false);
-      navigate({ to: "/package/$id", params: { id: pkg.id } });
-    } catch (err: any) {
-      alert("Gagal membuat paket: " + err.message);
-    }
+    await handleAutoBundle({
+      ...data,
+      examTypeId: autoBundleExamType ?? "",
+      sectionTypeId: autoBundleSectionType ?? "READING",
+      allQuestions: allQuestions.data?.questions ?? [],
+    });
+    setIsAutoBundleOpen(false);
   };
-
-  // Auto-bundle: count available questions for current filters
-  const autoBundleExamType = examType || null;
-  const autoBundleSectionType = section || null;
 
   return (
     <div className="min-h-screen pt-8 pb-32 px-6 md:px-12 lg:px-16 max-w-7xl mx-auto bg-[var(--warm-cream)]">
@@ -890,10 +206,6 @@ function BankComponent() {
 
         <div className="flex flex-wrap gap-2">
           <Select
-            items={[
-              { value: "", label: "Semua Ujian" },
-              ...EXAM_TYPES.map((t) => ({ value: t.id, label: t.name })),
-            ]}
             value={examType}
             onValueChange={(v: string | null) => { setExamType(v ?? ""); setPage(0); }}
           >
@@ -911,10 +223,6 @@ function BankComponent() {
           </Select>
 
           <Select
-            items={[
-              { value: "", label: "Semua Section" },
-              ...SECTIONS.map((s) => ({ value: s.id, label: s.name })),
-            ]}
             value={section}
             onValueChange={(v: string | null) => { setSection(v ?? ""); setPage(0); }}
           >
@@ -932,10 +240,6 @@ function BankComponent() {
           </Select>
 
           <Select
-            items={[
-              { value: "", label: "Semua Format" },
-              ...FORMATS.map((f) => ({ value: f, label: formatLabel(f) })),
-            ]}
             value={format}
             onValueChange={(v: string | null) => { setFormat(v ?? ""); setPage(0); }}
           >
@@ -953,10 +257,6 @@ function BankComponent() {
           </Select>
 
           <Select
-            items={[
-              { value: "", label: "Semua Level" },
-              ...DIFFICULTIES.map((d) => ({ value: String(d.value), label: d.label })),
-            ]}
             value={difficulty !== undefined ? String(difficulty) : ""}
             onValueChange={(v: string | null) => { setDifficulty(v ? Number(v) : undefined); setPage(0); }}
           >
@@ -1251,8 +551,8 @@ function BankComponent() {
         <CreatePackageModal
           selectedCount={selectedIds.size}
           onClose={() => setIsCreateModalOpen(false)}
-          onCreate={handleCreatePackage}
-          isPending={createPackage.isPending || addSection.isPending}
+          onCreate={onCreatePackage}
+          isPending={isPackagePending}
           examTypeName={EXAM_TYPES.find((t) => t.id === lockedExamType)?.name ?? "Unknown"}
           lowCount={selectedIds.size < 5}
         />
@@ -1262,13 +562,11 @@ function BankComponent() {
       {isAutoBundleOpen && autoBundleExamType && (
         <AutoBundleModal
           availableCount={total}
-          examTypeId={autoBundleExamType}
           examTypeName={EXAM_TYPES.find((t) => t.id === autoBundleExamType)?.name ?? autoBundleExamType}
-          sectionTypeId={autoBundleSectionType ?? "READING"}
           sectionTypeName={SECTIONS.find((s) => s.id === autoBundleSectionType)?.name ?? "Reading"}
           onClose={() => setIsAutoBundleOpen(false)}
-          onCreate={handleAutoBundle}
-          isPending={createPackage.isPending || addSection.isPending}
+          onCreate={onAutoBundle}
+          isPending={isPackagePending}
         />
       )}
     </div>

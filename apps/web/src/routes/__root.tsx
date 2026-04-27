@@ -43,9 +43,11 @@ function RootComponent() {
         disableTransitionOnChange
         storageKey="labas-theme"
       >
-        <div className="min-h-screen bg-background">
+        <div className="min-h-screen bg-background relative">
           <Sidebar />
-          <main className={`min-h-screen transition-all duration-300 ${collapsed ? "md:ml-16" : "md:ml-64"}`}>
+          <main
+            className={`min-h-screen transition-all duration-300 relative z-0 ${collapsed ? "md:ml-16" : "md:ml-64"}`}
+          >
             <Outlet />
           </main>
         </div>

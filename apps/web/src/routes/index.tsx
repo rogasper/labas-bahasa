@@ -4,6 +4,7 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
+import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
 export const Route = createFileRoute("/")({
   component: HomeComponent,
@@ -15,10 +16,6 @@ export const Route = createFileRoute("/")({
     return { session };
   },
 });
-
-function MaterialIcon({ name, className = "text-xl" }: { name: string; className?: string }) {
-  return <span className={`material-symbols-outlined ${className}`}>{name}</span>;
-}
 
 function HomeComponent() {
   const { session } = Route.useRouteContext();
@@ -82,13 +79,13 @@ function HomeComponent() {
       <div className="flex flex-col md:flex-row gap-4 mb-10">
         <Link to="/generate">
           <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] rounded-[var(--radius-lg)] h-11 px-6 clay-shadow clay-hover">
-            <MaterialIcon name="auto_awesome" />
+            <MaterialIcon name="auto_awesome" className="text-xl" />
             <span className="ml-2">Generate Soal Baru</span>
           </Button>
         </Link>
         <Link to="/settings">
           <Button variant="outline" className="rounded-[var(--radius-lg)] h-11 px-6 border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-[var(--clay-black)] hover:bg-[var(--oat-light)] clay-hover">
-            <MaterialIcon name="key" />
+            <MaterialIcon name="key" className="text-xl" />
             <span className="ml-2">Atur API Key</span>
           </Button>
         </Link>

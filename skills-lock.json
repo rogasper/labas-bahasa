@@ -16,6 +16,11 @@
       "sourceType": "github",
       "computedHash": "220e5e1b12bbaeec49ec362b6e2262d77632d0536e9758bba9acbbc323fef990"
     },
+    "react-best-practices": {
+      "source": "mastra-ai/mastra",
+      "sourceType": "github",
+      "computedHash": "78115cffdf4f10d6984325376bd1ba3be93313370bf7ebe0c334b43f1f07e599"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",

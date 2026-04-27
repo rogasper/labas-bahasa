@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@labas/ui/components/select";
+import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
 export const Route = createFileRoute("/settings")({
   component: RouteComponent,
@@ -25,10 +26,6 @@ export const Route = createFileRoute("/settings")({
     return { session };
   },
 });
-
-function MaterialIcon({ name }: { name: string }) {
-  return <span className="material-symbols-outlined text-xl">{name}</span>;
-}
 
 function RouteComponent() {
   const { storedKey, isLoading, saveKey, removeKey, hasKey } = useApiKey();
@@ -63,7 +60,7 @@ function RouteComponent() {
           <Card className="clay-shadow bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)]">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <MaterialIcon name="key" />
+                <MaterialIcon name="key" className="text-xl" />
                 <CardTitle className="font-headline text-[var(--clay-black)]">
                   {hasKey ? "Update API Key" : "Tambah API Key"}
                 </CardTitle>
@@ -189,7 +186,7 @@ function RouteComponent() {
               ) : hasKey ? (
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 p-4 bg-[var(--matcha-300)] rounded-[var(--radius-lg)]">
-                    <MaterialIcon name="check_circle" />
+                    <MaterialIcon name="check_circle" className="text-xl" />
                     <div>
                       <p className="font-medium text-[var(--matcha-800)]">Key Tersimpan</p>
                       <p className="text-sm text-[var(--matcha-800)]/70">
@@ -205,7 +202,7 @@ function RouteComponent() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <MaterialIcon name="key_off" />
+                  <MaterialIcon name="key_off" className="text-xl" />
                   <p className="text-[var(--warm-charcoal)] mt-2">Belum ada API key.</p>
                   <p className="text-xs text-[var(--warm-charcoal)] mt-1">
                     Tambahkan key untuk mulai generate soal.

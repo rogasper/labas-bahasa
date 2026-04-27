@@ -5,6 +5,7 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "@labas/ui/components/card";
 import { Button } from "@labas/ui/components/button";
+import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import type { GenerationResult } from "@labas/ai";
 
 export const Route = createFileRoute("/jobs")({
@@ -17,10 +18,6 @@ export const Route = createFileRoute("/jobs")({
     return { session };
   },
 });
-
-function MaterialIcon({ name, className = "" }: { name: string; className?: string }) {
-  return <span className={`material-symbols-outlined ${className}`}>{name}</span>;
-}
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]",
