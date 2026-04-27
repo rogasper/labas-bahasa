@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
@@ -24,6 +24,7 @@ const STATUS_COLORS: Record<string, string> = {
   running: "bg-[var(--matcha-300)] text-[var(--matcha-800)]",
   completed: "bg-[var(--lemon-300)] text-[var(--lemon-800)]",
   failed: "bg-[var(--pomegranate-400)]/20 text-[var(--pomegranate-400)]",
+  cancelled: "bg-[var(--warm-silver)] text-[var(--warm-charcoal)]",
 };
 
 const STATUS_ICONS: Record<string, string> = {
@@ -31,6 +32,7 @@ const STATUS_ICONS: Record<string, string> = {
   running: "sync",
   completed: "check_circle",
   failed: "error",
+  cancelled: "block",
 };
 
 function formatDate(d: string | Date | null) {
@@ -46,8 +48,17 @@ function formatDate(d: string | Date | null) {
 
 function RouteComponent() {
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const jobsQuery = useQuery(trpc.ai.myJobs.queryOptions({ limit: 50, offset: 0 }));
+
+  const cancelJob = useMutation({
+    ...trpc.ai.cancelJob.mutationOptions(),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: trpc.ai.myJobs.queryKey() });
+      await queryClient.invalidateQueries({ queryKey: trpc.ai.getJobStatus.queryKey() });
+    },
+  });
 
   const toggleExpand = (id: string) => {
     setExpandedJobId((prev) => (prev === id ? null : id));
@@ -116,8 +127,23 @@ function RouteComponent() {
                         {job.mode === "agentic" ? "Agentic" : "Quick"}
                       </div>
                     </div>
-                    <div className="text-xs text-[var(--warm-charcoal)]">
-                      {formatDate(job.createdAt)}
+                    <div className="flex items-center gap-2">
+                      {(job.status === "pending" || job.status === "running") && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] text-xs shrink-0"
+                          disabled={cancelJob.isPending}
+                          onClick={() => cancelJob.mutate({ jobId: job.id })}
+                        >
+                          <MaterialIcon name="cancel" className="text-sm mr-1" />
+                          Batalkan
+                        </Button>
+                      )}
+                      <div className="text-xs text-[var(--warm-charcoal)]">
+                        {formatDate(job.createdAt)}
+                      </div>
                     </div>
                   </div>
 
@@ -209,6 +235,15 @@ function RouteComponent() {
                     <div className="p-3 rounded-[var(--radius-md)] bg-[var(--pomegranate-400)]/10 text-[var(--pomegranate-400)] text-sm border-2 border-[var(--pomegranate-400)]/20">
                       <MaterialIcon name="error" className="text-sm mr-1" />
                       {job.errorMessage ?? "Generation failed"}
+                    </div>
+                  </CardContent>
+                )}
+
+                {job.status === "cancelled" && (
+                  <CardContent className="pt-0">
+                    <div className="p-3 rounded-[var(--radius-md)] bg-[var(--warm-silver)]/40 text-[var(--warm-charcoal)] text-sm border-2 border-[var(--oat-border)]">
+                      <MaterialIcon name="block" className="text-sm mr-1" />
+                      {job.errorMessage ?? "Job dibatalkan"}
                     </div>
                   </CardContent>
                 )}

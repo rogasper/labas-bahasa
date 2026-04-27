@@ -4,9 +4,93 @@ import { env } from "@labas/env/server";
 import { generateQuestionsQuick, generateQuestionsAgentic, type GenerationInput } from "@labas/ai";
 import { db } from "@labas/db";
 import { generationJob, question, testPackage, packageSection, sectionQuestion } from "@labas/db";
-import { eq } from "drizzle-orm";
+import { and, eq, notInArray } from "drizzle-orm";
 
 const redisConnection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
+
+/** Thrown when the job was cancelled (DB status or cooperative poll). */
+export class GenerationJobCancelledError extends Error {
+  constructor() {
+    super("JOB_CANCELLED");
+    this.name = "GenerationJobCancelledError";
+  }
+}
+
+const CANCEL_POLL_MS = 500;
+
+function createCancellationPoller(jobId: string) {
+  let cancelled = false;
+  const interval = setInterval(() => {
+    db
+      .select({ status: generationJob.status })
+      .from(generationJob)
+      .where(eq(generationJob.id, jobId))
+      .limit(1)
+      .then(([row]) => {
+        if (row?.status === "cancelled") cancelled = true;
+      })
+      .catch(() => {});
+  }, CANCEL_POLL_MS);
+  return {
+    stop: () => clearInterval(interval),
+    check: () => {
+      if (cancelled) throw new GenerationJobCancelledError();
+    },
+  };
+}
+
+export type CancelGenerationJobResult =
+  | { ok: true }
+  | { ok: false; reason: "not_found" | "forbidden" | "not_cancellable" };
+
+/**
+ * Marks the job cancelled in Postgres, then removes the BullMQ job if it is still waiting/delayed.
+ * Active jobs are stopped cooperatively by the worker (cancellation poller).
+ */
+export async function cancelGenerationJob(
+  userId: string,
+  jobId: string,
+): Promise<CancelGenerationJobResult> {
+  const [row] = await db
+    .select({
+      id: generationJob.id,
+      userId: generationJob.userId,
+      status: generationJob.status,
+    })
+    .from(generationJob)
+    .where(eq(generationJob.id, jobId))
+    .limit(1);
+
+  if (!row) return { ok: false, reason: "not_found" };
+  if (row.userId !== userId) return { ok: false, reason: "forbidden" };
+  if (row.status === "completed" || row.status === "failed" || row.status === "cancelled") {
+    return { ok: false, reason: "not_cancellable" };
+  }
+
+  await db
+    .update(generationJob)
+    .set({
+      status: "cancelled",
+      errorMessage: "Dibatalkan pengguna",
+      completedAt: new Date(),
+    })
+    .where(eq(generationJob.id, jobId));
+
+  try {
+    const bullJob = await generationQueue.getJob(jobId);
+    if (bullJob) {
+      try {
+        await bullJob.remove();
+      } catch {
+        // Job is likely active (or already gone) — worker exits via DB `cancelled` + poller.
+      }
+    }
+  } catch {
+    // Redis/BullMQ hiccup — DB already cancelled; worker will exit cooperatively if active.
+  }
+
+  return { ok: true };
+}
 
 export const generationQueue = new Queue("generation", {
   connection: redisConnection,
@@ -18,7 +102,32 @@ export const generationWorker = new Worker(
     const { input, jobId } = job.data;
     const start = Date.now();
 
+    const [initialRow] = await db
+      .select({ status: generationJob.status })
+      .from(generationJob)
+      .where(eq(generationJob.id, jobId))
+      .limit(1);
+
+    if (!initialRow || initialRow.status === "cancelled" || initialRow.status === "completed") {
+      return;
+    }
+
+    const claimed = await db
+      .update(generationJob)
+      .set({ status: "running" })
+      .where(
+        and(eq(generationJob.id, jobId), notInArray(generationJob.status, ["cancelled", "completed"])),
+      )
+      .returning({ id: generationJob.id });
+
+    if (!claimed.length) {
+      return;
+    }
+
+    const cancelPoll = createCancellationPoller(jobId);
+
     const updateProgress = async (progress: number, message: string) => {
+      cancelPoll.check();
       await job.updateProgress(progress);
       await db
         .update(generationJob)
@@ -46,11 +155,6 @@ export const generationWorker = new Worker(
     };
 
     try {
-      await db
-        .update(generationJob)
-        .set({ status: "running" })
-        .where(eq(generationJob.id, jobId));
-
       if (input.mode === "agentic") {
         await updateProgress(10, "Generating passage...");
       }
@@ -65,6 +169,7 @@ export const generationWorker = new Worker(
       const result =
         input.mode === "agentic"
           ? await generateQuestionsAgentic(input, async (p) => {
+              cancelPoll.check();
               const stepProgress = Math.min(
                 10 + Math.round((p.currentStep / p.steps.length) * 80),
                 90,
@@ -74,6 +179,7 @@ export const generationWorker = new Worker(
             })
           : await generateQuestionsQuick(input, {
               onToken: (token) => {
+                cancelPoll.check();
                 countToken(token);
                 // Update progress message with token count every ~500 chars
                 if (approxTokens % 20 === 0) {
@@ -87,7 +193,7 @@ export const generationWorker = new Worker(
               },
             });
 
-      stopHeartbeat();
+      cancelPoll.check();
       await updateProgress(95, "Saving to bank...");
 
       // Idempotent auto-save: check if already saved
@@ -192,6 +298,7 @@ export const generationWorker = new Worker(
 
       await updateProgress(100, "Completed");
 
+      cancelPoll.check();
       await db
         .update(generationJob)
         .set({
@@ -203,7 +310,18 @@ export const generationWorker = new Worker(
         })
         .where(eq(generationJob.id, jobId));
     } catch (err: any) {
-      stopHeartbeat();
+      if (err instanceof GenerationJobCancelledError || err?.name === "GenerationJobCancelledError") {
+        await db
+          .update(generationJob)
+          .set({
+            status: "cancelled",
+            errorMessage: "Dibatalkan pengguna",
+            durationMs: Date.now() - start,
+            completedAt: new Date(),
+          })
+          .where(eq(generationJob.id, jobId));
+        return;
+      }
       await db
         .update(generationJob)
         .set({
@@ -214,6 +332,9 @@ export const generationWorker = new Worker(
         })
         .where(eq(generationJob.id, jobId));
       throw err;
+    } finally {
+      stopHeartbeat();
+      cancelPoll.stop();
     }
   },
   {

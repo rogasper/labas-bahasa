@@ -18,6 +18,8 @@ interface TestBlueprintCardProps {
   jobProgressMessage?: string | null;
   error: string | null;
   onGenerate: () => void;
+  onCancelJob?: () => void;
+  cancelJobPending?: boolean;
 }
 
 export function TestBlueprintCard({
@@ -34,6 +36,8 @@ export function TestBlueprintCard({
   jobProgressMessage,
   error,
   onGenerate,
+  onCancelJob,
+  cancelJobPending,
 }: TestBlueprintCardProps) {
   return (
     <div className="lg:col-span-4 sticky top-8">
@@ -147,7 +151,7 @@ export function TestBlueprintCard({
             <div className="space-y-2">
               <div className="flex items-center gap-3 p-3 rounded-[var(--radius-md)] bg-[var(--matcha-300)]/20 border-2 border-[var(--matcha-300)]">
                 <MaterialIcon name="psychology" className="text-[var(--matcha-600)] animate-pulse" />
-                <div>
+                <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-[var(--matcha-800)]">
                     {jobProgressMessage ?? "Sedang berjalan..."}
                   </p>
@@ -164,6 +168,19 @@ export function TestBlueprintCard({
                   style={{ width: `${jobProgress}%` }}
                 />
               </div>
+              {onCancelJob && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] text-[var(--warm-charcoal)]"
+                  disabled={cancelJobPending}
+                  onClick={onCancelJob}
+                >
+                  <MaterialIcon name="cancel" className="text-sm mr-1" />
+                  Batalkan job
+                </Button>
+              )}
               <p className="text-xs text-[var(--warm-charcoal)] text-center">
                 Bisa ditinggal — hasil akan muncul otomatis
               </p>

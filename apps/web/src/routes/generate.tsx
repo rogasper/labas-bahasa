@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
-import { trpc } from "@/utils/trpc";
+import { queryClient, trpc } from "@/utils/trpc";
 import { useApiKey } from "@/hooks/use-api-key";
 import { useGenerationJob } from "@/hooks/use-generation-job";
 import { Input } from "@labas/ui/components/input";
@@ -36,6 +36,7 @@ function RouteComponent() {
     result,
     error,
     generatedPackageId,
+    jobId,
     isGenerating,
     jobQuery,
     setError,
@@ -57,11 +58,22 @@ function RouteComponent() {
     onSuccess: (data) => {
       setJobId(data.jobId);
       setError(null);
-      reset();
     },
     onError: (err) => {
       setError(err.message);
       setJobId(null);
+    },
+  });
+
+  const cancelJob = useMutation({
+    ...trpc.ai.cancelJob.mutationOptions(),
+    onSuccess: async () => {
+      setJobId(null);
+      setError(null);
+      await queryClient.invalidateQueries({ queryKey: trpc.ai.myJobs.queryKey() });
+    },
+    onError: (err) => {
+      setError(err.message);
     },
   });
 
@@ -303,6 +315,14 @@ function RouteComponent() {
           jobProgressMessage={jobQuery.data?.progressMessage}
           error={error}
           onGenerate={handleGenerate}
+          onCancelJob={
+            jobId
+              ? () => {
+                  cancelJob.mutate({ jobId });
+                }
+              : undefined
+          }
+          cancelJobPending={cancelJob.isPending}
         />
       </div>
 

@@ -2,7 +2,7 @@ import { z } from "zod";
 import { eq, desc } from "drizzle-orm";
 import { router, protectedProcedure } from "../index";
 import { generationInputSchema } from "@labas/ai/schemas";
-import { enqueueGeneration } from "../queue";
+import { cancelGenerationJob, enqueueGeneration } from "../queue";
 import { db } from "@labas/db";
 import { question, generationJob } from "@labas/db";
 
@@ -27,6 +27,22 @@ export const aiRouter = router({
       if (job.userId !== ctx.session.user.id) return null;
 
       return job;
+    }),
+
+  cancelJob: protectedProcedure
+    .input(z.object({ jobId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const result = await cancelGenerationJob(ctx.session.user.id, input.jobId);
+      if (!result.ok) {
+        const msg =
+          result.reason === "not_found"
+            ? "Job tidak ditemukan"
+            : result.reason === "forbidden"
+              ? "Tidak diizinkan"
+              : "Job sudah selesai atau tidak bisa dibatalkan";
+        throw new Error(msg);
+      }
+      return { ok: true as const };
     }),
 
   myJobs: protectedProcedure

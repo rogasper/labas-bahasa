@@ -44,14 +44,18 @@ export function useGenerationJob() {
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return 1000;
-      if (data.status === "completed" || data.status === "failed") return false;
+      if (data.status === "completed" || data.status === "failed" || data.status === "cancelled")
+        return false;
       return 1000;
     },
   });
 
   const isGenerating =
     jobId !== null &&
-    (!jobQuery.data || (jobQuery.data.status !== "completed" && jobQuery.data.status !== "failed"));
+    (!jobQuery.data ||
+      (jobQuery.data.status !== "completed" &&
+        jobQuery.data.status !== "failed" &&
+        jobQuery.data.status !== "cancelled"));
 
   // Handle completion / failure
   useEffect(() => {
@@ -63,6 +67,10 @@ export function useGenerationJob() {
     }
     if (jobQuery.data?.status === "failed") {
       setError(jobQuery.data.errorMessage ?? "Generation failed");
+      setJobId(null);
+    }
+    if (jobQuery.data?.status === "cancelled") {
+      setError(jobQuery.data.errorMessage ?? "Generasi dibatalkan");
       setJobId(null);
     }
   }, [jobQuery.data, setJobId]);
