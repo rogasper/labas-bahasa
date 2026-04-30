@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { Input } from "@labas/ui/components/input";
@@ -36,6 +36,7 @@ const EXAM_TYPES = [
 ];
 
 function PackagesComponent() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [examType, setExamType] = useState<string>("");
   const [page, setPage] = useState(0);
@@ -126,9 +127,9 @@ function PackagesComponent() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {packages.map((pkg) => (
-              <Link key={pkg.id} to="/package/$id" params={{ id: pkg.id }} className="block">
-                <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] h-full flex flex-col">
-                  <CardContent className="p-5 flex flex-col h-full">
+              <Card key={pkg.id} className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] h-full flex flex-col">
+                <CardContent className="p-5 flex flex-col h-full">
+                  <Link to="/package/$id" params={{ id: pkg.id }} className="block flex-1">
                     <div className="flex items-start justify-between mb-3">
                       <span className="px-2.5 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-xs font-semibold">
                         {pkg.examTypeName}
@@ -146,7 +147,7 @@ function PackagesComponent() {
                     </h3>
 
                     {pkg.description && (
-                      <p className="text-sm text-[var(--warm-charcoal)] line-clamp-2 mb-4 flex-1">
+                      <p className="text-sm text-[var(--warm-charcoal)] line-clamp-2 mb-4">
                         {pkg.description}
                       </p>
                     )}
@@ -172,9 +173,19 @@ function PackagesComponent() {
                         {pkg.usageCount}x digunakan
                       </span>
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                  </Link>
+
+                  <div className="mt-4 pt-3 border-t border-[var(--oat-border)]">
+                    <Button
+                      className="w-full bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-800)] clay-hover rounded-[var(--radius-lg)]"
+                      onClick={() => navigate({ to: '/package/$id/take', params: { id: pkg.id } })}
+                    >
+                      <MaterialIcon name="play_arrow" className="mr-2" />
+                      Mulai Latihan
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
 

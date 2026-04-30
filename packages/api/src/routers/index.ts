@@ -6,6 +6,7 @@ import { questionRouter } from "./question";
 import { packageRouter } from "./package";
 import { ratingRouter } from "./rating";
 import { settingsRouter } from "./settings";
+import { statsRouter } from "./stats";
 
 export const appRouter = router({
   healthCheck: publicProcedure.query(() => {
@@ -24,6 +25,7 @@ export const appRouter = router({
   package: packageRouter,
   rating: ratingRouter,
   settings: settingsRouter,
+  stats: statsRouter,
 });
 
 export type AppRouter = typeof appRouter;

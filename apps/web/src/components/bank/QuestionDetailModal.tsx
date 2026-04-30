@@ -170,11 +170,10 @@ export function QuestionDetailModal({
           {isOwner && (
             <div className="flex gap-2 items-center">
               <span
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold ${
-                  question.isPublic
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold ${question.isPublic
                     ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
                     : "bg-[var(--oat-light)] text-[var(--warm-charcoal)]"
-                }`}
+                  }`}
               >
                 {question.isPublic ? "Publik" : "Privat"}
               </span>
@@ -188,13 +187,12 @@ export function QuestionDetailModal({
             variant="outline"
             onClick={onToggleSelect}
             disabled={!isSelectable}
-            className={`rounded-[var(--radius-lg)] border-2 clay-hover ${
-              !isSelectable
+            className={`rounded-[var(--radius-lg)] border-2 clay-hover ${!isSelectable
                 ? "opacity-40 cursor-not-allowed border-[var(--oat-border)] text-[var(--warm-silver)]"
                 : isSelected
                   ? "border-[var(--pomegranate-400)] text-[var(--pomegranate-600)] bg-[var(--pomegranate-50)]"
                   : "border-[var(--oat-border)] text-[var(--warm-charcoal)]"
-            }`}
+              }`}
           >
             <MaterialIcon name={isSelected ? "remove" : "add"} className="mr-2" />
             {!isSelectable

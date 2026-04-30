@@ -331,12 +331,14 @@ export const attemptRouter = router({
 
         const sectionScore = secAnswers.filter((a) => a.isCorrect).length;
         const sectionMax = questionCounts.get(pkgSec.id) ?? secAnswers.length;
+        const sectionTimeSpent = secAnswers.reduce((sum, a) => sum + (a.timeSpentSec ?? 0), 0);
 
         await db
           .update(sectionResult)
           .set({
             score: sectionScore,
             maxScore: sectionMax,
+            timeSpentSec: sectionTimeSpent,
           })
           .where(eq(sectionResult.id, secResult.id));
 
@@ -364,6 +366,54 @@ export const attemptRouter = router({
         maxScore: totalQuestions,
         percentage: totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0,
       };
+    }),
+
+  getActiveAttempt: protectedProcedure
+    .input(z.object({ packageId: z.string().uuid() }))
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [attempt] = await db
+        .select({
+          id: testAttempt.id,
+          status: testAttempt.status,
+          startedAt: testAttempt.startedAt,
+        })
+        .from(testAttempt)
+        .where(
+          and(
+            eq(testAttempt.userId, userId),
+            eq(testAttempt.packageId, input.packageId),
+            eq(testAttempt.status, "in_progress"),
+          ),
+        )
+        .orderBy(desc(testAttempt.createdAt))
+        .limit(1);
+
+      return attempt ?? null;
+    }),
+
+  abandon: protectedProcedure
+    .input(z.object({ attemptId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [attempt] = await db
+        .select()
+        .from(testAttempt)
+        .where(eq(testAttempt.id, input.attemptId))
+        .limit(1);
+
+      if (!attempt) throw new Error("Attempt not found");
+      if (attempt.userId !== userId) throw new Error("Not authorized");
+      if (attempt.status !== "in_progress") throw new Error("Attempt not in progress");
+
+      await db
+        .update(testAttempt)
+        .set({ status: "abandoned" })
+        .where(eq(testAttempt.id, input.attemptId));
+
+      return { success: true };
     }),
 
   myAttempts: protectedProcedure

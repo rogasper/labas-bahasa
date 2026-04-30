@@ -1,7 +1,7 @@
 import { Toaster } from "@labas/ui/components/sonner";
 import type { QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { HeadContent, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
+import { HeadContent, Outlet, createRootRouteWithContext, useRouterState } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import { Sidebar } from "@/components/sidebar";
@@ -32,6 +32,8 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 
 function RootComponent() {
   const { collapsed } = useSidebar();
+  const matches = useRouterState({ select: (s) => s.matches });
+  const isFullScreen = matches.some((m) => m.routeId === "/package/$id/take");
 
   return (
     <>
@@ -43,14 +45,20 @@ function RootComponent() {
         disableTransitionOnChange
         storageKey="labas-theme"
       >
-        <div className="min-h-screen bg-background relative">
-          <Sidebar />
-          <main
-            className={`min-h-screen transition-all duration-300 relative z-0 ${collapsed ? "md:ml-16" : "md:ml-64"}`}
-          >
+        {isFullScreen ? (
+          <div className="h-screen bg-background text-on-surface flex flex-col overflow-hidden relative">
             <Outlet />
-          </main>
-        </div>
+          </div>
+        ) : (
+          <div className="min-h-screen bg-background relative">
+            <Sidebar />
+            <main
+              className={`min-h-screen transition-all duration-300 relative z-0 ${collapsed ? "md:ml-16" : "md:ml-64"}`}
+            >
+              <Outlet />
+            </main>
+          </div>
+        )}
         <Toaster richColors />
       </ThemeProvider>
       <TanStackRouterDevtools position="bottom-left" />

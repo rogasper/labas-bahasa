@@ -137,6 +137,12 @@ function AttemptResultComponent() {
                       <p className="text-sm text-[var(--warm-charcoal)]">
                         {sec.score ?? 0}/{sec.maxScore ?? 0} benar
                       </p>
+                      {sec.timeSpentSec !== null && sec.timeSpentSec !== undefined && (
+                        <p className="text-xs text-[var(--warm-silver)] mt-1 flex items-center gap-1">
+                          <MaterialIcon name="timer" className="text-xs" />
+                          {formatTime(sec.timeSpentSec)}
+                        </p>
+                      )}
                     </div>
                     <div className="w-16 h-16 rounded-full border-2 border-[var(--matcha-400)] flex items-center justify-center bg-[var(--matcha-50)]">
                       <span className="text-lg font-bold text-[var(--matcha-700)]">{secPct}%</span>
@@ -215,6 +221,12 @@ function AttemptResultComponent() {
                             <span className="font-semibold text-[var(--matcha-700)]">
                               {q.correctAnswer}
                             </span>
+                          </div>
+                        )}
+                        {ans?.timeSpentSec !== null && ans?.timeSpentSec !== undefined && (
+                          <div className="flex items-center gap-1 text-[var(--warm-silver)]">
+                            <MaterialIcon name="timer" className="text-xs" />
+                            <span>{formatTime(ans.timeSpentSec)}</span>
                           </div>
                         )}
                       </div>

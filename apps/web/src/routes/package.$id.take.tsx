@@ -35,10 +35,15 @@ function TakeTestComponent() {
     isStarted,
     isFinished,
     submittingQId,
+    markedQuestions,
     startPending,
+    startError,
     handleStart,
     handleAnswerChange,
     handleFinish,
+    handleAbandon,
+    toggleMarkQuestion,
+    startQuestionTimer,
   } = useTestSession(packageId);
 
   if (packageQuery.isLoading) {
@@ -112,6 +117,12 @@ function TakeTestComponent() {
             </CardContent>
           </Card>
 
+          {startError && (
+            <div className="mb-4 p-4 rounded-[var(--radius-md)] bg-[var(--pomegranate-400)]/10 border-2 border-[var(--pomegranate-400)]/30 text-sm text-[var(--pomegranate-600)]">
+              {startError}
+            </div>
+          )}
+
           <Button
             onClick={handleStart}
             disabled={startPending}
@@ -120,6 +131,17 @@ function TakeTestComponent() {
             <MaterialIcon name="play_arrow" />
             <span className="ml-2">{startPending ? "Memulai..." : "Mulai Latihan"}</span>
           </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!attemptId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--warm-cream)]">
+        <div className="text-center">
+          <div className="h-8 w-8 border-2 border-[var(--matcha-600)] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-[var(--warm-charcoal)]">Menyiapkan latihan...</p>
         </div>
       </div>
     );
@@ -142,7 +164,7 @@ function TakeTestComponent() {
 
   return (
     <AttemptTestView
-      attemptId={attemptId!}
+      attemptId={attemptId}
       pkg={pkg}
       currentSectionIdx={currentSectionIdx}
       setCurrentSectionIdx={setCurrentSectionIdx}
@@ -152,8 +174,12 @@ function TakeTestComponent() {
       answeredCount={answeredCount}
       totalQuestions={totalQuestions}
       onFinish={handleFinish}
+      onAbandon={handleAbandon}
       isFinished={isFinished}
       submittingQId={submittingQId}
+      markedQuestions={markedQuestions}
+      toggleMarkQuestion={toggleMarkQuestion}
+      startQuestionTimer={startQuestionTimer}
     />
   );
 }

@@ -30,9 +30,8 @@ export function Sidebar() {
     <>
       {/* Desktop Sidebar */}
       <aside
-        className={`fixed left-0 top-0 h-full flex flex-col z-40 bg-[var(--warm-cream)] border-r border-[var(--oat-border)] hidden md:flex transition-all duration-300 ${
-          collapsed ? "w-16 items-center px-2 py-4" : "w-64 p-4"
-        }`}
+        className={`fixed left-0 top-0 h-full flex flex-col z-40 bg-[var(--warm-cream)] border-r border-[var(--oat-border)] hidden md:flex transition-all duration-300 ${collapsed ? "w-16 items-center px-2 py-4" : "w-64 p-4"
+          }`}
       >
         <div className={`mb-8 ${collapsed ? "px-0 text-center" : "px-4"}`}>
           <h1 className="text-xl font-extrabold text-[var(--clay-black)] font-headline tracking-tight">
@@ -52,11 +51,10 @@ export function Sidebar() {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all group clay-hover ${
-                  isActive
-                    ? "bg-[var(--matcha-300)] text-[var(--matcha-800)] font-semibold clay-shadow"
-                    : "text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)]"
-                } ${collapsed ? "justify-center py-3 px-2" : "py-3 px-4"}`}
+                className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all group clay-hover ${isActive
+                  ? "bg-[var(--matcha-300)] text-[var(--matcha-800)] font-semibold clay-shadow"
+                  : "text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)]"
+                  } ${collapsed ? "justify-center py-3 px-2" : "py-3 px-4"}`}
                 title={collapsed ? item.label : undefined}
               >
                 <NavIcon name={item.icon} />
@@ -73,11 +71,10 @@ export function Sidebar() {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all clay-hover ${
-                  isActive
-                    ? "bg-[var(--matcha-300)] text-[var(--matcha-800)] font-semibold clay-shadow"
-                    : "text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)]"
-                } ${collapsed ? "justify-center py-3 px-2" : "py-3 px-4"}`}
+                className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all clay-hover ${isActive
+                  ? "bg-[var(--matcha-300)] text-[var(--matcha-800)] font-semibold clay-shadow"
+                  : "text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)]"
+                  } ${collapsed ? "justify-center py-3 px-2" : "py-3 px-4"}`}
                 title={collapsed ? item.label : undefined}
               >
                 <NavIcon name={item.icon} />
@@ -88,9 +85,8 @@ export function Sidebar() {
           {isLoggedIn ? (
             <button
               onClick={() => authClient.signOut()}
-              className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all clay-hover text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)] w-full ${
-                collapsed ? "justify-center py-3 px-2" : "py-3 px-4 text-left"
-              }`}
+              className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all clay-hover text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)] w-full ${collapsed ? "justify-center py-3 px-2" : "py-3 px-4 text-left"
+                }`}
               title={collapsed ? "Keluar" : undefined}
             >
               <NavIcon name="logout" />
@@ -99,9 +95,8 @@ export function Sidebar() {
           ) : (
             <Link
               to="/login"
-              className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all clay-hover text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)] ${
-                collapsed ? "justify-center py-3 px-2" : "py-3 px-4"
-              }`}
+              className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all clay-hover text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)] ${collapsed ? "justify-center py-3 px-2" : "py-3 px-4"
+                }`}
               title={collapsed ? "Masuk" : undefined}
             >
               <NavIcon name="login" />
@@ -116,25 +111,23 @@ export function Sidebar() {
         onClick={toggle}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         style={{ left: collapsed ? "48px" : "240px" }}
-        className="hidden md:flex absolute top-6 z-50 items-center justify-center w-10 h-10 rounded-full bg-[var(--pure-white)] border-2 border-[var(--oat-border)] shadow-md hover:bg-[var(--oat-light)] transition-all duration-300 text-[var(--warm-charcoal)] clay-hover"
+        className="hidden md:flex absolute top-6 z-40 items-center justify-center w-10 h-10 rounded-full bg-[var(--pure-white)] border-2 border-[var(--oat-border)] shadow-md hover:bg-[var(--oat-light)] transition-all duration-300 text-[var(--warm-charcoal)] clay-hover"
       >
         <span className="relative inline-flex size-6 shrink-0 items-center justify-center">
           <span
-            className={`material-symbols-outlined pointer-events-none absolute inset-0 flex items-center justify-center text-[20px] leading-none transition-all duration-300 ease-out select-none ${
-              collapsed
-                ? "opacity-100 scale-100 rotate-0"
-                : "opacity-0 scale-75 -rotate-90"
-            }`}
+            className={`material-symbols-outlined pointer-events-none absolute inset-0 flex items-center justify-center text-[20px] leading-none transition-all duration-300 ease-out select-none ${collapsed
+              ? "opacity-100 scale-100 rotate-0"
+              : "opacity-0 scale-75 -rotate-90"
+              }`}
             aria-hidden
           >
             right_panel_open
           </span>
           <span
-            className={`material-symbols-outlined pointer-events-none absolute inset-0 flex items-center justify-center text-[20px] leading-none transition-all duration-300 ease-out select-none ${
-              collapsed
-                ? "opacity-0 scale-75 rotate-90"
-                : "opacity-100 scale-100 rotate-0"
-            }`}
+            className={`material-symbols-outlined pointer-events-none absolute inset-0 flex items-center justify-center text-[20px] leading-none transition-all duration-300 ease-out select-none ${collapsed
+              ? "opacity-0 scale-75 rotate-90"
+              : "opacity-100 scale-100 rotate-0"
+              }`}
             aria-hidden
           >
             right_panel_close
@@ -150,11 +143,10 @@ export function Sidebar() {
             <Link
               key={item.to}
               to={item.to}
-              className={`flex flex-col items-center justify-center px-4 py-1.5 transition-all rounded-[var(--radius-lg)] ${
-                isActive
-                  ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
-                  : "text-[var(--warm-charcoal)]"
-              }`}
+              className={`flex flex-col items-center justify-center px-4 py-1.5 transition-all rounded-[var(--radius-lg)] ${isActive
+                ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
+                : "text-[var(--warm-charcoal)]"
+                }`}
             >
               <NavIcon name={item.icon} />
               <span className="text-[10px] font-medium uppercase tracking-wider mt-1">{item.label}</span>

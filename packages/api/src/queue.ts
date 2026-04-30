@@ -6,7 +6,7 @@ import { db } from "@labas/db";
 import { generationJob, question, testPackage, packageSection, sectionQuestion } from "@labas/db";
 import { and, eq, notInArray } from "drizzle-orm";
 
-const redisConnection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
+const connectionOptions = { maxRetriesPerRequest: null };
 
 /** Thrown when the job was cancelled (DB status or cooperative poll). */
 export class GenerationJobCancelledError extends Error {
@@ -93,7 +93,7 @@ export async function cancelGenerationJob(
 }
 
 export const generationQueue = new Queue("generation", {
-  connection: redisConnection,
+  connection: new IORedis(env.REDIS_URL, connectionOptions),
 });
 
 export const generationWorker = new Worker(
@@ -338,7 +338,7 @@ export const generationWorker = new Worker(
     }
   },
   {
-    connection: redisConnection,
+    connection: new IORedis(env.REDIS_URL, connectionOptions),
     concurrency: 2,
   },
 );

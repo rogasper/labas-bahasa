@@ -206,7 +206,7 @@ export const packageRouter = router({
       const sectionsWithQuestions = sections.map((section) => ({
         ...section,
         questions: sectionQuestions
-          .filter((sq) => sq.sectionId === section.id)
+          .filter((sq) => sq.sectionId === section.id && sq.question != null)
           .sort((a, b) => a.orderIndex - b.orderIndex)
           .map((sq) => sq.question),
       }));

@@ -28,8 +28,8 @@ const AUTHOR_VIEW_CHOICES = [
 ];
 
 const radioClass =
-  "flex items-center gap-3 p-3 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] cursor-pointer hover:border-[var(--matcha-400)] transition-colors";
-const radioSelected = "border-[var(--matcha-600)] bg-[var(--matcha-100)]";
+  "flex items-center gap-3 p-3 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] cursor-pointer hover:border-[var(--matcha-300)] transition-colors";
+const radioSelected = "border-[var(--matcha-600)] bg-[#e8f5ed]";
 const radioDisabled = "opacity-60 cursor-not-allowed";
 
 export function QuestionInput({
@@ -70,7 +70,7 @@ export function QuestionInput({
               disabled={disabled}
               className="hidden"
             />
-            <span className="w-8 h-8 rounded-full bg-[var(--oat-light)] text-[var(--clay-black)] text-sm font-bold flex items-center justify-center shrink-0">
+            <span className={`w-8 h-8 rounded-full text-sm font-bold flex items-center justify-center shrink-0 transition-colors ${value === opt.key ? "bg-[var(--matcha-600)] text-[var(--pure-white)]" : "bg-[var(--oat-light)] text-[var(--clay-black)]"}`}>
               {opt.key}
             </span>
             <span className="text-sm text-[var(--clay-black)]">{opt.text}</span>
