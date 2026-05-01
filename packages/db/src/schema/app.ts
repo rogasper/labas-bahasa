@@ -445,6 +445,7 @@ export const generationJob = pgTable(
     questionCount: integer("question_count").notNull(),
     progress: integer("progress").default(0).notNull(), // 0-100
     progressMessage: text("progress_message"),
+    logs: jsonb("logs"), // Array of {step, message, timestamp, status}
     resultJson: jsonb("result_json"), // GenerationResult
     errorMessage: text("error_message"),
     tokensUsed: integer("tokens_used"),

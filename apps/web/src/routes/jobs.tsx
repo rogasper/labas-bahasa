@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
@@ -7,6 +7,94 @@ import { Card, CardContent, CardHeader, CardTitle } from "@labas/ui/components/c
 import { Button } from "@labas/ui/components/button";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import type { GenerationResult } from "@labas/ai";
+
+interface LogEntry {
+  step: string;
+  message: string;
+  status: "running" | "done" | "error";
+  timestamp: string;
+  details?: string;
+}
+
+const STEP_LABELS: Record<string, string> = {
+  generate_passage: "Menulis Bacaan",
+  validate_passage: "Memvalidasi Bacaan",
+  generate_questions: "Membuat Soal",
+  self_validate: "Self-Check Kualitas",
+  save: "Menyimpan Hasil",
+  cancel: "Dibatalkan",
+  error: "Error",
+};
+
+function LogIcon({ status }: { status: string }) {
+  if (status === "done") return <MaterialIcon name="check_circle" className="text-[var(--matcha-400)] text-xs shrink-0" />;
+  if (status === "error") return <MaterialIcon name="error" className="text-[var(--pomegranate-400)] text-xs shrink-0" />;
+  return <MaterialIcon name="sync" className="text-[var(--matcha-400)] text-xs shrink-0 animate-spin" />;
+}
+
+function JobLogPanel({ logs, isRunning }: { logs: LogEntry[]; isRunning?: boolean }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [logs]);
+
+  return (
+    <div
+      ref={scrollRef}
+      className="mt-3 max-h-52 overflow-y-auto rounded-xl bg-[var(--clay-black)] p-3 font-mono text-[11px] leading-relaxed"
+    >
+      {logs.map((log, i) => {
+        const isExpanded = expandedIdx === i;
+        const hasDetails = !!log.details && log.details.length > 0;
+        const isLast = i === logs.length - 1;
+        const isCurrentRunning = isLast && log.status === "running" && isRunning;
+
+        return (
+          <div key={i} className="flex flex-col">
+            <div
+              className={`flex items-start gap-2 py-1 ${hasDetails ? "cursor-pointer hover:bg-white/5 rounded px-1 -mx-1 transition-colors" : ""}`}
+              onClick={() => hasDetails && setExpandedIdx(isExpanded ? null : i)}
+            >
+              <LogIcon status={log.status} />
+              <span className="text-white/30 shrink-0">
+                {new Date(log.timestamp).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              </span>
+              <div className="flex flex-col min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className={`font-semibold ${
+                    log.status === "error" ? "text-[var(--pomegranate-400)]" : log.status === "done" ? "text-[var(--matcha-400)]" : "text-white/80"
+                  }`}>
+                    {STEP_LABELS[log.step] ?? log.step}
+                  </span>
+                  {hasDetails && (
+                    <MaterialIcon name={isExpanded ? "expand_less" : "expand_more"} className="text-white/30 text-xs" />
+                  )}
+                </div>
+                {log.message && (
+                  <span className="text-white/50 truncate">{log.message}</span>
+                )}
+                {isCurrentRunning && (
+                  <span className="text-[var(--matcha-400)]/70 mt-0.5 flex items-center gap-1">
+                    <span className="w-1 h-1 bg-[var(--matcha-400)] rounded-full animate-pulse" />
+                    AI sedang memproses...
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {isExpanded && hasDetails && (
+              <div className="ml-6 mt-1 mb-2 p-2.5 rounded-lg bg-black/60 border border-white/10 text-white/70 whitespace-pre-wrap text-[10px] leading-relaxed max-h-32 overflow-y-auto">
+                {log.details}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/jobs")({
   component: RouteComponent,
@@ -48,9 +136,18 @@ function formatDate(d: string | Date | null) {
 
 function RouteComponent() {
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const jobsQuery = useQuery(trpc.ai.myJobs.queryOptions({ limit: 50, offset: 0 }));
+  const jobsQuery = useQuery({
+    ...trpc.ai.myJobs.queryOptions({ limit: 50, offset: 0 }),
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data) return false;
+      const hasRunning = data.some((j: any) => j.status === "pending" || j.status === "running");
+      return hasRunning ? 1000 : false;
+    },
+  });
 
   const cancelJob = useMutation({
     ...trpc.ai.cancelJob.mutationOptions(),
@@ -102,7 +199,10 @@ function RouteComponent() {
         <div className="space-y-4">
           {jobsQuery.data.map((job) => {
             const isExpanded = expandedJobId === job.id;
+            const isLogExpanded = expandedLogId === job.id;
             const result = job.resultJson as GenerationResult | null;
+            const logs = (job.logs ?? []) as LogEntry[];
+            const isAgentic = job.mode === "agentic";
 
             return (
               <Card
@@ -124,7 +224,7 @@ function RouteComponent() {
                       </div>
                       <div className="text-sm text-[var(--warm-charcoal)]">
                         {job.examTypeId} · {job.sectionTypeId} · {job.questionCount} soal ·{" "}
-                        {job.mode === "agentic" ? "Agentic" : "Quick"}
+                        {isAgentic ? "Agentic" : "Quick"}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -147,7 +247,7 @@ function RouteComponent() {
                     </div>
                   </div>
 
-                  {job.status === "running" && (
+                  {(job.status === "running" || job.status === "pending") && (
                     <div className="mt-3">
                       <div className="flex justify-between text-xs text-[var(--warm-charcoal)] mb-1">
                         <span>{job.progressMessage ?? "Processing..."}</span>
@@ -159,6 +259,22 @@ function RouteComponent() {
                           style={{ width: `${job.progress}%` }}
                         />
                       </div>
+                    </div>
+                  )}
+
+                  {isAgentic && logs.length > 0 && (
+                    <div className="mt-3">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-[var(--warm-charcoal)] hover:text-[var(--clay-black)] px-0 h-auto"
+                        onClick={() => setExpandedLogId((prev) => (prev === job.id ? null : job.id))}
+                      >
+                        <MaterialIcon name={isLogExpanded ? "expand_less" : "expand_more"} className="text-sm mr-1" />
+                        {isLogExpanded ? "Sembunyikan Log" : "Lihat Log"}
+                      </Button>
+                      {isLogExpanded && <JobLogPanel logs={logs} isRunning={job.status === "running"} />}
                     </div>
                   )}
                 </CardHeader>

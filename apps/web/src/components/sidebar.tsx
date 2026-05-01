@@ -6,10 +6,9 @@ const navItems = [
   { to: "/", label: "Dashboard", icon: "dashboard" },
   { to: "/generate", label: "AI Lab", icon: "auto_awesome" },
   { to: "/jobs", label: "Jobs", icon: "schedule" },
-  { to: "/bank", label: "Bank Soal", icon: "database" },
+  { to: "/bank", label: "Buat Paket", icon: "database" },
   { to: "/packages", label: "Paket", icon: "folder" },
   { to: "/history", label: "Riwayat", icon: "history" },
-  { to: "/builder/combo", label: "Combo", icon: "join_inner" },
   { to: "/analytics", label: "Analytics", icon: "analytics" },
 ];
 

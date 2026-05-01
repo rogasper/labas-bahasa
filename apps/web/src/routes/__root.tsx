@@ -7,6 +7,7 @@ import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 import { Sidebar } from "@/components/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useSidebar } from "@/hooks/use-sidebar";
+import { GlobalGenerationProgress } from "@/components/generate/GlobalGenerationProgress";
 import type { trpc } from "@/utils/trpc";
 
 import "../index.css";
@@ -59,6 +60,7 @@ function RootComponent() {
             </main>
           </div>
         )}
+        <GlobalGenerationProgress />
         <Toaster richColors />
       </ThemeProvider>
       <TanStackRouterDevtools position="bottom-left" />

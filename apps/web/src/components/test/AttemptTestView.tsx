@@ -46,6 +46,9 @@ export function AttemptTestView({
 }: AttemptTestViewProps) {
   const [showFinishDialog, setShowFinishDialog] = useState(false);
   const [showAbandonDialog, setShowAbandonDialog] = useState(false);
+  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
+  const questionPanelRef = useRef<HTMLDivElement>(null);
+  const navSliderRef = useRef<HTMLDivElement>(null);
 
   console.log("[AttemptTestView] render, attemptId:", attemptId, "sections:", pkg.sections?.length);
 
@@ -74,6 +77,15 @@ export function AttemptTestView({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- flush once per section when ids align; `answers` read from committing render
   }, [sectionResultId, currentSectionIdx, isFinished, currentSection?.questions?.length, onAnswerChange]);
 
+  // Auto-scroll nav slider to first question of current section
+  useEffect(() => {
+    const firstQuestion = allQuestions.find((q) => q.sectionIdx === currentSectionIdx);
+    if (!firstQuestion || !navSliderRef.current) return;
+    const btn = navSliderRef.current.querySelector(`[data-qid="${firstQuestion.id}"]`) as HTMLElement | null;
+    btn?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSectionIdx]);
+
   if (!currentSection) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--warm-cream)]">
@@ -92,6 +104,21 @@ export function AttemptTestView({
 
   const isAnswered = (qId: string) => !!answers[qId];
   const isMarked = (qId: string) => markedQuestions.has(qId);
+
+  // Default to first question when section changes
+  useEffect(() => {
+    if (currentSection?.questions?.length) {
+      setActiveQuestionId(currentSection.questions[0]?.id ?? null);
+    }
+  }, [currentSectionIdx, currentSection?.questions]);
+
+  const activeQuestion = currentSection?.questions?.find(
+    (q: any) => q.id === activeQuestionId,
+  );
+  const passageToShow =
+    activeQuestion?.passageText ??
+    currentSection?.questions?.[0]?.passageText ??
+    "Tidak ada bacaan tambahan untuk section ini.";
 
   return (
     <>
@@ -162,13 +189,13 @@ export function AttemptTestView({
                 </div>
               </header>
               <div className="space-y-6 text-lg leading-relaxed text-[var(--warm-charcoal)] font-body whitespace-pre-wrap">
-                {currentSection.questions[0]?.passageText ?? "Tidak ada bacaan tambahan untuk section ini."}
+                {passageToShow}
               </div>
             </article>
           </section>
 
           {/* Right Column: Question Panel */}
-          <section className="w-full lg:w-1/2 bg-[var(--warm-cream)] overflow-y-auto custom-scrollbar p-6 md:p-10 relative h-1/2 lg:h-full">
+          <section ref={questionPanelRef} className="w-full lg:w-1/2 bg-[var(--warm-cream)] overflow-y-auto custom-scrollbar p-6 md:p-10 relative h-1/2 lg:h-full">
             <div className="max-w-2xl mx-auto space-y-8 pb-32">
               {currentSection.questions.map((q: any) => {
                 const answerValue = answers[q.id] ?? "";
@@ -272,43 +299,79 @@ export function AttemptTestView({
           </section>
         </main>
 
-        {/* Floating Navigation Orb (Quick Question Jump) */}
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-[var(--clay-black)]/95 backdrop-blur-md rounded-full shadow-2xl border border-white/10 z-40 max-w-[90vw] overflow-x-auto hide-scrollbar">
-          {allQuestions.map((q, gIdx) => {
-            const answered = isAnswered(q.id);
-            const marked = isMarked(q.id);
-
-            return (
-              <button
-                key={q.id}
-                onClick={() => {
-                  setCurrentSectionIdx(q.sectionIdx);
-                  setTimeout(() => {
-                    const el = document.getElementById(`question-${q.id}`);
-                    el?.scrollIntoView({ behavior: "smooth", block: "center" });
-                  }, 100);
-                }}
-                className={`relative w-10 h-10 shrink-0 flex items-center justify-center rounded-full font-bold text-xs transition-all ${
-                  answered
-                    ? "bg-[var(--matcha-600)] text-[var(--pure-white)]"
-                    : "bg-white/10 text-white/60 hover:bg-white/20"
-                }`}
-                title={`Soal ${gIdx + 1}${marked ? " (ditandai)" : ""}`}
-              >
-                {gIdx + 1}
-                {marked && (
-                  <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-[var(--pomegranate-400)] rounded-full border border-[var(--clay-black)]" />
-                )}
-              </button>
-            );
-          })}
-          <div className="w-1 h-6 bg-white/10 mx-1 shrink-0"></div>
+        {/* Floating Question Navigation Slider */}
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-[var(--clay-black)]/95 backdrop-blur-md rounded-full shadow-2xl border border-white/10 z-40 max-w-[90vw]">
+          {/* Scroll Left */}
           <button
-             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-             className="flex items-center gap-1 px-4 py-2 shrink-0 rounded-full text-white/80 font-semibold text-xs hover:text-white transition-all"
+            onClick={() => {
+              navSliderRef.current?.scrollBy({ left: -200, behavior: "smooth" });
+            }}
+            className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all"
+          >
+            <MaterialIcon name="chevron_left" className="text-sm" />
+          </button>
+
+          {/* Scrollable Strip */}
+          <div
+            ref={navSliderRef}
+            className="flex items-center gap-1 overflow-x-auto hide-scrollbar max-w-[60vw] sm:max-w-[50vw] md:max-w-[40vw] lg:max-w-[30vw]"
+          >
+            {allQuestions.map((q, gIdx) => {
+              const answered = isAnswered(q.id);
+              const marked = isMarked(q.id);
+              const isActive = q.sectionIdx === currentSectionIdx;
+
+              return (
+                <button
+                  key={q.id}
+                  data-qid={q.id}
+                  onClick={() => {
+                    setCurrentSectionIdx(q.sectionIdx);
+                    setActiveQuestionId(q.id);
+                    setTimeout(() => {
+                      const el = document.getElementById(`question-${q.id}`);
+                      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }, 100);
+                  }}
+                  className={`relative w-7 h-7 sm:w-8 sm:h-8 shrink-0 flex items-center justify-center rounded-full font-bold text-[10px] sm:text-xs transition-all ${
+                    answered
+                      ? "bg-[var(--matcha-600)] text-[var(--pure-white)]"
+                      : isActive
+                        ? "bg-white/30 text-white"
+                        : "bg-white/10 text-white/60 hover:bg-white/20"
+                  }`}
+                  title={`Soal ${gIdx + 1}${marked ? " (ditandai)" : ""}`}
+                >
+                  {gIdx + 1}
+                  {marked && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[var(--pomegranate-400)] rounded-full border border-[var(--clay-black)]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Scroll Right */}
+          <button
+            onClick={() => {
+              navSliderRef.current?.scrollBy({ left: 200, behavior: "smooth" });
+            }}
+            className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all"
+          >
+            <MaterialIcon name="chevron_right" className="text-sm" />
+          </button>
+
+          <div className="w-px h-6 bg-white/10 shrink-0"></div>
+
+          {/* Top Button */}
+          <button
+            onClick={() => {
+              questionPanelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className="flex items-center gap-1 px-3 py-2 shrink-0 rounded-full text-white/80 font-semibold text-xs hover:text-white transition-all"
           >
             <MaterialIcon name="arrow_upward" className="text-sm" />
-            Top
+            <span className="hidden sm:inline">Atas</span>
           </button>
         </div>
       </div>

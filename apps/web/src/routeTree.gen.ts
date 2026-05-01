@@ -21,7 +21,6 @@ import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProfileUserIdRouteImport } from './routes/profile.$userId'
 import { Route as PackageIdRouteImport } from './routes/package.$id'
-import { Route as BuilderComboRouteImport } from './routes/builder.combo'
 import { Route as AttemptIdRouteImport } from './routes/attempt.$id'
 import { Route as PackageIdIndexRouteImport } from './routes/package.$id.index'
 import { Route as PackageIdTakeRouteImport } from './routes/package.$id.take'
@@ -86,11 +85,6 @@ const PackageIdRoute = PackageIdRouteImport.update({
   path: '/package/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BuilderComboRoute = BuilderComboRouteImport.update({
-  id: '/builder/combo',
-  path: '/builder/combo',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AttemptIdRoute = AttemptIdRouteImport.update({
   id: '/attempt/$id',
   path: '/attempt/$id',
@@ -119,7 +113,6 @@ export interface FileRoutesByFullPath {
   '/packages': typeof PackagesRoute
   '/settings': typeof SettingsRoute
   '/attempt/$id': typeof AttemptIdRoute
-  '/builder/combo': typeof BuilderComboRoute
   '/package/$id': typeof PackageIdRouteWithChildren
   '/profile/$userId': typeof ProfileUserIdRoute
   '/package/$id/take': typeof PackageIdTakeRoute
@@ -137,7 +130,6 @@ export interface FileRoutesByTo {
   '/packages': typeof PackagesRoute
   '/settings': typeof SettingsRoute
   '/attempt/$id': typeof AttemptIdRoute
-  '/builder/combo': typeof BuilderComboRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/package/$id/take': typeof PackageIdTakeRoute
   '/package/$id': typeof PackageIdIndexRoute
@@ -155,7 +147,6 @@ export interface FileRoutesById {
   '/packages': typeof PackagesRoute
   '/settings': typeof SettingsRoute
   '/attempt/$id': typeof AttemptIdRoute
-  '/builder/combo': typeof BuilderComboRoute
   '/package/$id': typeof PackageIdRouteWithChildren
   '/profile/$userId': typeof ProfileUserIdRoute
   '/package/$id/take': typeof PackageIdTakeRoute
@@ -175,7 +166,6 @@ export interface FileRouteTypes {
     | '/packages'
     | '/settings'
     | '/attempt/$id'
-    | '/builder/combo'
     | '/package/$id'
     | '/profile/$userId'
     | '/package/$id/take'
@@ -193,7 +183,6 @@ export interface FileRouteTypes {
     | '/packages'
     | '/settings'
     | '/attempt/$id'
-    | '/builder/combo'
     | '/profile/$userId'
     | '/package/$id/take'
     | '/package/$id'
@@ -210,7 +199,6 @@ export interface FileRouteTypes {
     | '/packages'
     | '/settings'
     | '/attempt/$id'
-    | '/builder/combo'
     | '/package/$id'
     | '/profile/$userId'
     | '/package/$id/take'
@@ -229,7 +217,6 @@ export interface RootRouteChildren {
   PackagesRoute: typeof PackagesRoute
   SettingsRoute: typeof SettingsRoute
   AttemptIdRoute: typeof AttemptIdRoute
-  BuilderComboRoute: typeof BuilderComboRoute
   PackageIdRoute: typeof PackageIdRouteWithChildren
   ProfileUserIdRoute: typeof ProfileUserIdRoute
 }
@@ -320,13 +307,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PackageIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/builder/combo': {
-      id: '/builder/combo'
-      path: '/builder/combo'
-      fullPath: '/builder/combo'
-      preLoaderRoute: typeof BuilderComboRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/attempt/$id': {
       id: '/attempt/$id'
       path: '/attempt/$id'
@@ -377,7 +357,6 @@ const rootRouteChildren: RootRouteChildren = {
   PackagesRoute: PackagesRoute,
   SettingsRoute: SettingsRoute,
   AttemptIdRoute: AttemptIdRoute,
-  BuilderComboRoute: BuilderComboRoute,
   PackageIdRoute: PackageIdRouteWithChildren,
   ProfileUserIdRoute: ProfileUserIdRoute,
 }

@@ -126,6 +126,26 @@ export const generationWorker = new Worker(
 
     const cancelPoll = createCancellationPoller(jobId);
 
+    const pushLog = async (
+      step: string,
+      message: string,
+      status: "running" | "done" | "error",
+      details?: string,
+    ) => {
+      const entry = { step, message, status, timestamp: new Date().toISOString(), details };
+      const [row] = await db
+        .select({ logs: generationJob.logs })
+        .from(generationJob)
+        .where(eq(generationJob.id, jobId))
+        .limit(1);
+      const existing = (row?.logs ?? []) as Array<{ step: string; message: string; status: string; timestamp: string; details?: string }>;
+      const updated = [...existing, entry];
+      await db
+        .update(generationJob)
+        .set({ logs: updated })
+        .where(eq(generationJob.id, jobId));
+    };
+
     const updateProgress = async (progress: number, message: string) => {
       cancelPoll.check();
       await job.updateProgress(progress);
@@ -158,6 +178,7 @@ export const generationWorker = new Worker(
       const selectedMode = input.mode;
       if (selectedMode === "agentic") {
         await updateProgress(10, "Generating passage...");
+        await pushLog("generate_passage", "Starting passage generation...", "running");
       }
 
       startHeartbeat();
@@ -177,9 +198,11 @@ export const generationWorker = new Worker(
                   10 + Math.round((p.currentStep / p.steps.length) * 80),
                   90,
                 );
-                const msg =
-                  p.steps[p.currentStep]?.message ?? p.steps[p.currentStep]?.step ?? "Processing...";
+                const step = p.steps[p.currentStep];
+                const msg = step?.message ?? step?.step ?? "Processing...";
+                const status = step?.status === "error" ? "error" : step?.status === "done" ? "done" : "running";
                 await updateProgress(stepProgress, msg);
+                await pushLog(step?.step ?? "unknown", msg, status, step?.output);
               })
             : await generateQuestionsQuick(input, {
                 onToken: (token) => {
@@ -336,6 +359,7 @@ export const generationWorker = new Worker(
       }
 
       await updateProgress(100, "Completed");
+      await pushLog("save", `Saved ${savedQuestionIds.length} questions${generatedPackageId ? ` & created package` : ""}`, "done");
 
       cancelPoll.check();
       await db
@@ -350,6 +374,7 @@ export const generationWorker = new Worker(
         .where(eq(generationJob.id, jobId));
     } catch (err: any) {
       if (err instanceof GenerationJobCancelledError || err?.name === "GenerationJobCancelledError") {
+        await pushLog("cancel", "Job dibatalkan pengguna", "error");
         await db
           .update(generationJob)
           .set({
@@ -361,6 +386,7 @@ export const generationWorker = new Worker(
           .where(eq(generationJob.id, jobId));
         return;
       }
+      await pushLog("error", err.message ?? String(err), "error");
       await db
         .update(generationJob)
         .set({

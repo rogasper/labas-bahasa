@@ -2,11 +2,18 @@ import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
-import { queryClient, trpc } from "@/utils/trpc";
+import { trpc } from "@/utils/trpc";
 import { useApiKeys } from "@/hooks/use-api-key";
 import { useGenerationJob } from "@/hooks/use-generation-job";
 import { Button } from "@labas/ui/components/button";
 import { Input } from "@labas/ui/components/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@labas/ui/components/select";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { TestBlueprintCard } from "@/components/generate/TestBlueprintCard";
 import { ResultSection } from "@/components/generate/ResultSection";
@@ -50,9 +57,7 @@ function RouteComponent() {
     result,
     error,
     generatedPackageId,
-    jobId,
     isGenerating,
-    jobQuery,
     setError,
     setJobId,
     reset,
@@ -76,18 +81,6 @@ function RouteComponent() {
     onError: (err) => {
       setError(err.message);
       setJobId(null);
-    },
-  });
-
-  const cancelJob = useMutation({
-    ...trpc.ai.cancelJob.mutationOptions(),
-    onSuccess: async () => {
-      setJobId(null);
-      setError(null);
-      await queryClient.invalidateQueries({ queryKey: trpc.ai.myJobs.queryKey() });
-    },
-    onError: (err) => {
-      setError(err.message);
     },
   });
 
@@ -157,21 +150,24 @@ function RouteComponent() {
             Provider / API Key
           </label>
           <div className="flex gap-3">
-            <select
-              value={selectedKeyId}
-              onChange={(e) => setSelectedKeyId(e.target.value)}
-              className="flex-1 h-11 px-3 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-[var(--clay-black)] text-sm focus:outline-none focus:border-[var(--matcha-400)]"
-            >
-              {configs.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} · {c.modelName}
-                </option>
-              ))}
-            </select>
+            <Select value={selectedKeyId} onValueChange={(v) => v && setSelectedKeyId(v)}>
+              <SelectTrigger className="flex-1 h-11">
+                <SelectValue>
+                  {selectedConfig ? `${selectedConfig.name} · ${selectedConfig.modelName}` : "Pilih provider..."}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {configs.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name} · {c.modelName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Link to="/settings">
               <Button
                 variant="outline"
-                className="h-11 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
+                className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
               >
                 <MaterialIcon name="settings" className="mr-1" />
                 Kelola
@@ -355,18 +351,8 @@ function RouteComponent() {
           isGenerating={isGenerating}
           generatePending={generate.isPending}
           hasKey={hasConfigs}
-          jobProgress={jobQuery.data?.progress ?? 0}
-          jobProgressMessage={jobQuery.data?.progressMessage}
           error={error}
           onGenerate={handleGenerate}
-          onCancelJob={
-            jobId
-              ? () => {
-                  cancelJob.mutate({ jobId });
-                }
-              : undefined
-          }
-          cancelJobPending={cancelJob.isPending}
         />
       </div>
 
@@ -374,6 +360,7 @@ function RouteComponent() {
       {result && (
         <ResultSection result={result} generatedPackageId={generatedPackageId} />
       )}
+
     </div>
   );
 }

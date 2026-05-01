@@ -319,6 +319,7 @@ export const attemptRouter = router({
       }
 
       let totalScore = 0;
+      const allQuestionIds = new Set<string>();
 
       for (let i = 0; i < dbSections.length; i++) {
         const secResult = dbSections[i];
@@ -329,6 +330,10 @@ export const attemptRouter = router({
           .select()
           .from(answer)
           .where(eq(answer.sectionResultId, secResult.id));
+
+        for (const a of secAnswers) {
+          allQuestionIds.add(a.questionId);
+        }
 
         const sectionScore = secAnswers.filter((a) => a.isCorrect).length;
         const sectionMax = questionCounts.get(pkgSec.id) ?? secAnswers.length;
@@ -344,6 +349,14 @@ export const attemptRouter = router({
           .where(eq(sectionResult.id, secResult.id));
 
         totalScore += sectionScore;
+      }
+
+      // Increment usageCount for all questions in this attempt
+      if (allQuestionIds.size > 0) {
+        await db
+          .update(question)
+          .set({ usageCount: sql`${question.usageCount} + 1` })
+          .where(inArray(question.id, Array.from(allQuestionIds)));
       }
 
       // Total questions in package

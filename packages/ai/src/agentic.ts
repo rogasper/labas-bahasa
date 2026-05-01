@@ -5,6 +5,7 @@ interface AgenticStep {
   step: string;
   status: "running" | "done" | "error" | "pending";
   message?: string;
+  output?: string;
 }
 
 export interface AgenticProgress {
@@ -163,6 +164,8 @@ Rules:
 - Questions should test real comprehension, not surface recall
 - For multiple choice: always provide 4 options (A, B, C, D) with one clearly correct answer
 - Options must be plausible distractors
+- a correct answer (correctAnswer) - dijelaskan dengan bahasa Indonesia
+- an explanation (explanation) - dijelaskan dengan bahasa Indonesia
 
 Return ONLY valid JSON:
 {
@@ -280,6 +283,7 @@ export async function generateQuestionsAgentic(
   const { passage, title } = await step1GeneratePassage(client, input);
   steps[0].status = "done";
   steps[0].message = `Generated: ${title}`;
+  steps[0].output = passage;
 
   // Step 2: Validate passage
   steps[1].status = "running";
@@ -287,6 +291,11 @@ export async function generateQuestionsAgentic(
   const validation = await step2ValidatePassage(client, input, passage);
   steps[1].status = validation.isValid ? "done" : "error";
   steps[1].message = validation.feedback;
+  steps[1].output = JSON.stringify(
+    { isValid: validation.isValid, feedback: validation.feedback },
+    null,
+    2,
+  );
 
   // Even if not perfect, continue (the feedback is logged)
 
@@ -296,6 +305,7 @@ export async function generateQuestionsAgentic(
   const rawQuestions = await step3GenerateQuestions(client, input, passage);
   steps[2].status = "done";
   steps[2].message = `Generated ${rawQuestions.length} questions`;
+  steps[2].output = rawQuestions.map((q, i) => `${i + 1}. [${q.format}] ${q.questionText}`).join("\n");
 
   // Step 4: Self-validate
   steps[3].status = "running";
@@ -308,6 +318,7 @@ export async function generateQuestionsAgentic(
   );
   steps[3].status = "done";
   steps[3].message = `Confidence score: ${confidence}%`;
+  steps[3].output = `Overall Confidence: ${confidence}%\nTotal Questions: ${correctedQuestions.length}`;
 
   // Parse and validate final questions
   const questions = correctedQuestions

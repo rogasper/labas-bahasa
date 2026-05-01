@@ -18,6 +18,9 @@ export function useGenerationJob() {
     } else {
       sessionStorage.removeItem(STORAGE_KEY);
     }
+    window.dispatchEvent(
+      new CustomEvent("labas:job-change", { detail: { jobId: id } }),
+    );
   }, []);
 
   // Recover from sessionStorage on mount
@@ -26,8 +29,21 @@ export function useGenerationJob() {
     if (saved) setJobIdState(saved);
   }, []);
 
+  // Sync across hook instances via custom event
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { jobId: string | null };
+      setJobIdState(detail.jobId);
+    };
+    window.addEventListener("labas:job-change", handler);
+    return () => window.removeEventListener("labas:job-change", handler);
+  }, []);
+
   // Fallback: check myJobs for active jobs
-  const myJobsQuery = useQuery(trpc.ai.myJobs.queryOptions({ limit: 10, offset: 0 }));
+  const myJobsQuery = useQuery({
+    ...trpc.ai.myJobs.queryOptions({ limit: 10, offset: 0 }),
+    refetchInterval: 3000,
+  });
 
   useEffect(() => {
     if (!jobId && myJobsQuery.data) {

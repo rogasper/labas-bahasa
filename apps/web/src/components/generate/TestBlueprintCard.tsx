@@ -14,12 +14,8 @@ interface TestBlueprintCardProps {
   isGenerating: boolean;
   generatePending: boolean;
   hasKey: boolean;
-  jobProgress: number;
-  jobProgressMessage?: string | null;
   error: string | null;
   onGenerate: () => void;
-  onCancelJob?: () => void;
-  cancelJobPending?: boolean;
 }
 
 export function TestBlueprintCard({
@@ -32,12 +28,8 @@ export function TestBlueprintCard({
   isGenerating,
   generatePending,
   hasKey,
-  jobProgress,
-  jobProgressMessage,
   error,
   onGenerate,
-  onCancelJob,
-  cancelJobPending,
 }: TestBlueprintCardProps) {
   return (
     <div className="lg:col-span-4 sticky top-8">
@@ -141,51 +133,10 @@ export function TestBlueprintCard({
             <MaterialIcon name="auto_awesome" className="group-hover:rotate-12 transition-transform" />
             {isGenerating
               ? mode === "agentic"
-                ? `Agentic... ${jobProgress}%`
-                : `Generating... ${jobProgress}%`
+                ? "Agentic..."
+                : "Generating..."
               : "Generate & Launch"}
           </Button>
-
-          {/* Progress */}
-          {isGenerating && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-3 p-3 rounded-[var(--radius-md)] bg-[var(--matcha-300)]/20 border-2 border-[var(--matcha-300)]">
-                <MaterialIcon name="psychology" className="text-[var(--matcha-600)] animate-pulse" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[var(--matcha-800)]">
-                    {jobProgressMessage ?? "Sedang berjalan..."}
-                  </p>
-                  <p className="text-xs text-[var(--warm-charcoal)]">
-                    {mode === "agentic"
-                      ? "Passage → Validate → Questions → Self-Check → Score"
-                      : "Quick generation mode"}
-                  </p>
-                </div>
-              </div>
-              <div className="w-full h-2 bg-[var(--oat-border)] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[var(--matcha-600)] transition-all duration-500"
-                  style={{ width: `${jobProgress}%` }}
-                />
-              </div>
-              {onCancelJob && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="w-full rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] text-[var(--warm-charcoal)]"
-                  disabled={cancelJobPending}
-                  onClick={onCancelJob}
-                >
-                  <MaterialIcon name="cancel" className="text-sm mr-1" />
-                  Batalkan job
-                </Button>
-              )}
-              <p className="text-xs text-[var(--warm-charcoal)] text-center">
-                Bisa ditinggal — hasil akan muncul otomatis
-              </p>
-            </div>
-          )}
 
           {error && (
             <div className="p-4 rounded-[var(--radius-md)] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)] text-sm border-2 border-[var(--badge-blue-bg)]">
