@@ -1,8 +1,8 @@
 import { OpenAICompatibleClient } from "./client";
 import { GenerationError } from "./errors";
 import { buildQuickModePrompt } from "./prompts";
+import { repairAndParseQuestions } from "./repair";
 import {
-  questionSchema,
   type GenerationInput,
   type GenerationResult,
 } from "./schemas";
@@ -107,32 +107,38 @@ export async function generateQuestionsQuick(
     throw new GenerationError("Missing 'questions' array in AI response", { tokensUsed });
   }
 
-  log("info", "Validating questions", { rawCount: raw.questions.length });
+  log("info", "Validating & repairing questions", { rawCount: raw.questions.length });
 
-  const questions = raw.questions
-    .map((q: unknown, idx: number) => {
-      try {
-        return questionSchema.parse(q);
-      } catch (e: any) {
-        log("warn", `Question ${idx} validation failed`, {
-          error: e.message,
-          questionPreview: JSON.stringify(q).slice(0, 200),
-        });
-        return null;
-      }
-    })
-    .filter((q): q is NonNullable<typeof q> => q !== null);
+  // Extract a representative passage text for repair fallback
+  const firstWithPassage = raw.questions.find(
+    (q: any) => q && typeof q === "object" && typeof q.passageText === "string" && q.passageText.length >= 50,
+  ) as any;
+  const fallbackPassage = firstWithPassage?.passageText ?? "No passage available.";
 
-  if (questions.length === 0) {
-    log("error", "No valid questions after validation", { rawCount: raw.questions.length });
+  const { valid, invalid, repairLog } = repairAndParseQuestions(raw.questions, fallbackPassage);
+
+  if (repairLog.length > 0) {
+    log("warn", "Repairs applied", { count: repairLog.length, details: repairLog });
+  }
+  if (invalid.length > 0) {
+    log("warn", "Invalid questions after repair", {
+      count: invalid.length,
+      details: invalid.map((i) => ({ index: i.index, errors: i.errors })),
+    });
+  }
+
+  if (valid.length === 0) {
+    log("error", "No valid questions after repair", { rawCount: raw.questions.length });
     throw new GenerationError("No valid questions generated", { tokensUsed });
   }
 
   log("info", "Quick mode generation completed", {
-    validCount: questions.length,
+    validCount: valid.length,
     rawCount: raw.questions.length,
     durationMs: Date.now() - start,
   });
+
+  const questions = valid;
 
   return {
     questions,

@@ -84,13 +84,16 @@ export function useGenerationJob() {
       const res = jobQuery.data.resultJson as GenerationResult & { generatedPackageId?: string | null };
       setResult(res);
       setGeneratedPackageId(res.generatedPackageId ?? null);
+      setError(null); // Clear any previous error
       setJobId(null);
     }
     if (jobQuery.data?.status === "failed") {
+      setResult(null);
       setError(jobQuery.data.errorMessage ?? "Generation failed");
       setJobId(null);
     }
     if (jobQuery.data?.status === "cancelled") {
+      setResult(null);
       setError(jobQuery.data.errorMessage ?? "Generasi dibatalkan");
       setJobId(null);
     }

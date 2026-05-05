@@ -1,13 +1,15 @@
 import { OpenAICompatibleClient } from "./client";
 import { GenerationError } from "./errors";
 import {
-  getQuestionJsonSchemaDescription,
   getPassageJsonSchemaDescription,
   getValidationJsonSchemaDescription,
-  getQuestionsArrayJsonSchemaDescription,
   getSelfValidationJsonSchemaDescription,
 } from "./schema-to-prompt";
-import { questionSchema, type GenerationInput, type GenerationResult } from "./schemas";
+import {
+  getGenericQuestionJsonSchemaDescription,
+  repairAndParseQuestions,
+} from "./repair";
+import { type GenerationInput, type GenerationResult } from "./schemas";
 
 interface AgenticStep {
   step: string;
@@ -30,6 +32,30 @@ function getTargetLanguage(examType: string): string {
   if (examType === "HSK") return "Chinese";
   if (examType === "GOETHE") return "German";
   return "English";
+}
+
+/** Estimate max tokens needed per step to avoid truncation. */
+function calculateMaxTokens(
+  userMax: number,
+  step: "passage" | "validate" | "questions" | "self_validate" | "regenerate",
+  questionCount: number,
+): number {
+  const base = userMax > 0 ? userMax : 16_384;
+  switch (step) {
+    case "passage":
+      return Math.min(base, 8_192);
+    case "validate":
+      return Math.min(base, 4_096);
+    case "self_validate":
+      return Math.min(base, 4_096);
+    case "questions":
+      // Rough estimate: ~500 tokens per question JSON + overhead
+      return Math.min(Math.max(base, 2_000 + questionCount * 600), 64_000);
+    case "regenerate":
+      return Math.min(Math.max(base, 2_000 + questionCount * 600), 64_000);
+    default:
+      return base;
+  }
 }
 
 function parseJsonResponse(content: string): unknown {
@@ -73,7 +99,7 @@ ${schema}`;
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: input.apiKeyConfig.maxTokens,
+      max_tokens: calculateMaxTokens(input.apiKeyConfig.maxTokens, "passage", input.questionCount),
       response_format: { type: "json_object" },
     },
     onToken ? { onToken } : undefined,
@@ -122,7 +148,7 @@ ${schema}`;
         { role: "user", content: prompt },
       ],
       temperature: 0.3,
-      max_tokens: input.apiKeyConfig.maxTokens,
+      max_tokens: calculateMaxTokens(input.apiKeyConfig.maxTokens, "validate", input.questionCount),
       response_format: { type: "json_object" },
     },
     onToken ? { onToken } : undefined,
@@ -140,12 +166,12 @@ async function step3GenerateQuestions(
   client: OpenAICompatibleClient,
   input: GenerationInput,
   passage: string,
+  count: number,
   onToken?: (token: string) => void,
 ): Promise<{ questions: Array<Record<string, unknown>>; tokensUsed: number }> {
-  const questionSchemaDesc = getQuestionJsonSchemaDescription();
-  const wrapperSchema = getQuestionsArrayJsonSchemaDescription();
+  const schema = getGenericQuestionJsonSchemaDescription();
 
-  const prompt = `Using the following passage, generate ${input.questionCount} reading comprehension questions for ${input.examType} exam.
+  const prompt = `Using the following passage, generate ${count} reading comprehension questions for ${input.examType} exam.
 
 Passage:
 """
@@ -161,12 +187,13 @@ Rules:
 - For multiple choice: always provide 4 options (A, B, C, D) with one clearly correct answer
 - Options must be plausible distractors
 - explanation (explanation) - dijelaskan dengan bahasa Indonesia
+- For true_false_not_given: correctAnswer must be exactly TRUE, FALSE, or NOT_GIVEN (uppercase)
+- For author_view: correctAnswer must be exactly YES, NO, or NOT_GIVEN (uppercase)
 
 Question schema:
-${questionSchemaDesc}
+${schema}
 
-Return ONLY valid JSON conforming to this schema:
-${wrapperSchema}`;
+Return ONLY valid JSON conforming to this schema.`;
 
   const result = await client.chatCompletion(
     {
@@ -176,7 +203,7 @@ ${wrapperSchema}`;
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: input.apiKeyConfig.maxTokens,
+      max_tokens: calculateMaxTokens(input.apiKeyConfig.maxTokens, "questions", count),
       response_format: { type: "json_object" },
     },
     onToken ? { onToken } : undefined,
@@ -198,7 +225,7 @@ async function step4SelfValidate(
   passage: string,
   questions: Array<Record<string, unknown>>,
   onToken?: (token: string) => void,
-): Promise<{ correctedQuestions: Array<Record<string, unknown>>; confidence: number; tokensUsed: number }> {
+): Promise<{ confidence: number; issues: any[]; tokensUsed: number }> {
   const qaPairs = questions
     .map((q, i) => `Q${i + 1}: ${q.questionText}\nA: ${q.correctAnswer}`)
     .join("\n\n");
@@ -230,7 +257,7 @@ ${schema}`;
         { role: "user", content: prompt },
       ],
       temperature: 0.3,
-      max_tokens: input.apiKeyConfig.maxTokens,
+      max_tokens: calculateMaxTokens(input.apiKeyConfig.maxTokens, "self_validate", input.questionCount),
       response_format: { type: "json_object" },
     },
     onToken ? { onToken } : undefined,
@@ -240,56 +267,42 @@ ${schema}`;
   const confidence = typeof parsed.overallConfidence === "number" ? parsed.overallConfidence : 75;
   const issues = Array.isArray(parsed.issues) ? parsed.issues : [];
 
-  // Apply fixes if needed
-  const corrected = questions.map((q, i) => {
-    const issue = issues.find((iss: any) => iss?.questionIndex === i);
-    if (issue && issue.suggestedFix) {
-      return { ...q, explanation: `${q.explanation}\n[Validator note: ${issue.suggestedFix}]` };
-    }
-    return q;
-  });
-
-  return { correctedQuestions: corrected, confidence, tokensUsed: result.usage?.total_tokens ?? 0 };
+  return { confidence, issues, tokensUsed: result.usage?.total_tokens ?? 0 };
 }
 
-async function step4RegenerateBadQuestions(
+async function stepRegenerateQuestions(
   client: OpenAICompatibleClient,
   input: GenerationInput,
   passage: string,
-  questions: Array<Record<string, unknown>>,
-  issueIndices: number[],
+  count: number,
+  context: string,
   onToken?: (token: string) => void,
-): Promise<{ regenerated: Array<Record<string, unknown>>; tokensUsed: number }> {
-  const badQuestions = issueIndices.map((i) => ({
-    index: i,
-    ...questions[i],
-  }));
+): Promise<{ questions: Array<Record<string, unknown>>; tokensUsed: number }> {
+  const schema = getGenericQuestionJsonSchemaDescription();
 
-  const questionSchemaDesc = getQuestionJsonSchemaDescription();
-  const wrapperSchema = getQuestionsArrayJsonSchemaDescription();
-
-  const prompt = `You are an expert exam question writer. The following questions were flagged as incorrect or flawed. Regenerate them to fix the issues while keeping the same format and difficulty.
+  const prompt = `You are an expert exam question writer. ${context}
 
 Passage:
 """
 ${passage}
 """
 
-Flawed questions (with their original index):
-${JSON.stringify(badQuestions, null, 2)}
+Generate ${count} new reading comprehension questions for ${input.examType} exam.
+Formats: ${input.formats.join(", ")}
+Difficulty: ${input.difficulty}/5
 
 Rules:
-- Regenerate ONLY the flawed questions
-- Maintain the same format, difficulty (${input.difficulty}), and exam style (${input.examType})
 - Each question must be directly answerable from the passage
-- explanation (explanation) - dijelaskan dengan bahasa Indonesia
-- Return the same number of questions in the same order as the input
+- Use "passageText" field with relevant excerpt (or full passage)
+- For multiple choice: provide 4 options (A, B, C, D)
+- explanation - dijelaskan dengan bahasa Indonesia
+- For true_false_not_given: correctAnswer must be TRUE, FALSE, or NOT_GIVEN (uppercase)
+- For author_view: correctAnswer must be YES, NO, or NOT_GIVEN (uppercase)
 
 Question schema:
-${questionSchemaDesc}
+${schema}
 
-Return ONLY valid JSON conforming to this schema:
-${wrapperSchema}`;
+Return ONLY valid JSON conforming to this schema.`;
 
   const result = await client.chatCompletion(
     {
@@ -299,19 +312,18 @@ ${wrapperSchema}`;
         { role: "user", content: prompt },
       ],
       temperature: 0.7,
-      max_tokens: input.apiKeyConfig.maxTokens,
+      max_tokens: calculateMaxTokens(input.apiKeyConfig.maxTokens, "regenerate", count),
       response_format: { type: "json_object" },
     },
     onToken ? { onToken } : undefined,
   );
 
   const parsed = parseJsonResponse(result.content) as Record<string, unknown>;
-  if (!Array.isArray(parsed.questions) || parsed.questions.length !== badQuestions.length) {
-    throw new Error("Regeneration did not return the expected number of questions");
+  if (!Array.isArray(parsed.questions)) {
+    throw new Error("Missing questions array in regeneration response");
   }
-
   return {
-    regenerated: parsed.questions as Array<Record<string, unknown>>,
+    questions: parsed.questions as Array<Record<string, unknown>>,
     tokensUsed: result.usage?.total_tokens ?? 0,
   };
 }
@@ -334,7 +346,10 @@ export async function generateQuestionsAgentic(
     { step: "self_validate", status: "pending" as any },
   ];
 
-  const report = (current: number) => {
+  const report = (current: number, extraMsg?: string) => {
+    if (extraMsg && steps[current]) {
+      steps[current]!.message = extraMsg;
+    }
     if (onProgress) {
       onProgress({ steps, currentStep: current });
     }
@@ -342,7 +357,7 @@ export async function generateQuestionsAgentic(
 
   let accumulatedTokens = 0;
 
-  // Step 1: Generate passage
+  // ── Step 1: Generate passage ────────────────────────────
   report(0);
   let passage: string;
   let title: string;
@@ -360,36 +375,29 @@ export async function generateQuestionsAgentic(
     throw new GenerationError(`Step 1 failed: ${err.message}`, { tokensUsed: accumulatedTokens });
   }
 
-  // Step 2: Validate passage
+  // ── Step 2: Validate passage ────────────────────────────
   steps[1].status = "running";
   report(1);
-  let isValid: boolean;
-  let feedback: string;
   try {
     const s2 = await step2ValidatePassage(client, input, passage, onToken);
-    isValid = s2.isValid;
-    feedback = s2.feedback;
     accumulatedTokens += s2.tokensUsed;
-    steps[1].status = isValid ? "done" : "error";
-    steps[1].message = feedback;
-    steps[1].output = JSON.stringify({ isValid, feedback }, null, 2);
+    steps[1].status = s2.isValid ? "done" : "error";
+    steps[1].message = s2.feedback;
+    steps[1].output = JSON.stringify({ isValid: s2.isValid, feedback: s2.feedback }, null, 2);
   } catch (err: any) {
     steps[1].status = "error";
     steps[1].message = err.message ?? "Passage validation failed";
     throw new GenerationError(`Step 2 failed: ${err.message}`, { tokensUsed: accumulatedTokens });
   }
 
-  // Even if not perfect, continue (the feedback is logged)
-
-  // Step 3: Generate questions
+  // ── Step 3: Generate questions ──────────────────────────
   steps[2].status = "running";
-  report(2);
+  report(2, `Generating ${input.questionCount} questions...`);
   let rawQuestions: Array<Record<string, unknown>>;
   try {
-    const s3 = await step3GenerateQuestions(client, input, passage, onToken);
+    const s3 = await step3GenerateQuestions(client, input, passage, input.questionCount, onToken);
     rawQuestions = s3.questions;
     accumulatedTokens += s3.tokensUsed;
-    steps[2].status = "done";
     steps[2].message = `Generated ${rawQuestions.length} questions`;
     steps[2].output = rawQuestions.map((q, i) => `${i + 1}. [${q.format}] ${q.questionText}`).join("\n");
   } catch (err: any) {
@@ -398,73 +406,90 @@ export async function generateQuestionsAgentic(
     throw new GenerationError(`Step 3 failed: ${err.message}`, { tokensUsed: accumulatedTokens });
   }
 
-  // Step 4: Self-validate
+  // ── Step 4: Self-validate + Repair + Regenerate loop ─────
   steps[3].status = "running";
-  report(3);
-  let correctedQuestions: Array<Record<string, unknown>>;
-  let confidence: number;
+  report(3, "Validating & repairing questions...");
+
+  let validQuestions: any[] = [];
+  let allRepairLogs: string[] = [];
+
   try {
     const s4 = await step4SelfValidate(client, input, passage, rawQuestions, onToken);
-    correctedQuestions = s4.correctedQuestions;
-    confidence = s4.confidence;
     accumulatedTokens += s4.tokensUsed;
 
-    // If validation found issues and confidence is low, actually regenerate the bad questions
-    const issueIndices = (s4.correctedQuestions as any[])
-      .map((q, i) => (q.explanation?.includes("[Validator note:") ? i : -1))
-      .filter((i) => i !== -1);
+    // Repair & parse
+    let { valid, invalid, repairLog } = repairAndParseQuestions(rawQuestions, passage);
+    validQuestions = valid;
+    allRepairLogs.push(...repairLog);
 
-    if (issueIndices.length > 0 && confidence < 85) {
-      steps[3].message = `Found ${issueIndices.length} issues. Regenerating...`;
-      report(3);
-      const regen = await step4RegenerateBadQuestions(
-        client,
-        input,
-        passage,
-        rawQuestions,
-        issueIndices,
-        onToken,
-      );
+    // Regenerate structural-invalid questions (up to 2 attempts)
+    let regenerationAttempts = 0;
+    const maxRegenAttempts = 2;
+
+    while (invalid.length > 0 && regenerationAttempts < maxRegenAttempts && validQuestions.length < input.questionCount) {
+      regenerationAttempts++;
+      const regenCount = Math.min(invalid.length, input.questionCount - validQuestions.length);
+      const context = `The previous ${regenCount} question(s) had structural errors: ${invalid.map((i) => `Q${i.index + 1}: ${i.errors.join(", ")}`).join("; ")}.`;
+
+      report(3, `Regenerating ${regenCount} invalid question(s) (attempt ${regenerationAttempts}/${maxRegenAttempts})...`);
+
+      const regen = await stepRegenerateQuestions(client, input, passage, regenCount, context, onToken);
       accumulatedTokens += regen.tokensUsed;
 
-      // Replace the bad questions with regenerated ones
-      for (let idx = 0; idx < issueIndices.length; idx++) {
-        correctedQuestions[issueIndices[idx]] = regen.regenerated[idx];
+      const regenResult = repairAndParseQuestions(regen.questions, passage);
+      validQuestions.push(...regenResult.valid);
+      allRepairLogs.push(...regenResult.repairLog.map((l) => `[Regen ${regenerationAttempts}] ${l}`));
+
+      // If regeneration produced valid questions, remove corresponding invalid entries
+      if (regenResult.valid.length > 0) {
+        invalid = invalid.slice(regenResult.valid.length);
+      } else {
+        // No progress — break to avoid infinite loop
+        break;
       }
-      confidence = Math.min(100, confidence + 10);
-      steps[3].message = `Regenerated ${issueIndices.length} questions. Confidence: ${confidence}%`;
-    } else {
-      steps[3].message = `Confidence score: ${confidence}%`;
+    }
+
+    // If still below target, generate additional questions
+    if (validQuestions.length < input.questionCount) {
+      const needMore = input.questionCount - validQuestions.length;
+      report(3, `Generating ${needMore} additional question(s)...`);
+      const extra = await stepRegenerateQuestions(
+        client, input, passage, needMore,
+        `Need ${needMore} more valid questions to reach target of ${input.questionCount}.`,
+        onToken,
+      );
+      accumulatedTokens += extra.tokensUsed;
+      const extraResult = repairAndParseQuestions(extra.questions, passage);
+      validQuestions.push(...extraResult.valid);
+      allRepairLogs.push(...extraResult.repairLog.map((l) => `[Extra] ${l}`));
     }
 
     steps[3].status = "done";
-    steps[3].output = `Overall Confidence: ${confidence}%\nTotal Questions: ${correctedQuestions.length}`;
+    steps[3].message = `Validated ${validQuestions.length}/${input.questionCount} questions. Confidence: ${s4.confidence}%`;
+    steps[3].output = [
+      `Overall Confidence: ${s4.confidence}%`,
+      `Valid Questions: ${validQuestions.length}/${input.questionCount}`,
+      `Repair Log:`,
+      ...allRepairLogs,
+    ].join("\n");
   } catch (err: any) {
     steps[3].status = "error";
     steps[3].message = err.message ?? "Self-validation failed";
     throw new GenerationError(`Step 4 failed: ${err.message}`, { tokensUsed: accumulatedTokens });
   }
 
-  // Parse and validate final questions
-  const questions = correctedQuestions
-    .map((q) => {
-      try {
-        return questionSchema.parse({ ...q, passageText: passage });
-      } catch (e) {
-        console.warn("Question validation failed:", e);
-        return null;
-      }
-    })
-    .filter((q): q is NonNullable<typeof q> => q !== null);
-
-  if (questions.length === 0) {
+  // ── Final check ─────────────────────────────────────────
+  if (validQuestions.length === 0) {
     throw new GenerationError("No valid questions generated after agentic validation", {
       tokensUsed: accumulatedTokens,
     });
   }
 
+  // Trim to requested count (if we overshot)
+  const finalQuestions = validQuestions.slice(0, input.questionCount);
+
   return {
-    questions,
+    questions: finalQuestions,
     meta: {
       model: input.apiKeyConfig.model,
       durationMs: Date.now() - start,

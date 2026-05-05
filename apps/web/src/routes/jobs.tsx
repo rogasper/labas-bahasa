@@ -304,9 +304,26 @@ function RouteComponent() {
                   <CardContent className="pt-0">
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-sm text-[var(--warm-charcoal)]">
-                        {result.questions.length} soal dihasilkan · {result.meta.model}
-                        {job.tokensUsed ? ` · ${job.tokensUsed} tokens` : ""}
-                        {result.meta.durationMs ? ` · ${(result.meta.durationMs / 1000).toFixed(1)}s` : ""}
+                        {(() => {
+                          const splits = (result as any).sectionSplits as { section: string; count: number }[] | undefined;
+                          if (splits && splits.length > 1) {
+                            return (
+                              <span>
+                                {result.questions.length} soal · {splits.length} section{" "}
+                                {splits.map((s) => `${s.section} ${s.count}`).join(", ")} · {result.meta.model}
+                                {job.tokensUsed ? ` · ${job.tokensUsed} tokens` : ""}
+                                {result.meta.durationMs ? ` · ${(result.meta.durationMs / 1000).toFixed(1)}s` : ""}
+                              </span>
+                            );
+                          }
+                          return (
+                            <span>
+                              {result.questions.length} soal dihasilkan · {result.meta.model}
+                              {job.tokensUsed ? ` · ${job.tokensUsed} tokens` : ""}
+                              {result.meta.durationMs ? ` · ${(result.meta.durationMs / 1000).toFixed(1)}s` : ""}
+                            </span>
+                          );
+                        })()}
                       </div>
                       <Button
                         variant="outline"

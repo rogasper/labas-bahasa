@@ -1,11 +1,11 @@
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
-import { EXAM_TYPES } from "@/lib/generate-constants";
+import { EXAM_TYPES, SECTIONS } from "@/lib/generate-constants";
 
 interface TestBlueprintCardProps {
   examType: string;
-  section: string;
+  selectedSections: string[];
   selectedFormats: string[];
   questionCount: number;
   weaknessAlign: number;
@@ -20,6 +20,7 @@ interface TestBlueprintCardProps {
 
 export function TestBlueprintCard({
   examType,
+  selectedSections,
   selectedFormats,
   questionCount,
   weaknessAlign,
@@ -30,7 +31,12 @@ export function TestBlueprintCard({
   hasKey,
   error,
   onGenerate,
-}: TestBlueprintCardProps) {
+  onDismissError,
+}: TestBlueprintCardProps & { onDismissError?: () => void }) {
+  const sectionNames = selectedSections
+    .map((id) => SECTIONS.find((s) => s.id === id)?.name)
+    .filter(Boolean);
+
   return (
     <div className="lg:col-span-4 sticky top-8">
       <Card className="bg-[var(--pure-white)] border-2 border-[var(--oat-border)] clay-shadow rounded-[var(--radius-xl)]">
@@ -40,10 +46,18 @@ export function TestBlueprintCard({
             <CardTitle className="font-headline text-xl text-[var(--clay-black)]">Test Blueprint</CardTitle>
           </div>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-5">
           <div className="flex justify-between items-center pb-4 border-b border-[var(--oat-border)]">
-            <span className="text-[var(--warm-charcoal)]">Estimasi Durasi</span>
-            <span className="font-bold text-[var(--clay-black)]">{questionCount * 2} Menit</span>
+            <span className="text-[var(--warm-charcoal)]">Ujian</span>
+            <span className="font-bold text-[var(--clay-black)]">
+              {EXAM_TYPES.find((t) => t.id === examType)?.name}
+            </span>
+          </div>
+          <div className="flex justify-between items-center pb-4 border-b border-[var(--oat-border)]">
+            <span className="text-[var(--warm-charcoal)]">Section</span>
+            <span className="font-bold text-[var(--clay-black)] text-right">
+              {sectionNames.join(" + ")}
+            </span>
           </div>
           <div className="flex justify-between items-center pb-4 border-b border-[var(--oat-border)]">
             <span className="text-[var(--warm-charcoal)]">Jumlah Soal</span>
@@ -54,13 +68,11 @@ export function TestBlueprintCard({
             <span className="font-bold text-[var(--clay-black)]">{selectedFormats.length} Jenis</span>
           </div>
           <div className="flex justify-between items-center pb-4 border-b border-[var(--oat-border)]">
-            <span className="text-[var(--warm-charcoal)]">Ujian</span>
-            <span className="font-bold text-[var(--clay-black)]">
-              {EXAM_TYPES.find((t) => t.id === examType)?.name}
-            </span>
+            <span className="text-[var(--warm-charcoal)]">Estimasi Durasi</span>
+            <span className="font-bold text-[var(--clay-black)]">{questionCount * 2} Menit</span>
           </div>
 
-          {/* AI Confidence Score Orbit */}
+          {/* AI Confidence Score */}
           <div className="bg-[var(--oat-light)] rounded-[var(--radius-lg)] p-6 flex flex-col items-center gap-4 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[var(--matcha-600)] to-transparent" />
             <span className="text-xs font-label uppercase tracking-widest text-[var(--warm-charcoal)] font-bold">
@@ -92,29 +104,25 @@ export function TestBlueprintCard({
           <div className="flex gap-1 p-1 rounded-[var(--radius-lg)] bg-[var(--oat-light)]">
             <button
               onClick={() => setMode("quick")}
-              className={`flex-1 py-2 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+              className={`flex-1 py-2.5 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all flex items-center justify-center gap-2 min-h-[44px] ${
                 mode === "quick"
                   ? "bg-[var(--pure-white)] text-[var(--clay-black)] clay-shadow"
                   : "text-[var(--warm-charcoal)] hover:text-[var(--clay-black)]"
               }`}
             >
-              <MaterialIcon name="flash_on" className="text-sm mr-1" />
-              <span>
+              <MaterialIcon name="flash_on" className="text-sm" />
               Quick
-              </span>
             </button>
             <button
               onClick={() => setMode("agentic")}
-              className={`flex-1 py-2 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
+              className={`flex-1 py-2.5 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all flex items-center justify-center gap-2 min-h-[44px] ${
                 mode === "agentic"
                   ? "bg-[var(--pure-white)] text-[var(--clay-black)] clay-shadow"
                   : "text-[var(--warm-charcoal)] hover:text-[var(--clay-black)]"
               }`}
             >
-              <MaterialIcon name="psychology" className="text-sm mr-1" />
-              <span>
+              <MaterialIcon name="psychology" className="text-sm" />
               Agentic
-              </span>
             </button>
           </div>
 
@@ -130,7 +138,7 @@ export function TestBlueprintCard({
 
           {/* Primary CTA */}
           <Button
-            className="w-full py-5 rounded-[var(--radius-lg)] bg-[var(--clay-black)] text-[var(--pure-white)] font-bold text-lg flex items-center justify-center gap-3 clay-shadow clay-hover hover:bg-[var(--warm-charcoal)] transition-all active:scale-95 h-auto"
+            className="w-full py-5 rounded-[var(--radius-lg)] bg-[var(--clay-black)] text-[var(--pure-white)] font-bold text-lg flex items-center justify-center gap-3 clay-shadow clay-hover hover:bg-[var(--warm-charcoal)] transition-all active:scale-95 h-auto min-h-[56px]"
             onClick={onGenerate}
             disabled={isGenerating || generatePending || selectedFormats.length === 0 || !hasKey}
           >
@@ -143,8 +151,20 @@ export function TestBlueprintCard({
           </Button>
 
           {error && (
-            <div className="p-4 rounded-[var(--radius-md)] bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)] text-sm border-2 border-[var(--badge-blue-bg)]">
-              {error}
+            <div className="p-4 rounded-[var(--radius-md)] bg-[var(--pomegranate-400)]/10 text-[var(--pomegranate-400)] text-sm border-2 border-[var(--pomegranate-400)]/20">
+              <div className="flex items-start gap-2">
+                <MaterialIcon name="error" className="text-sm shrink-0 mt-0.5" />
+                <span className="flex-1">{error}</span>
+                {onDismissError && (
+                  <button
+                    onClick={onDismissError}
+                    className="shrink-0 p-1 rounded hover:bg-[var(--pomegranate-400)]/10 transition-colors"
+                    aria-label="Tutup error"
+                  >
+                    <MaterialIcon name="close" className="text-sm" />
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </CardContent>

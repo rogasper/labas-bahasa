@@ -97,6 +97,34 @@ async function readSSEStream(
   return { content: fullContent, usage: lastUsage };
 }
 
+function looksTruncated(content: string): boolean {
+  const trimmed = content.trim();
+  if (trimmed.length === 0) return false;
+  // JSON object/array should end with } or ]
+  const lastChar = trimmed[trimmed.length - 1];
+  if (lastChar === "}" || lastChar === "]") return false;
+  // Check for common truncation signatures
+  const unterminated = /Unterminated string|Unexpected end of JSON|Unexpected token/i;
+  try {
+    JSON.parse(trimmed);
+    return false;
+  } catch (err: any) {
+    if (unterminated.test(err.message)) return true;
+  }
+  return false;
+}
+
+function isResponseFormatError(status: number, text: string): boolean {
+  if (status !== 400 && status !== 422) return false;
+  const lower = text.toLowerCase();
+  return (
+    lower.includes("response_format") ||
+    lower.includes("json mode") ||
+    lower.includes("json_object") ||
+    lower.includes("unsupported parameter")
+  );
+}
+
 export class OpenAICompatibleClient {
   constructor(
     private baseUrl: string,
@@ -107,16 +135,26 @@ export class OpenAICompatibleClient {
     opts: ChatCompletionOptions,
     callbacks?: StreamCallbacks,
   ): Promise<ChatCompletionResult> {
+    return this._doChatCompletion(opts, callbacks, { attempt: 1 });
+  }
+
+  private async _doChatCompletion(
+    opts: ChatCompletionOptions,
+    callbacks: StreamCallbacks | undefined,
+    ctx: { attempt: number; retriedForTruncation?: boolean; retriedForResponseFormat?: boolean },
+  ): Promise<ChatCompletionResult> {
     const url = `${this.baseUrl.replace(/\/$/, "")}/chat/completions`;
     const stream = true;
-    const body = {
+    const body: Record<string, unknown> = {
       model: opts.model,
       messages: opts.messages,
       temperature: opts.temperature ?? 0.7,
       stream,
-      ...(opts.max_tokens ? { max_tokens: opts.max_tokens } : {}),
-      ...(opts.response_format ? { response_format: opts.response_format } : {}),
     };
+    if (opts.max_tokens) body.max_tokens = opts.max_tokens;
+    if (opts.response_format && !ctx.retriedForResponseFormat) {
+      body.response_format = opts.response_format;
+    }
 
     log("info", "Sending chat completion request", {
       url,
@@ -124,6 +162,7 @@ export class OpenAICompatibleClient {
       messageCount: opts.messages.length,
       maxTokens: opts.max_tokens,
       stream,
+      attempt: ctx.attempt,
     });
 
     const res = await fetch(url, {
@@ -151,6 +190,16 @@ export class OpenAICompatibleClient {
         preview,
         isHtml: preview.trim().startsWith("<"),
       });
+
+      // Retry without response_format if provider doesn't support it
+      if (!ctx.retriedForResponseFormat && isResponseFormatError(res.status, preview)) {
+        log("warn", "Provider rejected response_format, retrying without it");
+        return this._doChatCompletion(opts, callbacks, {
+          ...ctx,
+          attempt: ctx.attempt + 1,
+          retriedForResponseFormat: true,
+        });
+      }
 
       if (preview.trim().startsWith("<")) {
         throw new Error(
@@ -188,6 +237,23 @@ export class OpenAICompatibleClient {
 
     if (!result.content) {
       throw new Error("Empty response from AI");
+    }
+
+    // Truncation detection + retry
+    if (!ctx.retriedForTruncation && looksTruncated(result.content)) {
+      const newMaxTokens = opts.max_tokens
+        ? Math.min(Math.round(opts.max_tokens * 1.5), 128_000)
+        : 16_384;
+      log("warn", "Response looks truncated, retrying with more tokens", {
+        originalLength: result.content.length,
+        originalMaxTokens: opts.max_tokens,
+        newMaxTokens,
+      });
+      return this._doChatCompletion(
+        { ...opts, max_tokens: newMaxTokens },
+        callbacks,
+        { ...ctx, attempt: ctx.attempt + 1, retriedForTruncation: true },
+      );
     }
 
     log("info", "Chat completion successful", {

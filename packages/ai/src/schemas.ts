@@ -188,6 +188,7 @@ export type Question = z.infer<typeof questionSchema>;
 export const generationInputSchema = z.object({
   examType: examTypeSchema,
   section: sectionTypeSchema,
+  selectedSections: z.array(sectionTypeSchema).min(1).optional(),
   formats: z.array(questionFormatSchema).min(1),
   difficulty: difficultySchema,
   topics: z.array(z.string()).min(1),

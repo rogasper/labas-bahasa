@@ -1,7 +1,7 @@
 import { Queue, Worker, type Job } from "bullmq";
 import IORedis from "ioredis";
 import { env } from "@labas/env/server";
-import { generateQuestionsQuick, generateQuestionsAgentic, GenerationError, type GenerationInput } from "@labas/ai";
+import { generateQuestionsQuick, generateQuestionsAgentic, GenerationError, type GenerationInput, type GenerationResult } from "@labas/ai";
 import { db } from "@labas/db";
 import { generationJob, question, testPackage, packageSection, sectionQuestion } from "@labas/db";
 import { and, eq, notInArray } from "drizzle-orm";
@@ -90,6 +90,23 @@ export async function cancelGenerationJob(
   }
 
   return { ok: true };
+}
+
+function computeSectionSplit(
+  selectedSections: string[],
+  count: number,
+): { section: string; count: number }[] {
+  const sections = selectedSections.length > 0 ? selectedSections : ["READING"];
+  if (count < 20 || sections.length <= 1) {
+    return [{ section: sections[0]!, count }];
+  }
+  const base = Math.floor(count / sections.length);
+  const remainder = count % sections.length;
+  const result = sections.map((section, i) => ({
+    section,
+    count: base + (i < remainder ? 1 : 0),
+  }));
+  return result;
 }
 
 export const generationQueue = new Queue("generation", {
@@ -181,7 +198,14 @@ export const generationWorker = new Worker(
 
     try {
       const selectedMode = input.mode;
-      if (selectedMode === "agentic") {
+      const activeSections = input.selectedSections ?? [input.section];
+      const isMultiSection = selectedMode === "agentic" && input.questionCount >= 20 && activeSections.length > 1;
+      const sectionSplits = computeSectionSplit(activeSections, input.questionCount);
+
+      if (isMultiSection) {
+        await updateProgress(5, `Preparing ${sectionSplits.length} sections...`);
+        await pushLog("plan", `Multi-section plan: ${sectionSplits.map((s) => `${s.section}(${s.count})`).join(", ")}`, "done");
+      } else if (selectedMode === "agentic") {
         await updateProgress(10, "Generating passage...");
         await pushLog("generate_passage", "Starting passage generation...", "running");
       }
@@ -201,51 +225,102 @@ export const generationWorker = new Worker(
         }
       };
 
-      let result;
-      try {
-        result =
-          selectedMode === "agentic"
-            ? await generateQuestionsAgentic(input, async (p) => {
-                cancelPoll.check();
-                const stepProgress = Math.min(
-                  10 + Math.round((p.currentStep / p.steps.length) * 80),
-                  90,
-                );
-                const step = p.steps[p.currentStep];
-                const msg = step?.message ?? step?.step ?? "Processing...";
-                const status = step?.status === "error" ? "error" : step?.status === "done" ? "done" : "running";
-                await updateProgress(stepProgress, msg);
-                await pushLog(step?.step ?? "unknown", msg, status, step?.output);
-              }, tokenCounter)
-            : await generateQuestionsQuick(input, {
-                onToken: tokenCounter,
-              });
-      } catch (quickErr: any) {
-        const quickErrorMessage = quickErr?.message ?? String(quickErr);
-        const shouldFallbackToAgentic =
-          selectedMode === "quick" &&
-          (/Failed to parse AI response as JSON/i.test(quickErrorMessage) ||
-            /Unterminated string/i.test(quickErrorMessage) ||
-            /Missing 'questions' array/i.test(quickErrorMessage));
+      // ── Generation Phase ─────────────────────────────────────
+      let allQuestions: Array<{
+        section: string;
+        format: string;
+        passageText: string;
+        questionText: string;
+        options: any;
+        correctAnswer: string;
+        explanation: string;
+        difficulty: number;
+        skillTags: string[];
+        aiModel: string;
+      }> = [];
+      let totalTokens = 0;
+      let totalDurationMs = 0;
 
-        if (!shouldFallbackToAgentic) {
-          throw quickErr;
+      for (let secIdx = 0; secIdx < sectionSplits.length; secIdx++) {
+        const split = sectionSplits[secIdx]!;
+        const subInput: GenerationInput = { ...input, section: split.section as any, questionCount: split.count };
+        const progressSlice = isMultiSection ? 90 / sectionSplits.length : 80;
+        const progressOffset = isMultiSection ? 5 + secIdx * progressSlice : 10;
+
+        let sectionResult: GenerationResult;
+        try {
+          if (selectedMode === "agentic") {
+            sectionResult = await generateQuestionsAgentic(subInput, async (p) => {
+              cancelPoll.check();
+              const rawProgress = (p.currentStep / p.steps.length) * progressSlice;
+              const mappedProgress = Math.min(
+                Math.round(progressOffset + rawProgress),
+                isMultiSection ? Math.round(5 + (secIdx + 1) * progressSlice) : 90,
+              );
+              const step = p.steps[p.currentStep];
+              const msg = step?.message ?? step?.step ?? "Processing...";
+              const status = step?.status === "error" ? "error" : step?.status === "done" ? "done" : "running";
+              const prefix = isMultiSection ? `[${split.section}] ` : "";
+              await updateProgress(mappedProgress, `${prefix}${msg}`);
+              await pushLog(
+                step?.step ?? "unknown",
+                `${prefix}${msg}`,
+                status,
+                step?.output,
+              );
+            }, tokenCounter);
+          } else {
+            // Quick mode (single section only)
+            sectionResult = await generateQuestionsQuick(subInput, {
+              onToken: tokenCounter,
+            });
+          }
+        } catch (quickErr: any) {
+          const quickErrorMessage = quickErr?.message ?? String(quickErr);
+          const shouldFallbackToAgentic =
+            selectedMode === "quick" &&
+            (/Failed to parse AI response as JSON/i.test(quickErrorMessage) ||
+              /Unterminated string/i.test(quickErrorMessage) ||
+              /Missing 'questions' array/i.test(quickErrorMessage));
+
+          if (!shouldFallbackToAgentic) {
+            throw quickErr;
+          }
+
+          await updateProgress(25, "Quick mode JSON invalid, retrying with agentic mode...");
+          sectionResult = await generateQuestionsAgentic(
+            { ...subInput, mode: "agentic" },
+            async (p) => {
+              cancelPoll.check();
+              const stepProgress = Math.min(25 + Math.round((p.currentStep / p.steps.length) * 65), 90);
+              const msg =
+                p.steps[p.currentStep]?.message ?? p.steps[p.currentStep]?.step ?? "Processing...";
+              await updateProgress(stepProgress, msg);
+            },
+            tokenCounter,
+          );
         }
 
-        await updateProgress(25, "Quick mode JSON invalid, retrying with agentic mode...");
-        result = await generateQuestionsAgentic(
-          { ...input, mode: "agentic" },
-          async (p) => {
-            cancelPoll.check();
-            const stepProgress = Math.min(25 + Math.round((p.currentStep / p.steps.length) * 65), 90);
-            const msg =
-              p.steps[p.currentStep]?.message ?? p.steps[p.currentStep]?.step ?? "Processing...";
-            await updateProgress(stepProgress, msg);
-          },
-          tokenCounter,
-        );
+        for (const q of sectionResult.questions) {
+          allQuestions.push({
+            section: split.section,
+            format: q.format,
+            passageText: q.passageText,
+            questionText: q.questionText,
+            options: (q as any).options ?? null,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation,
+            difficulty: q.difficulty,
+            skillTags: q.skillTags,
+            aiModel: input.apiKeyConfig.model,
+          });
+        }
+
+        totalTokens += sectionResult.meta.tokensUsed ?? 0;
+        totalDurationMs += sectionResult.meta.durationMs;
       }
 
+      // ── Saving Phase ─────────────────────────────────────────
       cancelPoll.check();
       await updateProgress(95, "Saving to bank...");
 
@@ -275,26 +350,26 @@ export const generationWorker = new Worker(
 
         const userId = jobRow?.userId;
         if (userId) {
-          const toInsert = result.questions.map((q) => ({
-            examTypeId: input.examType,
-            sectionTypeId: input.section,
-            format: q.format,
-            passageText: q.passageText,
-            questionText: q.questionText,
-            options: (q as any).options ?? null,
-            correctAnswer: q.correctAnswer,
-            explanation: q.explanation,
-            difficulty: q.difficulty,
-            skillTags: q.skillTags,
-            source: "ai" as const,
-            aiModel: input.apiKeyConfig.model,
-            creatorUserId: userId,
-            isPublic: false,
-          }));
-
           const inserted = await db
             .insert(question)
-            .values(toInsert as any)
+            .values(
+              allQuestions.map((q) => ({
+                examTypeId: input.examType,
+                sectionTypeId: q.section,
+                format: q.format,
+                passageText: q.passageText,
+                questionText: q.questionText,
+                options: q.options,
+                correctAnswer: q.correctAnswer,
+                explanation: q.explanation,
+                difficulty: q.difficulty,
+                skillTags: q.skillTags,
+                source: "ai" as const,
+                aiModel: q.aiModel,
+                creatorUserId: userId,
+                isPublic: false,
+              })) as any,
+            )
             .returning({ id: question.id });
 
           savedQuestionIds = inserted.map((r) => r.id);
@@ -308,18 +383,21 @@ export const generationWorker = new Worker(
                 month: "short",
                 year: "numeric",
               });
-              const pkgTitle = `AI Generated - ${input.examType} ${input.section} - ${dateStr}`;
+              const sectionLabel = isMultiSection
+                ? `${sectionSplits.length} sections`
+                : input.section;
+              const pkgTitle = `AI Generated - ${input.examType} ${sectionLabel} - ${dateStr}`;
 
               const [pkg] = await db
                 .insert(testPackage)
                 .values({
                   title: pkgTitle,
-                  description: `Paket latihan AI-generated dengan ${savedQuestionIds.length} soal ${input.examType} ${input.section}.`,
+                  description: `Paket latihan AI-generated dengan ${savedQuestionIds.length} soal ${input.examType}.`,
                   examTypeId: input.examType,
                   creatorUserId: userId,
                   isPublic: false,
                   totalQuestions: savedQuestionIds.length,
-                  totalSections: 1,
+                  totalSections: sectionSplits.length,
                   estimatedDurationMin: Math.ceil(savedQuestionIds.length * 1.5),
                 })
                 .returning();
@@ -327,24 +405,33 @@ export const generationWorker = new Worker(
               if (pkg) {
                 generatedPackageId = pkg.id;
 
-                const [sec] = await db
-                  .insert(packageSection)
-                  .values({
-                    packageId: pkg.id,
-                    sectionTypeId: input.section,
-                    title: `${input.section} Section`,
-                    orderIndex: 0,
-                  })
-                  .returning();
+                for (let i = 0; i < sectionSplits.length; i++) {
+                  const split = sectionSplits[i]!;
+                  const sectionQuestions = allQuestions
+                    .map((q, idx) => ({ ...q, _globalIndex: idx }))
+                    .filter((q) => q.section === split.section);
 
-                if (sec) {
-                  await db.insert(sectionQuestion).values(
-                    savedQuestionIds.map((qid, idx) => ({
-                      sectionId: sec.id,
-                      questionId: qid,
-                      orderIndex: idx,
-                    })),
-                  );
+                  const [sec] = await db
+                    .insert(packageSection)
+                    .values({
+                      packageId: pkg.id,
+                      sectionTypeId: split.section,
+                      title: `${split.section} Section`,
+                      orderIndex: i,
+                    })
+                    .returning();
+
+                  if (sec) {
+                    await db.insert(sectionQuestion).values(
+                      sectionQuestions
+                        .map((q, idx) => ({
+                          sectionId: sec.id,
+                          questionId: savedQuestionIds[q._globalIndex],
+                          orderIndex: idx,
+                        }))
+                        .filter((q) => q.questionId != null) as any,
+                    );
+                  }
                 }
               }
             } catch (packageErr: any) {
@@ -363,13 +450,23 @@ export const generationWorker = new Worker(
       await updateProgress(100, "Completed");
       await pushLog("save", `Saved ${savedQuestionIds.length} questions${generatedPackageId ? ` & created package` : ""}`, "done");
 
+      const combinedResult: GenerationResult = {
+        questions: allQuestions as any,
+        meta: {
+          model: input.apiKeyConfig.model,
+          tokensUsed: totalTokens || approxTokens,
+          durationMs: totalDurationMs || Date.now() - start,
+          mode: selectedMode,
+        },
+      };
+
       cancelPoll.check();
       await db
         .update(generationJob)
         .set({
           status: "completed",
-          resultJson: { ...result, savedQuestionIds, generatedPackageId } as any,
-          tokensUsed: result.meta.tokensUsed ?? approxTokens,
+          resultJson: { ...combinedResult, savedQuestionIds, generatedPackageId, sectionSplits } as any,
+          tokensUsed: totalTokens || approxTokens,
           durationMs: Date.now() - start,
           completedAt: new Date(),
         })

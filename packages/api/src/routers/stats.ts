@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, sql, gte } from "drizzle-orm";
+import { eq, and, sql, gte } from "drizzle-orm";
 import { router, protectedProcedure } from "../index";
 import { db } from "@labas/db";
 import {
@@ -11,10 +11,6 @@ import {
   examType,
   sectionType,
 } from "@labas/db";
-
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
 
 export const statsRouter = router({
   overview: protectedProcedure.query(async ({ ctx }) => {
@@ -257,7 +253,7 @@ export const statsRouter = router({
       const filled: { date: string; attempts: number; avgScorePct: number }[] = [];
       for (let i = days - 1; i >= 0; i--) {
         const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-        const key = d.toISOString().split("T")[0];
+        const key = d.toISOString().split("T")[0]!;
         filled.push(resultMap.get(key) ?? { date: key, attempts: 0, avgScorePct: 0 });
       }
 
