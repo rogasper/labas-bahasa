@@ -23,6 +23,13 @@ export interface AgenticProgress {
   currentStep: number;
 }
 
+export type AgenticGenerationStrategy = "full" | "lean";
+
+export interface AgenticGenerationOptions {
+  strategy?: AgenticGenerationStrategy;
+  maxRegenerateAttempts?: number;
+}
+
 function getSystemPrompt(): string {
   return "You are a precise exam question generator. You always return valid JSON. You never include markdown formatting around the JSON.";
 }
@@ -332,8 +339,11 @@ export async function generateQuestionsAgentic(
   input: GenerationInput,
   onProgress?: (progress: AgenticProgress) => void,
   onToken?: (token: string) => void,
+  options?: AgenticGenerationOptions,
 ): Promise<GenerationResult> {
   const start = Date.now();
+  const strategy = options?.strategy ?? "full";
+  const maxRegenAttempts = Math.max(0, options?.maxRegenerateAttempts ?? (strategy === "lean" ? 1 : 2));
   const client = new OpenAICompatibleClient(
     input.apiKeyConfig.baseUrl,
     input.apiKeyConfig.apiKey,
@@ -376,18 +386,24 @@ export async function generateQuestionsAgentic(
   }
 
   // ── Step 2: Validate passage ────────────────────────────
-  steps[1].status = "running";
-  report(1);
-  try {
-    const s2 = await step2ValidatePassage(client, input, passage, onToken);
-    accumulatedTokens += s2.tokensUsed;
-    steps[1].status = s2.isValid ? "done" : "error";
-    steps[1].message = s2.feedback;
-    steps[1].output = JSON.stringify({ isValid: s2.isValid, feedback: s2.feedback }, null, 2);
-  } catch (err: any) {
-    steps[1].status = "error";
-    steps[1].message = err.message ?? "Passage validation failed";
-    throw new GenerationError(`Step 2 failed: ${err.message}`, { tokensUsed: accumulatedTokens });
+  if (strategy === "full") {
+    steps[1].status = "running";
+    report(1);
+    try {
+      const s2 = await step2ValidatePassage(client, input, passage, onToken);
+      accumulatedTokens += s2.tokensUsed;
+      steps[1].status = s2.isValid ? "done" : "error";
+      steps[1].message = s2.feedback;
+      steps[1].output = JSON.stringify({ isValid: s2.isValid, feedback: s2.feedback }, null, 2);
+    } catch (err: any) {
+      steps[1].status = "error";
+      steps[1].message = err.message ?? "Passage validation failed";
+      throw new GenerationError(`Step 2 failed: ${err.message}`, { tokensUsed: accumulatedTokens });
+    }
+  } else {
+    steps[1].status = "done";
+    steps[1].message = "Skipped in lean strategy";
+    report(1, steps[1].message);
   }
 
   // ── Step 3: Generate questions ──────────────────────────
@@ -414,17 +430,20 @@ export async function generateQuestionsAgentic(
   let allRepairLogs: string[] = [];
 
   try {
-    const s4 = await step4SelfValidate(client, input, passage, rawQuestions, onToken);
-    accumulatedTokens += s4.tokensUsed;
+    let selfValidationConfidence = 0;
+    if (strategy === "full") {
+      const s4 = await step4SelfValidate(client, input, passage, rawQuestions, onToken);
+      accumulatedTokens += s4.tokensUsed;
+      selfValidationConfidence = s4.confidence;
+    }
 
     // Repair & parse
     let { valid, invalid, repairLog } = repairAndParseQuestions(rawQuestions, passage);
     validQuestions = valid;
     allRepairLogs.push(...repairLog);
 
-    // Regenerate structural-invalid questions (up to 2 attempts)
+    // Regenerate structural-invalid questions with bounded attempts
     let regenerationAttempts = 0;
-    const maxRegenAttempts = 2;
 
     while (invalid.length > 0 && regenerationAttempts < maxRegenAttempts && validQuestions.length < input.questionCount) {
       regenerationAttempts++;
@@ -465,9 +484,13 @@ export async function generateQuestionsAgentic(
     }
 
     steps[3].status = "done";
-    steps[3].message = `Validated ${validQuestions.length}/${input.questionCount} questions. Confidence: ${s4.confidence}%`;
+    steps[3].message =
+      strategy === "full"
+        ? `Validated ${validQuestions.length}/${input.questionCount} questions. Confidence: ${selfValidationConfidence}%`
+        : `Lean validation completed: ${validQuestions.length}/${input.questionCount} valid`;
     steps[3].output = [
-      `Overall Confidence: ${s4.confidence}%`,
+      `Strategy: ${strategy}`,
+      ...(strategy === "full" ? [`Overall Confidence: ${selfValidationConfidence}%`] : []),
       `Valid Questions: ${validQuestions.length}/${input.questionCount}`,
       `Repair Log:`,
       ...allRepairLogs,

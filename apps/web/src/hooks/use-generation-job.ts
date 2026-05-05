@@ -52,8 +52,14 @@ export function useGenerationJob() {
 
   useEffect(() => {
     if (!jobId && myJobsQuery.data) {
-      const active = myJobsQuery.data.find(
-        (j: any) => j.status === "pending" || j.status === "running",
+      const active = myJobsQuery.data.find((j: any) =>
+        [
+          "pending",
+          "running",
+          "running_fast",
+          "partial_ready",
+          "running_quality",
+        ].includes(j.status),
       );
       if (active) setJobId(active.id);
     }
@@ -71,15 +77,25 @@ export function useGenerationJob() {
     },
   });
 
+  const isTerminalStatus =
+    jobQuery.data?.status === "completed" ||
+    jobQuery.data?.status === "failed" ||
+    jobQuery.data?.status === "cancelled";
+
   const isGenerating =
     jobId !== null &&
-    (!jobQuery.data ||
-      (jobQuery.data.status !== "completed" &&
-        jobQuery.data.status !== "failed" &&
-        jobQuery.data.status !== "cancelled"));
+    (!jobQuery.data || !isTerminalStatus);
 
   // Handle completion / failure
   useEffect(() => {
+    if (jobQuery.data?.status === "partial_ready" && jobQuery.data.resultJson) {
+      const res = jobQuery.data.resultJson as GenerationResult & {
+        generatedPackageId?: string | null;
+      };
+      setResult(res);
+      setGeneratedPackageId(res.generatedPackageId ?? null);
+      setError(null);
+    }
     if (jobQuery.data?.status === "completed" && jobQuery.data.resultJson) {
       const res = jobQuery.data.resultJson as GenerationResult & { generatedPackageId?: string | null };
       setResult(res);

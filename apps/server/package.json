@@ -1,5 +1,6 @@
 {
   "name": "server",
+  "license": "AGPL-3.0",
   "type": "module",
   "main": "src/index.ts",
   "scripts": {

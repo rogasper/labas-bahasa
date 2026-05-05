@@ -14,6 +14,14 @@ interface LogEntry {
   details?: string;
 }
 
+const ACTIVE_JOB_STATUSES = new Set([
+  "pending",
+  "running",
+  "running_fast",
+  "partial_ready",
+  "running_quality",
+]);
+
 const STEP_LABELS: Record<string, string> = {
   generate_passage: "Menulis Bacaan",
   validate_passage: "Memvalidasi Bacaan",
@@ -240,7 +248,7 @@ export function GlobalGenerationProgress() {
       </div>
 
       {isAgentic && (
-        <TerminalLog logs={logs} isRunning={jobQuery.data?.status === "running"} />
+        <TerminalLog logs={logs} isRunning={ACTIVE_JOB_STATUSES.has(jobQuery.data?.status ?? "")} />
       )}
 
       {jobId && (

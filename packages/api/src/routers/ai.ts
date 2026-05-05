@@ -26,7 +26,15 @@ export const aiRouter = router({
       if (!job) return null;
       if (job.userId !== ctx.session.user.id) return null;
 
-      return job;
+      const rj =
+        job.resultJson && typeof job.resultJson === "object"
+          ? (job.resultJson as Record<string, unknown>)
+          : null;
+      const qualityPhase =
+        rj && typeof rj.qualityPhase === "string" ? rj.qualityPhase : null;
+      const resultIsPartial = rj?.isPartial === true;
+
+      return { ...job, qualityPhase, resultIsPartial };
     }),
 
   cancelJob: protectedProcedure

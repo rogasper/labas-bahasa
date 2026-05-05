@@ -1,5 +1,6 @@
 {
   "name": "@labas/ai",
+  "license": "MIT",
   "type": "module",
   "exports": {
     ".": {

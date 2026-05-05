@@ -110,6 +110,9 @@ export const Route = createFileRoute("/jobs")({
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-[var(--badge-blue-bg)] text-[var(--badge-blue-text)]",
   running: "bg-[var(--matcha-300)] text-[var(--matcha-800)]",
+  running_fast: "bg-[var(--matcha-300)] text-[var(--matcha-800)]",
+  partial_ready: "bg-[var(--lemon-300)] text-[var(--lemon-800)]",
+  running_quality: "bg-[var(--matcha-300)] text-[var(--matcha-800)]",
   completed: "bg-[var(--lemon-300)] text-[var(--lemon-800)]",
   failed: "bg-[var(--pomegranate-400)]/20 text-[var(--pomegranate-400)]",
   cancelled: "bg-[var(--warm-silver)] text-[var(--warm-charcoal)]",
@@ -118,10 +121,21 @@ const STATUS_COLORS: Record<string, string> = {
 const STATUS_ICONS: Record<string, string> = {
   pending: "hourglass_empty",
   running: "sync",
+  running_fast: "bolt",
+  partial_ready: "auto_awesome",
+  running_quality: "tune",
   completed: "check_circle",
   failed: "error",
   cancelled: "block",
 };
+
+const ACTIVE_STATUSES = new Set([
+  "pending",
+  "running",
+  "running_fast",
+  "partial_ready",
+  "running_quality",
+]);
 
 function formatDate(d: string | Date | null) {
   if (!d) return "—";
@@ -144,7 +158,7 @@ function RouteComponent() {
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return false;
-      const hasRunning = data.some((j: any) => j.status === "pending" || j.status === "running");
+      const hasRunning = data.some((j: any) => ACTIVE_STATUSES.has(j.status));
       return hasRunning ? 1000 : false;
     },
   });
@@ -236,7 +250,7 @@ function RouteComponent() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {(job.status === "pending" || job.status === "running") && (
+                      {ACTIVE_STATUSES.has(job.status) && (
                         <Button
                           type="button"
                           variant="outline"
@@ -268,7 +282,7 @@ function RouteComponent() {
                     </div>
                   </div>
 
-                  {(job.status === "running" || job.status === "pending") && (
+                  {ACTIVE_STATUSES.has(job.status) && (
                     <div className="mt-3">
                       <div className="flex justify-between text-xs text-[var(--warm-charcoal)] mb-1.5">
                         <span className="truncate mr-2">{job.progressMessage ?? "Processing..."}</span>
@@ -295,7 +309,7 @@ function RouteComponent() {
                         <MaterialIcon name={isLogExpanded ? "expand_less" : "expand_more"} className="text-sm mr-1" />
                         {isLogExpanded ? "Sembunyikan Log" : "Lihat Log"}
                       </Button>
-                      {isLogExpanded && <JobLogPanel logs={logs} isRunning={job.status === "running"} />}
+                      {isLogExpanded && <JobLogPanel logs={logs} isRunning={ACTIVE_STATUSES.has(job.status)} />}
                     </div>
                   )}
                 </CardHeader>
