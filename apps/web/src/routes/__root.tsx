@@ -34,7 +34,13 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 function RootComponent() {
   const { collapsed } = useSidebar();
   const matches = useRouterState({ select: (s) => s.matches });
-  const isFullScreen = matches.some((m) => m.routeId === "/package/$id/take");
+  const isFullScreen = matches.some(
+    (m) =>
+      m.routeId === "/package/$id/take" ||
+      m.routeId === "/package/$id/attempt/$attemptId" ||
+      m.routeId === "/login",
+  );
+  const isLanding = matches.some((m) => m.routeId === "/landing");
 
   return (
     <>
@@ -48,6 +54,10 @@ function RootComponent() {
       >
         {isFullScreen ? (
           <div className="h-screen bg-background text-on-surface flex flex-col overflow-hidden relative">
+            <Outlet />
+          </div>
+        ) : isLanding ? (
+          <div className="min-h-screen bg-background text-on-surface relative">
             <Outlet />
           </div>
         ) : (

@@ -1,4 +1,5 @@
 import { OpenAICompatibleClient } from "./client";
+import { GenerationError } from "./errors";
 import { buildQuickModePrompt } from "./prompts";
 import {
   questionSchema,
@@ -66,6 +67,7 @@ export async function generateQuestionsQuick(
   }
 
   const content = result.content;
+  const tokensUsed = result.usage?.total_tokens;
   log("info", "Raw response received", { contentLength: content.length, preview: content.slice(0, 200) });
 
   let parsed: unknown;
@@ -87,18 +89,21 @@ export async function generateQuestionsQuick(
         cleanedPreview: cleaned.slice(0, 500),
         originalPreview: content.slice(0, 500),
       });
-      throw new Error(`Failed to parse AI response as JSON: ${stripErr.message}. Preview: ${content.slice(0, 200)}`);
+      throw new GenerationError(
+        `Failed to parse AI response as JSON: ${stripErr.message}. Preview: ${content.slice(0, 200)}`,
+        { tokensUsed },
+      );
     }
   }
 
   if (!parsed || typeof parsed !== "object") {
-    throw new Error("Invalid JSON response from AI");
+    throw new GenerationError("Invalid JSON response from AI", { tokensUsed });
   }
 
   const raw = parsed as Record<string, unknown>;
   if (!Array.isArray(raw.questions)) {
     log("error", "Missing questions array in parsed JSON", { keys: Object.keys(raw) });
-    throw new Error("Missing 'questions' array in AI response");
+    throw new GenerationError("Missing 'questions' array in AI response", { tokensUsed });
   }
 
   log("info", "Validating questions", { rawCount: raw.questions.length });
@@ -119,7 +124,7 @@ export async function generateQuestionsQuick(
 
   if (questions.length === 0) {
     log("error", "No valid questions after validation", { rawCount: raw.questions.length });
-    throw new Error("No valid questions generated");
+    throw new GenerationError("No valid questions generated", { tokensUsed });
   }
 
   log("info", "Quick mode generation completed", {
@@ -132,7 +137,7 @@ export async function generateQuestionsQuick(
     questions,
     meta: {
       model: input.apiKeyConfig.model,
-      tokensUsed: result.usage?.total_tokens,
+      tokensUsed,
       durationMs: Date.now() - start,
       mode: "quick",
     },

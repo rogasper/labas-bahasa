@@ -33,6 +33,8 @@ function normalizeAnswer(format: string, userAnswer: string, correctAnswer: stri
     case "kanji_reading":
     case "particle_choice":
     case "article_case":
+    case "character_reading":
+    case "sentence_arrangement":
     case "matching_headings":
     case "matching_information":
       return ua.toUpperCase() === ca.toUpperCase();
@@ -270,7 +272,7 @@ export const attemptRouter = router({
         });
       }
 
-      return { isCorrect };
+      return { success: true };
     }),
 
   finish: protectedProcedure

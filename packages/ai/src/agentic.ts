@@ -1,4 +1,5 @@
 import { OpenAICompatibleClient } from "./client";
+import { GenerationError } from "./errors";
 import { questionSchema, type GenerationInput, type GenerationResult } from "./schemas";
 
 interface AgenticStep {
@@ -42,7 +43,7 @@ function parseJsonResponse(content: string): unknown {
 async function step1GeneratePassage(
   client: OpenAICompatibleClient,
   input: GenerationInput,
-): Promise<{ passage: string; title: string }> {
+): Promise<{ passage: string; title: string; tokensUsed: number }> {
   const prompt = `Generate an authentic, high-quality reading passage for ${input.examType} ${input.section.toLowerCase()} section at difficulty level ${input.difficulty}/5.
 
 Requirements:
@@ -75,6 +76,7 @@ Return ONLY valid JSON:
   return {
     passage: parsed.passage,
     title: typeof parsed.title === "string" ? parsed.title : "Untitled Passage",
+    tokensUsed: result.usage?.total_tokens ?? 0,
   };
 }
 
@@ -82,7 +84,7 @@ async function step2ValidatePassage(
   client: OpenAICompatibleClient,
   input: GenerationInput,
   passage: string,
-): Promise<{ isValid: boolean; feedback: string }> {
+): Promise<{ isValid: boolean; feedback: string; tokensUsed: number }> {
   const prompt = `Validate this reading passage for a ${input.examType} exam at difficulty ${input.difficulty}/5.
 
 Passage:
@@ -118,6 +120,7 @@ Return ONLY valid JSON:
   return {
     isValid: !!parsed.isValid,
     feedback: typeof parsed.feedback === "string" ? parsed.feedback : "No feedback",
+    tokensUsed: result.usage?.total_tokens ?? 0,
   };
 }
 
@@ -125,7 +128,7 @@ async function step3GenerateQuestions(
   client: OpenAICompatibleClient,
   input: GenerationInput,
   passage: string,
-): Promise<Array<Record<string, unknown>>> {
+): Promise<{ questions: Array<Record<string, unknown>>; tokensUsed: number }> {
   const formats = input.formats;
   const formatInstructions = formats
     .map((f) => {
@@ -143,6 +146,8 @@ async function step3GenerateQuestions(
         kanji_reading: `{"format":"kanji_reading","questionText":"...","options":[{"key":"A","text":"..."},...],"correctAnswer":"A","explanation":"...","difficulty":${input.difficulty},"skillTags":["kanji","reading"]`,
         particle_choice: `{"format":"particle_choice","questionText":"...","options":[{"key":"A","text":"..."},...],"correctAnswer":"A","explanation":"...","difficulty":${input.difficulty},"skillTags":["grammar","particle"]`,
         article_case: `{"format":"article_case","questionText":"...","options":[{"key":"A","text":"..."},...],"correctAnswer":"A","explanation":"...","difficulty":${input.difficulty},"skillTags":["grammar","article","case"]`,
+        character_reading: `{"format":"character_reading","questionText":"...","options":[{"key":"A","text":"..."},...],"correctAnswer":"A","explanation":"...","difficulty":${input.difficulty},"skillTags":["character","reading"]`,
+        sentence_arrangement: `{"format":"sentence_arrangement","questionText":"...","options":[{"key":"A","text":"..."},...],"correctAnswer":"A","explanation":"...","difficulty":${input.difficulty},"skillTags":["reading","sentence_structure"]`,
       };
       return schemas[f] || schemas["multiple_choice"];
     })
@@ -164,7 +169,6 @@ Rules:
 - Questions should test real comprehension, not surface recall
 - For multiple choice: always provide 4 options (A, B, C, D) with one clearly correct answer
 - Options must be plausible distractors
-- a correct answer (correctAnswer) - dijelaskan dengan bahasa Indonesia
 - an explanation (explanation) - dijelaskan dengan bahasa Indonesia
 
 Return ONLY valid JSON:
@@ -188,7 +192,10 @@ Return ONLY valid JSON:
   if (!Array.isArray(parsed.questions)) {
     throw new Error("Missing questions array in AI response");
   }
-  return parsed.questions as Array<Record<string, unknown>>;
+  return {
+    questions: parsed.questions as Array<Record<string, unknown>>,
+    tokensUsed: result.usage?.total_tokens ?? 0,
+  };
 }
 
 async function step4SelfValidate(
@@ -196,7 +203,7 @@ async function step4SelfValidate(
   input: GenerationInput,
   passage: string,
   questions: Array<Record<string, unknown>>,
-): Promise<{ correctedQuestions: Array<Record<string, unknown>>; confidence: number }> {
+): Promise<{ correctedQuestions: Array<Record<string, unknown>>; confidence: number; tokensUsed: number }> {
   const qaPairs = questions
     .map((q, i) => `Q${i + 1}: ${q.questionText}\nA: ${q.correctAnswer}`)
     .join("\n\n");
@@ -252,7 +259,7 @@ Return ONLY valid JSON:
     return q;
   });
 
-  return { correctedQuestions: corrected, confidence };
+  return { correctedQuestions: corrected, confidence, tokensUsed: result.usage?.total_tokens ?? 0 };
 }
 
 export async function generateQuestionsAgentic(
@@ -278,47 +285,82 @@ export async function generateQuestionsAgentic(
     }
   };
 
+  let accumulatedTokens = 0;
+
   // Step 1: Generate passage
   report(0);
-  const { passage, title } = await step1GeneratePassage(client, input);
-  steps[0].status = "done";
-  steps[0].message = `Generated: ${title}`;
-  steps[0].output = passage;
+  let passage: string;
+  let title: string;
+  try {
+    const s1 = await step1GeneratePassage(client, input);
+    passage = s1.passage;
+    title = s1.title;
+    accumulatedTokens += s1.tokensUsed;
+    steps[0].status = "done";
+    steps[0].message = `Generated: ${title}`;
+    steps[0].output = passage;
+  } catch (err: any) {
+    steps[0].status = "error";
+    steps[0].message = err.message ?? "Passage generation failed";
+    throw new GenerationError(`Step 1 failed: ${err.message}`, { tokensUsed: accumulatedTokens });
+  }
 
   // Step 2: Validate passage
   steps[1].status = "running";
   report(1);
-  const validation = await step2ValidatePassage(client, input, passage);
-  steps[1].status = validation.isValid ? "done" : "error";
-  steps[1].message = validation.feedback;
-  steps[1].output = JSON.stringify(
-    { isValid: validation.isValid, feedback: validation.feedback },
-    null,
-    2,
-  );
+  let isValid: boolean;
+  let feedback: string;
+  try {
+    const s2 = await step2ValidatePassage(client, input, passage);
+    isValid = s2.isValid;
+    feedback = s2.feedback;
+    accumulatedTokens += s2.tokensUsed;
+    steps[1].status = isValid ? "done" : "error";
+    steps[1].message = feedback;
+    steps[1].output = JSON.stringify({ isValid, feedback }, null, 2);
+  } catch (err: any) {
+    steps[1].status = "error";
+    steps[1].message = err.message ?? "Passage validation failed";
+    throw new GenerationError(`Step 2 failed: ${err.message}`, { tokensUsed: accumulatedTokens });
+  }
 
   // Even if not perfect, continue (the feedback is logged)
 
   // Step 3: Generate questions
   steps[2].status = "running";
   report(2);
-  const rawQuestions = await step3GenerateQuestions(client, input, passage);
-  steps[2].status = "done";
-  steps[2].message = `Generated ${rawQuestions.length} questions`;
-  steps[2].output = rawQuestions.map((q, i) => `${i + 1}. [${q.format}] ${q.questionText}`).join("\n");
+  let rawQuestions: Array<Record<string, unknown>>;
+  try {
+    const s3 = await step3GenerateQuestions(client, input, passage);
+    rawQuestions = s3.questions;
+    accumulatedTokens += s3.tokensUsed;
+    steps[2].status = "done";
+    steps[2].message = `Generated ${rawQuestions.length} questions`;
+    steps[2].output = rawQuestions.map((q, i) => `${i + 1}. [${q.format}] ${q.questionText}`).join("\n");
+  } catch (err: any) {
+    steps[2].status = "error";
+    steps[2].message = err.message ?? "Question generation failed";
+    throw new GenerationError(`Step 3 failed: ${err.message}`, { tokensUsed: accumulatedTokens });
+  }
 
   // Step 4: Self-validate
   steps[3].status = "running";
   report(3);
-  const { correctedQuestions, confidence } = await step4SelfValidate(
-    client,
-    input,
-    passage,
-    rawQuestions,
-  );
-  steps[3].status = "done";
-  steps[3].message = `Confidence score: ${confidence}%`;
-  steps[3].output = `Overall Confidence: ${confidence}%\nTotal Questions: ${correctedQuestions.length}`;
+  let correctedQuestions: Array<Record<string, unknown>>;
+  let confidence: number;
+  try {
+    const s4 = await step4SelfValidate(client, input, passage, rawQuestions);
+    correctedQuestions = s4.correctedQuestions;
+    confidence = s4.confidence;
+    accumulatedTokens += s4.tokensUsed;
+    steps[3].status = "done";
+    steps[3].message = `Confidence score: ${confidence}%`;
+    steps[3].output = `Overall Confidence: ${confidence}%\nTotal Questions: ${correctedQuestions.length}`;
+  } catch (err: any) {
+    steps[3].status = "error";
+    steps[3].message = err.message ?? "Self-validation failed";
+    throw new GenerationError(`Step 4 failed: ${err.message}`, { tokensUsed: accumulatedTokens });
+  }
 
   // Parse and validate final questions
   const questions = correctedQuestions
@@ -333,7 +375,9 @@ export async function generateQuestionsAgentic(
     .filter((q): q is NonNullable<typeof q> => q !== null);
 
   if (questions.length === 0) {
-    throw new Error("No valid questions generated after agentic validation");
+    throw new GenerationError("No valid questions generated after agentic validation", {
+      tokensUsed: accumulatedTokens,
+    });
   }
 
   return {
@@ -342,6 +386,7 @@ export async function generateQuestionsAgentic(
       model: input.apiKeyConfig.model,
       durationMs: Date.now() - start,
       mode: "agentic",
+      tokensUsed: accumulatedTokens,
     },
   };
 }

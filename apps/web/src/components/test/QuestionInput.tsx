@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Input } from "@labas/ui/components/input";
 
 const MCQ_FORMATS = [
@@ -51,6 +52,57 @@ function normalizeTriStateKey(
     NO: "NO",
   };
   return alias[compact] ?? u;
+}
+
+/** Debounced text input to avoid parent re-render on every keystroke */
+function DebouncedTextInput({
+  value,
+  onChange,
+  disabled,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (val: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+  className?: string;
+}) {
+  const [localValue, setLocalValue] = useState(value);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  // Sync when prop value changes from outside (e.g. restore from server)
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const val = e.target.value;
+      setLocalValue(val);
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        onChange(val);
+      }, 400);
+    },
+    [onChange],
+  );
+
+  const handleBlur = useCallback(() => {
+    clearTimeout(debounceRef.current);
+    onChange(localValue);
+  }, [localValue, onChange]);
+
+  return (
+    <Input
+      value={localValue}
+      onChange={handleChange}
+      onBlur={handleBlur}
+      disabled={disabled}
+      placeholder={placeholder}
+      className={className}
+    />
+  );
 }
 
 export function QuestionInput({
@@ -187,10 +239,11 @@ export function QuestionInput({
     );
   }
 
+  // Fallback: debounced text input for fill_blank and other free-text formats
   return (
-    <Input
+    <DebouncedTextInput
       value={value}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={onChange}
       disabled={disabled}
       placeholder="Ketik jawaban Anda..."
       className="bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-lg)]"

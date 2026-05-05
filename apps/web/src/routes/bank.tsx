@@ -21,6 +21,7 @@ import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { usePackageBuilder } from "@/hooks/use-package-builder";
 import { AutoBundleModal } from "@/components/bank/AutoBundleModal";
 import { QuestionDetailModal } from "@/components/bank/QuestionDetailModal";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/bank")({
   component: BankComponent,
@@ -249,7 +250,7 @@ function BankComponent() {
       setBundleTitle("");
       setBundleDescription("");
     } catch (err: any) {
-      alert("Gagal membuat paket: " + err.message);
+      toast.error("Gagal membuat paket", { description: err.message });
     }
   };
 
@@ -269,9 +270,9 @@ function BankComponent() {
       setBundleSections([]);
       setBundleTitle("");
       setBundleDescription("");
-      alert("Combo paket berhasil dibuat!");
+      toast.success("Combo paket berhasil dibuat!");
     } catch (err: any) {
-      alert("Gagal membuat combo: " + err.message);
+      toast.error("Gagal membuat combo", { description: err.message });
     }
   };
 

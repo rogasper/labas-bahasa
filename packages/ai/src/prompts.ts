@@ -131,6 +131,26 @@ export function buildQuickModePrompt(input: GenerationInput): string {
       "difficulty": ${difficulty},
       "skillTags": ["grammar", "article", "case"]
     }`,
+    character_reading: `{
+      "format": "character_reading",
+      "passageText": "...",
+      "questionText": "How is the character '...' read in this context?",
+      "options": [{"key": "A", "text": "..."}, ...],
+      "correctAnswer": "A",
+      "explanation": "...",
+      "difficulty": ${difficulty},
+      "skillTags": ["character", "reading"]
+    }`,
+    sentence_arrangement: `{
+      "format": "sentence_arrangement",
+      "passageText": "...",
+      "questionText": "Arrange the following sentences into the correct order:",
+      "options": [{"key": "A", "text": "..."}, ...],
+      "correctAnswer": "A",
+      "explanation": "...",
+      "difficulty": ${difficulty},
+      "skillTags": ["reading", "sentence_structure"]
+    }`,
   };
 
   const formatExamples = formats
@@ -152,7 +172,7 @@ INSTRUCTIONS:
 - Each question must have:
   * a reading passage (passageText)
   * a clear question prompt (questionText)
-  * a correct answer (correctAnswer) - dijelaskan dengan bahasa Indonesia
+  * a correct answer (correctAnswer)
   * an explanation (explanation) - dijelaskan dengan bahasa Indonesia
   * difficulty level (${difficulty})
   * relevant skill tags (skillTags)

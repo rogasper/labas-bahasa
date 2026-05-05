@@ -1,1 +1,1 @@
-ALTER TABLE "generation_job" ADD COLUMN "logs" jsonb;
+ALTER TABLE IF EXISTS "generation_job" ADD COLUMN IF NOT EXISTS "logs" jsonb;

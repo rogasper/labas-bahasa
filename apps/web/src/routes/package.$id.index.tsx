@@ -8,6 +8,7 @@ import { Card, CardContent } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { formatLabel } from "@/lib/format";
 import { EditPackageModal } from "@/components/package/EditPackageModal";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/package/$id/")({
   component: PackageDetailComponent,
@@ -194,7 +195,7 @@ function PackageDetailComponent() {
             onClick={() => {
               const url = `${window.location.origin}/package/${id}`;
               navigator.clipboard.writeText(url);
-              alert("Link paket disalin ke clipboard!");
+              toast.success("Link paket disalin ke clipboard!");
             }}
             className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
           >

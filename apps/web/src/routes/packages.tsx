@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@labas/ui/components/select";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/packages")({
   component: PackagesComponent,
@@ -289,8 +290,8 @@ function PackagesComponent() {
                           <button
                             onClick={() => {
                               const url = `${window.location.origin}/package/${pkg.id}`;
-                              navigator.clipboard.writeText(url);
-                              alert("Link paket disalin!");
+                            navigator.clipboard.writeText(url);
+                            toast.success("Link paket disalin!");
                             }}
                             className="text-xs text-[var(--matcha-600)] hover:bg-[var(--matcha-300)]/20 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
                           >

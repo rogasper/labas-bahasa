@@ -25,6 +25,8 @@ export const FORMATS = [
   "kanji_reading",
   "particle_choice",
   "article_case",
+  "character_reading",
+  "sentence_arrangement",
 ];
 
 export const DIFFICULTIES = [

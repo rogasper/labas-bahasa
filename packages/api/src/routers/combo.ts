@@ -210,6 +210,7 @@ export const comboRouter = router({
     .mutation(async ({ ctx, input }) => {
       const { sections, ...pkgData } = input;
 
+      // 1. Create combo record
       const [combo] = await db
         .insert(comboPackage)
         .values({
@@ -229,7 +230,91 @@ export const comboRouter = router({
         })),
       );
 
-      return combo;
+      // 2. Derive examTypeId from the first source package
+      const firstSourcePkgId = sections[0]?.sourcePackageId;
+      let examTypeId = "";
+      if (firstSourcePkgId) {
+        const [srcPkg] = await db
+          .select({ examTypeId: testPackage.examTypeId })
+          .from(testPackage)
+          .where(eq(testPackage.id, firstSourcePkgId))
+          .limit(1);
+        examTypeId = srcPkg?.examTypeId ?? "";
+      }
+
+      // 3. Also create a testPackage so the combo appears in /packages
+      const [pkg] = await db
+        .insert(testPackage)
+        .values({
+          title: pkgData.title,
+          description: pkgData.description,
+          examTypeId,
+          creatorUserId: ctx.session.user.id,
+          isPublic: pkgData.isPublic,
+          totalQuestions: 0,
+          totalSections: 0,
+          estimatedDurationMin: sections.length * 20, // rough estimate
+        })
+        .returning();
+
+      if (pkg) {
+        // 4. Duplicate each source section into the new package
+        const sourceSectionIds = sections.map((s) => s.sourceSectionId);
+        const sourceSections = sourceSectionIds.length > 0
+          ? await db
+              .select()
+              .from(packageSection)
+              .where(inArray(packageSection.id, sourceSectionIds))
+          : [];
+
+        const sourceSectionMap = new Map(sourceSections.map((s) => [s.id, s]));
+
+        let totalQuestions = 0;
+
+        for (const secInput of sections) {
+          const srcSec = sourceSectionMap.get(secInput.sourceSectionId);
+          if (!srcSec) continue;
+
+          const [newSec] = await db
+            .insert(packageSection)
+            .values({
+              packageId: pkg.id,
+              sectionTypeId: srcSec.sectionTypeId,
+              title: srcSec.title,
+              orderIndex: secInput.orderIndex,
+            })
+            .returning();
+
+          // Copy questions from source section
+          const srcQuestions = await db
+            .select()
+            .from(sectionQuestion)
+            .where(eq(sectionQuestion.sectionId, secInput.sourceSectionId))
+            .orderBy(sectionQuestion.orderIndex);
+
+          if (newSec && srcQuestions.length > 0) {
+            await db.insert(sectionQuestion).values(
+              srcQuestions.map((sq, idx) => ({
+                sectionId: newSec.id,
+                questionId: sq.questionId,
+                orderIndex: idx,
+              })),
+            );
+            totalQuestions += srcQuestions.length;
+          }
+        }
+
+        // Update totals
+        await db
+          .update(testPackage)
+          .set({
+            totalSections: sections.length,
+            totalQuestions,
+          })
+          .where(eq(testPackage.id, pkg.id));
+      }
+
+      return { ...combo, packageId: pkg?.id };
     }),
 
   update: protectedProcedure

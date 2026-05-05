@@ -2,10 +2,14 @@ import { useState, useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "@/utils/trpc";
 import type { GenerationResult } from "@labas/ai";
+import { authClient } from "@/lib/auth-client";
 
 const STORAGE_KEY = "labas_active_job";
 
 export function useGenerationJob() {
+  const { data: session } = authClient.useSession();
+  const isAuthenticated = !!session;
+
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [generatedPackageId, setGeneratedPackageId] = useState<string | null>(null);
@@ -42,6 +46,7 @@ export function useGenerationJob() {
   // Fallback: check myJobs for active jobs
   const myJobsQuery = useQuery({
     ...trpc.ai.myJobs.queryOptions({ limit: 10, offset: 0 }),
+    enabled: isAuthenticated,
     refetchInterval: 3000,
   });
 
@@ -56,7 +61,7 @@ export function useGenerationJob() {
 
   // Poll job status
   const jobQuery = useQuery({
-    ...trpc.ai.getJobStatus.queryOptions({ jobId: jobId! }, { enabled: !!jobId }),
+    ...trpc.ai.getJobStatus.queryOptions({ jobId: jobId! }, { enabled: !!jobId && isAuthenticated }),
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return 1000;

@@ -23,6 +23,7 @@ import {
   FORMATS,
   TOPICS,
   DIFFICULTIES,
+  QUESTION_COUNT_PRESETS,
 } from "@/lib/generate-constants";
 import "flag-icons/css/flag-icons.min.css";
 
@@ -71,6 +72,19 @@ function RouteComponent() {
   const [questionCount, setQuestionCount] = useState(5);
   const [weaknessAlign, setWeaknessAlign] = useState(75);
   const [mode, setMode] = useState<"quick" | "agentic">("quick");
+
+  // Reset selected formats when exam type changes to only keep valid ones
+  useEffect(() => {
+    setSelectedFormats((prev) => {
+      const valid = prev.filter((f) =>
+        FORMATS.find((fmt) => fmt.id === f)?.allowedExams.includes(examType),
+      );
+      if (valid.length === 0) {
+        return ["multiple_choice"];
+      }
+      return valid;
+    });
+  }, [examType]);
 
   const generate = useMutation({
     ...trpc.ai.generate.mutationOptions(),
@@ -281,7 +295,7 @@ function RouteComponent() {
           <div className="flex flex-col gap-4">
             <label className="font-headline text-xl font-bold text-[var(--clay-black)]">Format Soal</label>
             <div className="flex flex-wrap gap-2">
-              {FORMATS.map((f) => (
+              {FORMATS.filter((f) => f.allowedExams.includes(examType)).map((f) => (
                 <button
                   key={f.id}
                   onClick={() => toggleFormat(f.id)}
@@ -328,14 +342,34 @@ function RouteComponent() {
           {/* Question Count */}
           <div className="flex flex-col gap-4">
             <label className="font-headline text-xl font-bold text-[var(--clay-black)]">Jumlah Soal: {questionCount}</label>
-            <input
-              type="range"
-              min={1}
-              max={20}
-              value={questionCount}
-              onChange={(e) => setQuestionCount(Number(e.target.value))}
-              className="w-full h-2 bg-[var(--warm-silver)] rounded-full appearance-none cursor-pointer accent-[var(--clay-black)]"
-            />
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {QUESTION_COUNT_PRESETS.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => setQuestionCount(p.value)}
+                  className={`py-4 px-2 rounded-[var(--radius-lg)] text-sm font-semibold transition-all clay-hover flex flex-col items-center gap-1 ${
+                    questionCount === p.value
+                      ? "bg-[var(--clay-black)] text-[var(--pure-white)] clay-shadow"
+                      : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] border-2 border-[var(--oat-border)]"
+                  }`}
+                >
+                  <span>{p.label}</span>
+                  <span className={`text-xs ${questionCount === p.value ? "text-[var(--pure-white)]/70" : "text-[var(--warm-charcoal)]/70"}`}>{p.desc}</span>
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3 mt-2">
+              <span className="text-xs font-medium text-[var(--warm-charcoal)] whitespace-nowrap">Custom:</span>
+              <input
+                type="range"
+                min={1}
+                max={40}
+                value={questionCount}
+                onChange={(e) => setQuestionCount(Number(e.target.value))}
+                className="w-full h-2 bg-[var(--warm-silver)] rounded-full appearance-none cursor-pointer accent-[var(--clay-black)]"
+              />
+              <span className="text-xs font-bold text-[var(--clay-black)] w-6 text-right">{questionCount}</span>
+            </div>
           </div>
         </div>
 

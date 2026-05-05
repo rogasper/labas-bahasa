@@ -1,5 +1,6 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { useTestSession } from "@/hooks/use-test-session";
@@ -21,10 +22,27 @@ export const Route = createFileRoute("/package/$id/take")({
 
 function TakeTestComponent() {
   const { id: packageId } = Route.useParams();
-  const { data: session } = authClient.useSession();
+  const navigate = useNavigate();
 
   const packageQuery = useQuery(trpc.package.getById.queryOptions({ id: packageId }));
   const pkg = packageQuery.data;
+
+  // Check if there's an active in-progress attempt for this package
+  const activeAttemptQuery = useQuery(
+    trpc.attempt.getActiveAttempt.queryOptions(
+      { packageId },
+      { enabled: !!packageId },
+    ),
+  );
+
+  useEffect(() => {
+    if (activeAttemptQuery.data?.id) {
+      navigate({
+        to: "/package/$id/attempt/$attemptId",
+        params: { id: packageId, attemptId: activeAttemptQuery.data.id },
+      });
+    }
+  }, [activeAttemptQuery.data, navigate, packageId]);
 
   const {
     attemptId,
@@ -46,7 +64,7 @@ function TakeTestComponent() {
     startQuestionTimer,
   } = useTestSession(packageId);
 
-  if (packageQuery.isLoading) {
+  if (packageQuery.isLoading || activeAttemptQuery.isLoading) {
     return (
       <div className="min-h-screen pt-8 pb-32 px-6 md:px-12 lg:px-16 max-w-4xl mx-auto bg-[var(--warm-cream)]">
         <div className="h-8 w-48 bg-[var(--oat-light)] animate-pulse rounded mb-4" />

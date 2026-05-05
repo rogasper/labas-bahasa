@@ -92,25 +92,29 @@ export function TestBlueprintCard({
           <div className="flex gap-1 p-1 rounded-[var(--radius-lg)] bg-[var(--oat-light)]">
             <button
               onClick={() => setMode("quick")}
-              className={`flex-1 py-2 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all ${
+              className={`flex-1 py-2 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                 mode === "quick"
                   ? "bg-[var(--pure-white)] text-[var(--clay-black)] clay-shadow"
                   : "text-[var(--warm-charcoal)] hover:text-[var(--clay-black)]"
               }`}
             >
               <MaterialIcon name="flash_on" className="text-sm mr-1" />
+              <span>
               Quick
+              </span>
             </button>
             <button
               onClick={() => setMode("agentic")}
-              className={`flex-1 py-2 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all ${
+              className={`flex-1 py-2 px-3 rounded-[var(--radius-md)] text-sm font-semibold transition-all flex items-center justify-center gap-2 ${
                 mode === "agentic"
                   ? "bg-[var(--pure-white)] text-[var(--clay-black)] clay-shadow"
                   : "text-[var(--warm-charcoal)] hover:text-[var(--clay-black)]"
               }`}
             >
               <MaterialIcon name="psychology" className="text-sm mr-1" />
+              <span>
               Agentic
+              </span>
             </button>
           </div>
 

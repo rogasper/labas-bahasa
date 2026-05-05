@@ -283,6 +283,49 @@ export const questionRating = pgTable(
   ],
 );
 
+// ── Question Feedback (thumbs up/down) ─────────────────────
+
+export const questionFeedback = pgTable(
+  "question_feedback",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    questionId: uuid("question_id")
+      .notNull()
+      .references(() => question.id, { onDelete: "cascade" }),
+    type: text("type").notNull(), // "up" | "down"
+    note: text("note"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    unique("questionFeedback_unique_idx").on(table.userId, table.questionId),
+    index("questionFeedback_questionId_idx").on(table.questionId),
+  ],
+);
+
+// ── Package Ratings ────────────────────────────────────────
+
+export const packageRating = pgTable(
+  "package_rating",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    packageId: uuid("package_id")
+      .notNull()
+      .references(() => testPackage.id, { onDelete: "cascade" }),
+    score: integer("score").notNull(), // 1-5
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    unique("packageRating_unique_idx").on(table.userId, table.packageId),
+    index("packageRating_packageId_idx").on(table.packageId),
+  ],
+);
+
 // ── Relations ──────────────────────────────────────────────
 
 // Need user from auth.ts for relations
@@ -303,6 +346,7 @@ export const questionRelations = relations(question, ({ one, many }) => ({
   }),
   sectionQuestions: many(sectionQuestion),
   ratings: many(questionRating),
+  feedbacks: many(questionFeedback),
   answers: many(answer),
 }));
 
@@ -426,6 +470,28 @@ export const questionRatingRelations = relations(questionRating, ({ one }) => ({
   question: one(question, {
     fields: [questionRating.questionId],
     references: [question.id],
+  }),
+}));
+
+export const questionFeedbackRelations = relations(questionFeedback, ({ one }) => ({
+  user: one(user, {
+    fields: [questionFeedback.userId],
+    references: [user.id],
+  }),
+  question: one(question, {
+    fields: [questionFeedback.questionId],
+    references: [question.id],
+  }),
+}));
+
+export const packageRatingRelations = relations(packageRating, ({ one }) => ({
+  user: one(user, {
+    fields: [packageRating.userId],
+    references: [user.id],
+  }),
+  package: one(testPackage, {
+    fields: [packageRating.packageId],
+    references: [testPackage.id],
   }),
 }));
 

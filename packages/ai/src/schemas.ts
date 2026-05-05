@@ -21,6 +21,8 @@ export const questionFormatSchema = z.enum([
   "kanji_reading",
   "particle_choice",
   "article_case",
+  "character_reading",
+  "sentence_arrangement",
 ]);
 
 export const difficultySchema = z.number().int().min(1).max(5);
@@ -145,6 +147,18 @@ export const articleCaseQuestionSchema = baseQuestionSchema.extend({
   correctAnswer: z.string(),
 });
 
+export const characterReadingQuestionSchema = baseQuestionSchema.extend({
+  format: z.literal("character_reading"),
+  options: z.array(multipleChoiceOptionSchema).min(2).max(6),
+  correctAnswer: z.string(),
+});
+
+export const sentenceArrangementQuestionSchema = baseQuestionSchema.extend({
+  format: z.literal("sentence_arrangement"),
+  options: z.array(multipleChoiceOptionSchema).min(2).max(6),
+  correctAnswer: z.string(),
+});
+
 // ── Unified Question Schema ────────────────────────────────
 
 export const questionSchema = z.discriminatedUnion("format", [
@@ -163,6 +177,8 @@ export const questionSchema = z.discriminatedUnion("format", [
   kanjiReadingQuestionSchema,
   particleChoiceQuestionSchema,
   articleCaseQuestionSchema,
+  characterReadingQuestionSchema,
+  sentenceArrangementQuestionSchema,
 ]);
 
 export type Question = z.infer<typeof questionSchema>;
@@ -175,7 +191,7 @@ export const generationInputSchema = z.object({
   formats: z.array(questionFormatSchema).min(1),
   difficulty: difficultySchema,
   topics: z.array(z.string()).min(1),
-  questionCount: z.number().int().min(1).max(20),
+  questionCount: z.number().int().min(1).max(40),
   mode: z.enum(["quick", "agentic"]).default("quick"),
   apiKeyConfig: aiKeyConfigSchema,
 });

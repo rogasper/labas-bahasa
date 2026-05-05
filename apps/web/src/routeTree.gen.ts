@@ -13,6 +13,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PackagesRouteImport } from './routes/packages'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LandingRouteImport } from './routes/landing'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as GenerateRouteImport } from './routes/generate'
@@ -24,6 +25,7 @@ import { Route as PackageIdRouteImport } from './routes/package.$id'
 import { Route as AttemptIdRouteImport } from './routes/attempt.$id'
 import { Route as PackageIdIndexRouteImport } from './routes/package.$id.index'
 import { Route as PackageIdTakeRouteImport } from './routes/package.$id.take'
+import { Route as PackageIdAttemptAttemptIdRouteImport } from './routes/package.$id.attempt.$attemptId'
 
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
@@ -43,6 +45,11 @@ const MeRoute = MeRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LandingRoute = LandingRouteImport.update({
+  id: '/landing',
+  path: '/landing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const JobsRoute = JobsRouteImport.update({
@@ -100,6 +107,12 @@ const PackageIdTakeRoute = PackageIdTakeRouteImport.update({
   path: '/take',
   getParentRoute: () => PackageIdRoute,
 } as any)
+const PackageIdAttemptAttemptIdRoute =
+  PackageIdAttemptAttemptIdRouteImport.update({
+    id: '/attempt/$attemptId',
+    path: '/attempt/$attemptId',
+    getParentRoute: () => PackageIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -108,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/generate': typeof GenerateRoute
   '/history': typeof HistoryRoute
   '/jobs': typeof JobsRoute
+  '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/packages': typeof PackagesRoute
@@ -117,6 +131,7 @@ export interface FileRoutesByFullPath {
   '/profile/$userId': typeof ProfileUserIdRoute
   '/package/$id/take': typeof PackageIdTakeRoute
   '/package/$id/': typeof PackageIdIndexRoute
+  '/package/$id/attempt/$attemptId': typeof PackageIdAttemptAttemptIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -125,6 +140,7 @@ export interface FileRoutesByTo {
   '/generate': typeof GenerateRoute
   '/history': typeof HistoryRoute
   '/jobs': typeof JobsRoute
+  '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/packages': typeof PackagesRoute
@@ -133,6 +149,7 @@ export interface FileRoutesByTo {
   '/profile/$userId': typeof ProfileUserIdRoute
   '/package/$id/take': typeof PackageIdTakeRoute
   '/package/$id': typeof PackageIdIndexRoute
+  '/package/$id/attempt/$attemptId': typeof PackageIdAttemptAttemptIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -142,6 +159,7 @@ export interface FileRoutesById {
   '/generate': typeof GenerateRoute
   '/history': typeof HistoryRoute
   '/jobs': typeof JobsRoute
+  '/landing': typeof LandingRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
   '/packages': typeof PackagesRoute
@@ -151,6 +169,7 @@ export interface FileRoutesById {
   '/profile/$userId': typeof ProfileUserIdRoute
   '/package/$id/take': typeof PackageIdTakeRoute
   '/package/$id/': typeof PackageIdIndexRoute
+  '/package/$id/attempt/$attemptId': typeof PackageIdAttemptAttemptIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -161,6 +180,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/history'
     | '/jobs'
+    | '/landing'
     | '/login'
     | '/me'
     | '/packages'
@@ -170,6 +190,7 @@ export interface FileRouteTypes {
     | '/profile/$userId'
     | '/package/$id/take'
     | '/package/$id/'
+    | '/package/$id/attempt/$attemptId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -178,6 +199,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/history'
     | '/jobs'
+    | '/landing'
     | '/login'
     | '/me'
     | '/packages'
@@ -186,6 +208,7 @@ export interface FileRouteTypes {
     | '/profile/$userId'
     | '/package/$id/take'
     | '/package/$id'
+    | '/package/$id/attempt/$attemptId'
   id:
     | '__root__'
     | '/'
@@ -194,6 +217,7 @@ export interface FileRouteTypes {
     | '/generate'
     | '/history'
     | '/jobs'
+    | '/landing'
     | '/login'
     | '/me'
     | '/packages'
@@ -203,6 +227,7 @@ export interface FileRouteTypes {
     | '/profile/$userId'
     | '/package/$id/take'
     | '/package/$id/'
+    | '/package/$id/attempt/$attemptId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -212,6 +237,7 @@ export interface RootRouteChildren {
   GenerateRoute: typeof GenerateRoute
   HistoryRoute: typeof HistoryRoute
   JobsRoute: typeof JobsRoute
+  LandingRoute: typeof LandingRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
   PackagesRoute: typeof PackagesRoute
@@ -249,6 +275,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/landing': {
+      id: '/landing'
+      path: '/landing'
+      fullPath: '/landing'
+      preLoaderRoute: typeof LandingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/jobs': {
@@ -328,17 +361,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PackageIdTakeRouteImport
       parentRoute: typeof PackageIdRoute
     }
+    '/package/$id/attempt/$attemptId': {
+      id: '/package/$id/attempt/$attemptId'
+      path: '/attempt/$attemptId'
+      fullPath: '/package/$id/attempt/$attemptId'
+      preLoaderRoute: typeof PackageIdAttemptAttemptIdRouteImport
+      parentRoute: typeof PackageIdRoute
+    }
   }
 }
 
 interface PackageIdRouteChildren {
   PackageIdTakeRoute: typeof PackageIdTakeRoute
   PackageIdIndexRoute: typeof PackageIdIndexRoute
+  PackageIdAttemptAttemptIdRoute: typeof PackageIdAttemptAttemptIdRoute
 }
 
 const PackageIdRouteChildren: PackageIdRouteChildren = {
   PackageIdTakeRoute: PackageIdTakeRoute,
   PackageIdIndexRoute: PackageIdIndexRoute,
+  PackageIdAttemptAttemptIdRoute: PackageIdAttemptAttemptIdRoute,
 }
 
 const PackageIdRouteWithChildren = PackageIdRoute._addFileChildren(
@@ -352,6 +394,7 @@ const rootRouteChildren: RootRouteChildren = {
   GenerateRoute: GenerateRoute,
   HistoryRoute: HistoryRoute,
   JobsRoute: JobsRoute,
+  LandingRoute: LandingRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
   PackagesRoute: PackagesRoute,

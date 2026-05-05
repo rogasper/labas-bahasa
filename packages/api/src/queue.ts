@@ -1,7 +1,7 @@
 import { Queue, Worker, type Job } from "bullmq";
 import IORedis from "ioredis";
 import { env } from "@labas/env/server";
-import { generateQuestionsQuick, generateQuestionsAgentic, type GenerationInput } from "@labas/ai";
+import { generateQuestionsQuick, generateQuestionsAgentic, GenerationError, type GenerationInput } from "@labas/ai";
 import { db } from "@labas/db";
 import { generationJob, question, testPackage, packageSection, sectionQuestion } from "@labas/db";
 import { and, eq, notInArray } from "drizzle-orm";
@@ -174,6 +174,11 @@ export const generationWorker = new Worker(
       }
     };
 
+    let approxTokens = 0;
+    const countToken = (token: string) => {
+      approxTokens += Math.ceil(token.length / 4);
+    };
+
     try {
       const selectedMode = input.mode;
       if (selectedMode === "agentic") {
@@ -182,11 +187,6 @@ export const generationWorker = new Worker(
       }
 
       startHeartbeat();
-
-      let approxTokens = 0;
-      const countToken = (token: string) => {
-        approxTokens += Math.ceil(token.length / 4);
-      };
 
       let result;
       try {
@@ -386,12 +386,25 @@ export const generationWorker = new Worker(
           .where(eq(generationJob.id, jobId));
         return;
       }
+
       await pushLog("error", err.message ?? String(err), "error");
+
+      // Extract token usage even on failure so users aren't left in the dark
+      let failedTokens: number | undefined;
+      if (err instanceof GenerationError) {
+        failedTokens = err.tokensUsed ?? undefined;
+      }
+      // For quick-mode network/streaming timeouts where approxTokens was accumulated
+      if (failedTokens == null && approxTokens > 0) {
+        failedTokens = approxTokens;
+      }
+
       await db
         .update(generationJob)
         .set({
           status: "failed",
           errorMessage: err.message ?? String(err),
+          tokensUsed: failedTokens,
           durationMs: Date.now() - start,
           completedAt: new Date(),
         })

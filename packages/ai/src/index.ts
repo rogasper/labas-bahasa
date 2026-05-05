@@ -4,3 +4,4 @@ export { generateQuestionsAgentic } from "./agentic";
 export type { AgenticProgress } from "./agentic";
 export { buildQuickModePrompt } from "./prompts";
 export * from "./schemas";
+export { GenerationError } from "./errors";

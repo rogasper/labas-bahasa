@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and, gte, sql } from "drizzle-orm";
 import { router, protectedProcedure } from "../index";
 import { generationInputSchema } from "@labas/ai/schemas";
 import { cancelGenerationJob, enqueueGeneration } from "../queue";
@@ -62,6 +62,52 @@ export const aiRouter = router({
         .offset(input?.offset ?? 0);
       return rows;
     }),
+
+  tokenUsageToday: protectedProcedure.query(async ({ ctx }) => {
+    const userId = ctx.session.user.id;
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [agg] = await db
+      .select({
+        totalTokens: sql<number>`coalesce(sum(${generationJob.tokensUsed}), 0)`,
+      })
+      .from(generationJob)
+      .where(
+        and(
+          eq(generationJob.userId, userId),
+          gte(generationJob.createdAt, startOfDay),
+        ),
+      );
+
+    const jobs = await db
+      .select({
+        id: generationJob.id,
+        createdAt: generationJob.createdAt,
+        mode: generationJob.mode,
+        examTypeId: generationJob.examTypeId,
+        sectionTypeId: generationJob.sectionTypeId,
+        questionCount: generationJob.questionCount,
+        tokensUsed: generationJob.tokensUsed,
+        status: generationJob.status,
+      })
+      .from(generationJob)
+      .where(
+        and(
+          eq(generationJob.userId, userId),
+          gte(generationJob.createdAt, startOfDay),
+        ),
+      )
+      .orderBy(desc(generationJob.createdAt));
+
+    return {
+      totalTokens: Number(agg?.totalTokens ?? 0),
+      jobs: jobs.map((j) => ({
+        ...j,
+        tokensUsed: j.tokensUsed ?? undefined,
+      })),
+    };
+  }),
 
   saveQuestions: protectedProcedure
     .input(

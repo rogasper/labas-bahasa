@@ -9,11 +9,18 @@ export const Route = createFileRoute("/login")({
 });
 
 function RouteComponent() {
-  const [showSignIn, setShowSignIn] = useState(false);
+  const [showSignIn, setShowSignIn] = useState(true);
 
-  return showSignIn ? (
-    <SignInForm onSwitchToSignUp={() => setShowSignIn(false)} />
-  ) : (
-    <SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
+  return (
+    <div className="flex h-screen w-full items-center justify-center bg-muted/30">
+      <div className="w-full max-w-md flex flex-col items-center">
+        <img src="/logo.png" alt="Labas Logo" className="h-20 w-auto mb-8" />
+        {showSignIn ? (
+          <SignInForm onSwitchToSignUp={() => setShowSignIn(false)} />
+        ) : (
+          <SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
+        )}
+      </div>
+    </div>
   );
 }

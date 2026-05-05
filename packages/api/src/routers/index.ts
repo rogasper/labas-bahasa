@@ -2,6 +2,7 @@ import { protectedProcedure, publicProcedure, router } from "../index";
 import { aiRouter } from "./ai";
 import { attemptRouter } from "./attempt";
 import { comboRouter } from "./combo";
+import { feedbackRouter } from "./feedback";
 import { questionRouter } from "./question";
 import { packageRouter } from "./package";
 import { profileRouter } from "./profile";
@@ -22,6 +23,7 @@ export const appRouter = router({
   ai: aiRouter,
   attempt: attemptRouter,
   combo: comboRouter,
+  feedback: feedbackRouter,
   question: questionRouter,
   package: packageRouter,
   profile: profileRouter,

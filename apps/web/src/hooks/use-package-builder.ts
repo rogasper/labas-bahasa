@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/utils/trpc";
+import { toast } from "sonner";
 
 export function usePackageBuilder() {
   const navigate = useNavigate();
@@ -51,7 +52,7 @@ export function usePackageBuilder() {
 
       navigate({ to: "/package/$id", params: { id: pkg.id } });
     } catch (err: any) {
-      alert("Gagal membuat paket: " + err.message);
+      toast.error("Gagal membuat paket", { description: err.message });
     }
   };
 
@@ -76,7 +77,7 @@ export function usePackageBuilder() {
     picked = picked.slice(0, params.count);
 
     if (picked.length === 0) {
-      alert("Tidak ada soal tersedia untuk ujian ini.");
+      toast.error("Tidak ada soal tersedia untuk ujian ini.");
       return;
     }
 
@@ -106,7 +107,7 @@ export function usePackageBuilder() {
 
       navigate({ to: "/package/$id", params: { id: pkg.id } });
     } catch (err: any) {
-      alert("Gagal membuat paket: " + err.message);
+      toast.error("Gagal membuat paket", { description: err.message });
     }
   };
 

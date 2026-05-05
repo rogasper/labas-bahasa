@@ -15,6 +15,20 @@
       "when": 1777620170000,
       "tag": "0001_add_logs_to_generation_job",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777604043426,
+      "tag": "0002_add_feedback_and_package_rating",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777620900000,
+      "tag": "0003_repair_feedback_and_package_rating",
+      "breakpoints": true
     }
   ]
 }
