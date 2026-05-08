@@ -219,12 +219,18 @@ export const packageRouter = router({
         }
       }
 
+      const isOwner = pkg.creatorUserId === userId;
+
       const sectionsWithQuestions = sections.map((section) => ({
         ...section,
         questions: sectionQuestions
           .filter((sq) => sq.sectionId === section.id && sq.question != null)
           .sort((a, b) => a.orderIndex - b.orderIndex)
-          .map((sq) => sq.question),
+          .map((sq) => {
+            if (isOwner) return sq.question;
+            const { correctAnswer, explanation, ...rest } = sq.question;
+            return rest;
+          }),
       }));
 
       return { ...pkg, sections: sectionsWithQuestions };

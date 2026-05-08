@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, sql, like, or } from "drizzle-orm";
+import { eq, and, desc, sql, like, or, inArray } from "drizzle-orm";
 import { router, protectedProcedure, publicProcedure } from "../index";
 import { db } from "@labas/db";
 import { question, examType, sectionType, user } from "@labas/db";
@@ -44,6 +44,11 @@ function buildSearchCondition(term: string) {
     like(question.questionText, pattern),
     like(question.explanation, pattern),
   );
+}
+
+function stripAnswer<T extends { correctAnswer?: string; explanation?: string | null }>(row: T) {
+  const { correctAnswer, explanation, ...rest } = row;
+  return rest as Omit<T, "correctAnswer" | "explanation">;
 }
 
 export const questionRouter = router({
@@ -108,7 +113,7 @@ export const questionRouter = router({
         .from(question)
         .where(where);
 
-      return { questions: rows, total: Number(countResult?.count ?? 0) };
+      return { questions: rows.map(stripAnswer), total: Number(countResult?.count ?? 0) };
     }),
 
   myQuestions: protectedProcedure
@@ -186,7 +191,8 @@ export const questionRouter = router({
       if (!row) return null;
       if (!row.isPublic && row.creatorUserId !== userId) return null;
 
-      return row;
+      if (row.creatorUserId === userId) return row;
+      return stripAnswer(row);
     }),
 
   create: protectedProcedure
@@ -279,5 +285,25 @@ export const questionRouter = router({
 
       await db.delete(question).where(eq(question.id, input.id));
       return { success: true };
+    }),
+
+  bulkPublish: protectedProcedure
+    .input(z.object({ ids: z.array(z.string().uuid()) }))
+    .mutation(async ({ ctx, input }) => {
+      const rows = await db
+        .select({ id: question.id, creatorUserId: question.creatorUserId, isPublic: question.isPublic })
+        .from(question)
+        .where(inArray(question.id, input.ids));
+
+      for (const row of rows) {
+        assertOwnership(row, ctx.session.user.id, "Question");
+      }
+
+      await db
+        .update(question)
+        .set({ isPublic: true })
+        .where(inArray(question.id, input.ids));
+
+      return { success: true, updated: rows.length };
     }),
 });

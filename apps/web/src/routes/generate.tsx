@@ -16,6 +16,7 @@ import {
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { TestBlueprintCard } from "@/components/generate/TestBlueprintCard";
 import { ResultSection } from "@/components/generate/ResultSection";
+import { PageTour, TourHelpButton } from "@/components/TourGuide";
 import {
   EXAM_TYPES,
   SECTIONS,
@@ -25,6 +26,7 @@ import {
   QUESTION_COUNT_PRESETS,
 } from "@/lib/generate-constants";
 import "flag-icons/css/flag-icons.min.css";
+import type { Step } from "react-joyride";
 
 const MAX_PARALLEL = 3;
 
@@ -199,8 +201,26 @@ function RouteComponent() {
           AI Exam Generator
         </h1>
         <p className="text-lg text-[var(--warm-charcoal)] max-w-2xl leading-relaxed">
-          Generate soal latihan dengan AI. Pilih section, format, dan topik — sisanya AI yang kerjakan.
+          Generate soal latihan dengan AI. Pilih exam, section, format, dan topik — sisanya AI yang kerjakan.
         </p>
+        <div className="mt-4 flex flex-wrap gap-3 text-sm text-[var(--warm-charcoal)]">
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--matcha-300)]/30 text-[var(--matcha-800)] font-medium">
+            <MaterialIcon name="looks_one" className="text-sm" />
+            Pilih exam &amp; section
+          </span>
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--slushie-500)]/20 text-[var(--slushie-800)] font-medium">
+            <MaterialIcon name="looks_two" className="text-sm" />
+            Atur jumlah &amp; format
+          </span>
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--lemon-400)]/30 text-[var(--lemon-800)] font-medium">
+            <MaterialIcon name="looks_3" className="text-sm" />
+            Generate &amp; simpan
+          </span>
+          <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--clay-black)]/10 text-[var(--clay-black)] font-medium">
+            <MaterialIcon name="looks_4" className="text-sm" />
+            Buat paket dari Bank Soal
+          </span>
+        </div>
       </section>
 
       {!hasConfigs && (
@@ -251,7 +271,7 @@ function RouteComponent() {
         <div className="lg:col-span-8 flex flex-col gap-10">
 
           {/* Exam Type */}
-          <div className="flex flex-col gap-4">
+          <div data-tour="generate-exam-type" className="flex flex-col gap-4">
             <label className="font-headline text-xl font-bold text-[var(--clay-black)]">Jenis Ujian</label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {EXAM_TYPES.map((t) => (
@@ -272,7 +292,7 @@ function RouteComponent() {
           </div>
 
           {/* Section Selection — Multi-select */}
-          <div className="flex flex-col gap-4">
+          <div data-tour="generate-section" className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <label className="font-headline text-xl font-bold text-[var(--clay-black)]">Section</label>
               <span className="text-xs text-[var(--warm-charcoal)]">
@@ -310,7 +330,7 @@ function RouteComponent() {
           </div>
 
           {/* Question Count */}
-          <div className="flex flex-col gap-4">
+          <div data-tour="generate-count" className="flex flex-col gap-4">
             <label className="font-headline text-xl font-bold text-[var(--clay-black)]">
               Jumlah Soal
               <span className="ml-2 text-sm font-normal text-[var(--warm-charcoal)]">{questionCount} soal</span>
@@ -373,7 +393,7 @@ function RouteComponent() {
           </div>
 
           {/* Difficulty */}
-          <div className="flex flex-col gap-4">
+          <div data-tour="generate-difficulty" className="flex flex-col gap-4">
             <label className="font-headline text-xl font-bold text-[var(--clay-black)]">Tingkat Kesulitan</label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {DIFFICULTIES.map((d, i) => (
@@ -393,7 +413,7 @@ function RouteComponent() {
           </div>
 
           {/* Format Selection */}
-          <div className="flex flex-col gap-4">
+          <div data-tour="generate-format" className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <label className="font-headline text-xl font-bold text-[var(--clay-black)]">Format Soal</label>
               <span className="text-xs text-[var(--warm-charcoal)]">
@@ -421,7 +441,7 @@ function RouteComponent() {
           </div>
 
           {/* Topic Focus */}
-          <div className="flex flex-col gap-4">
+          <div data-tour="generate-topic" className="flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <label className="font-headline text-xl font-bold text-[var(--clay-black)]">Topik</label>
               <span className="text-xs text-[var(--warm-charcoal)]">
@@ -451,7 +471,7 @@ function RouteComponent() {
           </div>
 
           {/* Weakness Alignment */}
-          <div className="flex flex-col gap-4">
+          <div data-tour="generate-weakness" className="flex flex-col gap-4">
             <div className="flex justify-between items-end">
               <label className="font-headline text-xl font-bold text-[var(--clay-black)]">Fokus Latihan</label>
               <span className="text-sm font-medium text-[var(--matcha-800)] bg-[var(--matcha-300)] px-3 py-1 rounded-full">
@@ -476,22 +496,24 @@ function RouteComponent() {
         </div>
 
         {/* Live Preview Card */}
-        <TestBlueprintCard
-          examType={examType}
-          selectedSections={selectedSections}
-          selectedFormats={selectedFormats}
-          questionCount={questionCount}
-          weaknessAlign={weaknessAlign}
-          mode={mode}
-          setMode={setMode}
-          activeCount={activeCount}
-          maxParallel={MAX_PARALLEL}
-          generatePending={generate.isPending}
-          hasKey={hasConfigs}
-          error={error}
-          onGenerate={handleGenerate}
-          onDismissError={() => setError(null)}
-        />
+        <div data-tour="generate-blueprint" className="lg:col-span-4">
+          <TestBlueprintCard
+            examType={examType}
+            selectedSections={selectedSections}
+            selectedFormats={selectedFormats}
+            questionCount={questionCount}
+            weaknessAlign={weaknessAlign}
+            mode={mode}
+            setMode={setMode}
+            activeCount={activeCount}
+            maxParallel={MAX_PARALLEL}
+            generatePending={generate.isPending}
+            hasKey={hasConfigs}
+            error={error}
+            onGenerate={handleGenerate}
+            onDismissError={() => setError(null)}
+          />
+        </div>
       </div>
 
       {/* Results with Tabs */}
@@ -562,6 +584,66 @@ function RouteComponent() {
           </div>
         )}
       </div>
+
+      <PageTour
+        storageKey={GENERATE_TOUR_KEY}
+        autoDelay={600}
+        steps={generatePageSteps}
+      />
+      <TourHelpButton storageKey={GENERATE_TOUR_KEY} />
     </div>
   );
 }
+
+// ── Generate page tour ──
+const GENERATE_TOUR_KEY = "labas-page-tour-generate";
+const generatePageSteps: Step[] = [
+  {
+    target: "[data-tour='generate-exam-type']",
+    title: "Jenis Ujian",
+    content: "Pilih jenis ujian yang ingin kamu latih. Tersedia IELTS, TOEFL, JLPT, HSK, dan Goethe.",
+    spotlightPadding: 8,
+  },
+  {
+    target: "[data-tour='generate-section']",
+    title: "Section",
+    content: "Pilih section yang ingin digenerate. Bisa pilih lebih dari satu. Mode Agentic dengan ≥20 soal otomatis membagi soal ke setiap section.",
+    spotlightPadding: 8,
+  },
+  {
+    target: "[data-tour='generate-count']",
+    title: "Jumlah Soal",
+    content: "Atur jumlah soal yang ingin digenerate via preset atau slider. Maksimal 40 soal per generate.",
+    spotlightPadding: 8,
+  },
+  {
+    target: "[data-tour='generate-difficulty']",
+    title: "Tingkat Kesulitan",
+    content: "Pilih tingkat kesulitan: Beginner, Intermediate, Academic, atau Expert.",
+    spotlightPadding: 8,
+  },
+  {
+    target: "[data-tour='generate-format']",
+    title: "Format Soal",
+    content: "Pilih format soal (multiple choice, true/false, dll). Format tersedia tergantung exam type yang dipilih.",
+    spotlightPadding: 8,
+  },
+  {
+    target: "[data-tour='generate-topic']",
+    title: "Topik",
+    content: "Pilih topik yang ingin difokuskan. Bisa pilih lebih dari satu topik.",
+    spotlightPadding: 8,
+  },
+  {
+    target: "[data-tour='generate-weakness']",
+    title: "Intelligent Focus",
+    content: "Atur fokus pada kelemahan kamu. AI akan menarget area yang perlu ditingkatkan berdasarkan riwayat jawaban.",
+    spotlightPadding: 8,
+  },
+  {
+    target: "[data-tour='generate-blueprint']",
+    title: "Test Blueprint & Generate",
+    content: "Ringkasan konfigurasi kamu. Pilih mode Quick (cepat) atau Agentic (multi-tahap). Klik 'Generate & Launch' untuk memulai!",
+    spotlightPadding: 8,
+  },
+];

@@ -15,6 +15,9 @@ import {
   SelectValue,
 } from "@labas/ui/components/select";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { GettingStartedCard } from "@/components/GettingStartedCard";
+import { PageTour, TourHelpButton } from "@/components/TourGuide";
+import type { Step } from "react-joyride";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/packages")({
@@ -117,7 +120,7 @@ function PackagesComponent() {
   return (
     <div className="min-h-screen pt-8 pb-32 px-6 md:px-12 lg:px-16 max-w-7xl mx-auto bg-[var(--warm-cream)]">
       <section className="mb-8">
-        <div className="flex items-center justify-between">
+        <div data-tour="packages-header" className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-headline font-extrabold text-[var(--clay-black)] tracking-tight">
               Paket Soal
@@ -134,6 +137,9 @@ function PackagesComponent() {
           </Link>
         </div>
       </section>
+
+      {/* Getting Started Guide */}
+      <GettingStartedCard />
 
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
@@ -160,7 +166,7 @@ function PackagesComponent() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-3 mb-8">
+      <div data-tour="packages-filters" className="flex flex-col md:flex-row gap-3 mb-8">
         <div className="relative flex-1 max-w-md">
           <MaterialIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--warm-charcoal)]" />
           <Input
@@ -196,18 +202,32 @@ function PackagesComponent() {
           ))}
         </div>
       ) : packages.length === 0 ? (
-        <div className="text-center py-20">
+        <div className="text-center py-16">
           <MaterialIcon name="folder_open" className="text-6xl text-[var(--warm-silver)] mx-auto mb-4" />
           <p className="text-lg text-[var(--warm-charcoal)] font-semibold">Tidak ada paket ditemukan</p>
-          <p className="text-sm text-[var(--warm-silver)] mt-1">
+          <p className="text-sm text-[var(--warm-silver)] mt-1 mb-6">
             {tab === "mine"
               ? "Belum ada paket yang Anda buat. Buat paket dari Bank Soal."
-              : "Buat paket soal pertama Anda"}
+              : "Belum ada paket publik. Buat paket soal pertama Anda"}
           </p>
+          <div className="flex items-center justify-center gap-3">
+            <Link to="/generate">
+              <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] rounded-[var(--radius-lg)]">
+                <MaterialIcon name="auto_awesome" className="mr-2" />
+                Generate Soal
+              </Button>
+            </Link>
+            <Link to="/bank">
+              <Button variant="outline" className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)]">
+                <MaterialIcon name="add" className="mr-2" />
+                Buat Paket
+              </Button>
+            </Link>
+          </div>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div data-tour="packages-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {packages.map((pkg) => {
               const isOwner = pkg.creatorUserId === userId;
               return (
@@ -342,6 +362,32 @@ function PackagesComponent() {
           )}
         </>
       )}
+
+      <PageTour storageKey={PACKAGES_TOUR_KEY} autoDelay={600} steps={packagesPageSteps} />
+      <TourHelpButton storageKey={PACKAGES_TOUR_KEY} />
     </div>
   );
 }
+
+// ── Packages page tour ──
+const PACKAGES_TOUR_KEY = "labas-page-tour-packages";
+const packagesPageSteps: Step[] = [
+  {
+    target: "[data-tour='packages-header']",
+    title: "Paket Soal",
+    content: "Temukan paket soal dari komunitas atau lihat paket buatan sendiri. Klik 'Buat Paket' untuk membuat paket baru dari Bank Soal.",
+    spotlightPadding: 8,
+  },
+  {
+    target: "[data-tour='packages-filters']",
+    title: "Filter & Pencarian",
+    content: "Cari paket berdasarkan nama atau filter berdasarkan jenis ujian (IELTS, TOEFL, dll). Bisa juga switch antara 'Semua Paket' dan 'Paket Saya'.",
+    spotlightPadding: 8,
+  },
+  {
+    target: "[data-tour='packages-list']",
+    title: "Mulai Latihan",
+    content: "Klik kartu paket untuk lihat detail, atau langsung klik 'Mulai Latihan' untuk mengerjakan soal. Pantau skor dan progres kamu!",
+    spotlightPadding: 8,
+  },
+];

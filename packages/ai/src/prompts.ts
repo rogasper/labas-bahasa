@@ -21,9 +21,9 @@ INSTRUCTIONS:
 - Passage length should be appropriate for the exam type and difficulty.
 - Each question must have:
   * a reading passage (passageText)
-  * a clear question prompt (questionText)
-  * a correct answer (correctAnswer)
-  * an explanation (explanation) - dijelaskan dengan bahasa Indonesia
+   * a clear question prompt (questionText)
+   * a correct answer (correctAnswer)
+   * an explanation (explanation) — WAJIB ditulis dalam Bahasa Indonesia. DILARANG menggunakan bahasa asing (China, Jepang, Jerman, Inggris) untuk explanation.
   * difficulty level (${difficulty})
   * relevant skill tags (skillTags)
 - Questions should test real comprehension, not just surface-level recall.

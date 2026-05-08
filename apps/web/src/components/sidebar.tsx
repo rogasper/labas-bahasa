@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { useSidebar } from "@/hooks/use-sidebar";
+import { triggerGlobalTour } from "@/components/TourGuide";
 
 interface NavItem {
   to: string;
@@ -63,9 +64,11 @@ function NavIcon({ name }: { name: string }) {
 }
 
 function NavLink({ item, isActive, collapsed }: { item: NavItem; isActive: boolean; collapsed: boolean }) {
+  const tourAttr = item.to !== "/" ? { "data-tour": `nav-${item.to.replace("/", "")}` } : {};
   return (
     <Link
       to={item.to}
+      {...tourAttr}
       className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all group clay-hover cursor-pointer ${
         isActive
           ? "bg-[var(--matcha-300)] text-[var(--matcha-800)] font-semibold clay-shadow"
@@ -152,6 +155,19 @@ export function Sidebar() {
               />
             );
           })}
+
+          {/* Help Tour Button */}
+          <button
+            onClick={triggerGlobalTour}
+            className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all clay-hover cursor-pointer text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)] w-full ${
+              collapsed ? "justify-center py-3 px-2" : "py-3 px-3 text-left"
+            }`}
+            title={collapsed ? "Panduan" : undefined}
+          >
+            <NavIcon name="help" />
+            {!collapsed && <span className="text-sm font-medium">Panduan</span>}
+          </button>
+
           {isLoggedIn ? (
             <button
               onClick={handleSignOut}

@@ -5,7 +5,6 @@ import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
-import { formatTime } from "@/lib/time";
 
 export const Route = createFileRoute("/")({
   component: HomeComponent,
@@ -33,32 +32,94 @@ function HomeComponent() {
   const recentAttempts = useQuery(
     trpc.attempt.myAttempts.queryOptions({ limit: 5, offset: 0 }),
   );
+  const featuredPackages = useQuery(
+    trpc.package.list.queryOptions({ isPublic: true, limit: 3 }),
+  );
 
   const stats = overview.data;
   const attempts = recentAttempts.data?.attempts ?? [];
+  const featured = featuredPackages.data?.packages ?? [];
+
+  const isNewUser = !stats || (stats.completedAttempts === 0 && stats.totalQuestionsAnswered === 0);
 
   return (
     <div className="min-h-screen pt-8 pb-32 px-6 md:px-12 lg:px-16 max-w-6xl mx-auto bg-[var(--warm-cream)]">
-      <section className="mb-10">
+      {/* Header */}
+      <section className="mb-8">
         <h1 className="text-4xl font-headline font-extrabold text-[var(--clay-black)] tracking-tight">
-          Labas
+          Halo, {session.data?.user.name ?? "Pengguna"}!
         </h1>
-        <p className="text-lg text-[var(--warm-charcoal)] mt-2">
-          Halo, {session.data?.user.name ?? "Pengguna"}! Platform latihan ujian bahasa dengan AI.
+        <p className="text-lg text-[var(--warm-charcoal)] mt-1">
+          {isNewUser ? "Siap mulai belajar? Pilih langkah di bawah ini." : "Lanjutkan latihanmu!"}
         </p>
       </section>
 
+      {/* Quick Start Banner for New Users */}
+      {isNewUser && (
+        <Card className="mb-8 bg-gradient-to-br from-[var(--matcha-300)]/40 to-[var(--slushie-500)]/30 border-2 border-[var(--matcha-400)] rounded-[var(--radius-xl)]">
+          <CardContent className="p-6 md:p-8">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-8">
+              <div className="shrink-0">
+                <div className="h-16 w-16 bg-[var(--clay-black)] rounded-[var(--radius-2xl)] flex items-center justify-center">
+                  <MaterialIcon name="rocket_launch" className="text-3xl text-[var(--pure-white)]" />
+                </div>
+              </div>
+              <div className="flex-1">
+                <h2 className="text-xl font-headline font-bold text-[var(--clay-black)] mb-1">
+                  Selamat Datang di Labas
+                </h2>
+                <p className="text-sm text-[var(--warm-charcoal)] mb-4">
+                  Platform latihan ujian bahasa berbasis AI. Ikuti 3 langkah mudah untuk memulai:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Link to="/generate" className="flex items-center gap-3 p-3 rounded-[var(--radius-lg)] bg-[var(--pure-white)] border-2 border-[var(--oat-border)] hover:border-[var(--matcha-400)] transition-all group clay-hover">
+                    <div className="h-9 w-9 bg-[var(--matcha-300)] rounded-[var(--radius-md)] flex items-center justify-center shrink-0">
+                      <span className="text-xs font-black text-[var(--matcha-800)]">1</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-[var(--clay-black)] group-hover:text-[var(--matcha-800)]">Generate Soal</p>
+                      <p className="text-xs text-[var(--warm-charcoal)]">Buat soal dengan AI</p>
+                    </div>
+                    <MaterialIcon name="chevron_right" className="text-sm text-[var(--warm-silver)] group-hover:text-[var(--matcha-800)]" />
+                  </Link>
+                  <Link to="/bank" className="flex items-center gap-3 p-3 rounded-[var(--radius-lg)] bg-[var(--pure-white)] border-2 border-[var(--oat-border)] hover:border-[var(--slushie-500)] transition-all group clay-hover">
+                    <div className="h-9 w-9 bg-[var(--slushie-500)]/30 rounded-[var(--radius-md)] flex items-center justify-center shrink-0">
+                      <span className="text-xs font-black text-[var(--slushie-800)]">2</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-[var(--clay-black)] group-hover:text-[var(--slushie-800)]">Buat Paket</p>
+                      <p className="text-xs text-[var(--warm-charcoal)]">Kumpulkan soal latihan</p>
+                    </div>
+                    <MaterialIcon name="chevron_right" className="text-sm text-[var(--warm-silver)] group-hover:text-[var(--slushie-800)]" />
+                  </Link>
+                  <Link to="/packages" className="flex items-center gap-3 p-3 rounded-[var(--radius-lg)] bg-[var(--pure-white)] border-2 border-[var(--oat-border)] hover:border-[var(--lemon-600)] transition-all group clay-hover">
+                    <div className="h-9 w-9 bg-[var(--lemon-400)]/50 rounded-[var(--radius-md)] flex items-center justify-center shrink-0">
+                      <span className="text-xs font-black text-[var(--lemon-800)]">3</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-[var(--clay-black)] group-hover:text-[var(--lemon-800)]">Mulai Latihan</p>
+                      <p className="text-xs text-[var(--warm-charcoal)]">Kerjakan paket soal</p>
+                    </div>
+                    <MaterialIcon name="chevron_right" className="text-sm text-[var(--warm-silver)] group-hover:text-[var(--lemon-800)]" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+      <div data-tour="dashboard-stats" className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
         <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)]">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-[var(--matcha-300)] rounded-[var(--radius-lg)] flex items-center justify-center">
-                <MaterialIcon name="assignment" className="text-xl text-[var(--matcha-800)]" />
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 bg-[var(--matcha-300)] rounded-[var(--radius-lg)] flex items-center justify-center">
+                <MaterialIcon name="assignment" className="text-lg text-[var(--matcha-800)]" />
               </div>
               <div>
                 <p className="text-sm text-[var(--warm-charcoal)]">Latihan Selesai</p>
-                <p className="text-2xl font-bold text-[var(--clay-black)] font-headline">
+                <p className="text-xl font-bold text-[var(--clay-black)] font-headline">
                   {stats?.completedAttempts ?? 0}
                 </p>
               </div>
@@ -66,29 +127,44 @@ function HomeComponent() {
           </CardContent>
         </Card>
         <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)]">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-[var(--slushie-500)] rounded-[var(--radius-lg)] flex items-center justify-center">
-                <MaterialIcon name="timer" className="text-xl text-[var(--clay-black)]" />
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 bg-[var(--slushie-500)] rounded-[var(--radius-lg)] flex items-center justify-center">
+                <MaterialIcon name="timer" className="text-lg text-[var(--clay-black)]" />
               </div>
               <div>
                 <p className="text-sm text-[var(--warm-charcoal)]">Waktu Latihan</p>
-                <p className="text-2xl font-bold text-[var(--clay-black)] font-headline">
-                  {stats ? `${Math.round(stats.totalTimeSpentSec / 60)} menit` : "0 menit"}
+                <p className="text-xl font-bold text-[var(--clay-black)] font-headline">
+                  {stats ? `${Math.round(stats.totalTimeSpentSec / 60)}m` : "0m"}
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)]">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-[var(--lemon-400)] rounded-[var(--radius-lg)] flex items-center justify-center">
-                <MaterialIcon name="percent" className="text-xl text-[var(--lemon-800)]" />
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 bg-[var(--lemon-400)] rounded-[var(--radius-lg)] flex items-center justify-center">
+                <MaterialIcon name="quiz" className="text-lg text-[var(--lemon-800)]" />
               </div>
               <div>
-                <p className="text-sm text-[var(--warm-charcoal)]">Akurasi Rata-rata</p>
-                <p className="text-2xl font-bold text-[var(--clay-black)] font-headline">
+                <p className="text-sm text-[var(--warm-charcoal)]">Soal Terjawab</p>
+                <p className="text-xl font-bold text-[var(--clay-black)] font-headline">
+                  {stats?.totalQuestionsAnswered ?? 0}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)]">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3">
+              <div className="h-11 w-11 bg-[var(--pomegranate-400)]/30 rounded-[var(--radius-lg)] flex items-center justify-center">
+                <MaterialIcon name="trending_up" className="text-lg text-[var(--pomegranate-600)]" />
+              </div>
+              <div>
+                <p className="text-sm text-[var(--warm-charcoal)]">Akurasi</p>
+                <p className="text-xl font-bold text-[var(--clay-black)] font-headline">
                   {stats ? `${stats.overallAccuracyPct}%` : "-"}
                 </p>
               </div>
@@ -98,55 +174,97 @@ function HomeComponent() {
       </div>
 
       {/* Quick Actions */}
-      <div className="flex flex-col md:flex-row gap-4 mb-10">
-        <Link to="/generate">
-          <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] rounded-[var(--radius-lg)] h-11 px-6 clay-shadow clay-hover">
+      <div className="flex flex-col sm:flex-row gap-3 mb-10">
+        <Link to="/generate" className="flex-1">
+          <Button className="w-full bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] rounded-[var(--radius-lg)] h-12 clay-shadow clay-hover text-base">
             <MaterialIcon name="auto_awesome" className="text-xl" />
             <span className="ml-2">Generate Soal Baru</span>
           </Button>
         </Link>
-        <Link to="/packages">
-          <Button variant="outline" className="rounded-[var(--radius-lg)] h-11 px-6 border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-[var(--clay-black)] hover:bg-[var(--oat-light)] clay-hover">
+        <Link to="/packages" className="flex-1">
+          <Button variant="outline" className="w-full rounded-[var(--radius-lg)] h-12 border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-[var(--clay-black)] hover:bg-[var(--oat-light)] clay-hover text-base">
             <MaterialIcon name="folder" className="text-xl" />
             <span className="ml-2">Mulai Latihan</span>
           </Button>
         </Link>
-        <Link to="/analytics">
-          <Button variant="outline" className="rounded-[var(--radius-lg)] h-11 px-6 border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-[var(--clay-black)] hover:bg-[var(--oat-light)] clay-hover">
+        <Link to="/analytics" className="flex-1">
+          <Button variant="outline" className="w-full rounded-[var(--radius-lg)] h-12 border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-[var(--clay-black)] hover:bg-[var(--oat-light)] clay-hover text-base">
             <MaterialIcon name="analytics" className="text-xl" />
             <span className="ml-2">Lihat Analitik</span>
           </Button>
         </Link>
       </div>
 
-      {/* Recent Attempts */}
-      <section className="mb-10">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-headline font-bold text-[var(--clay-black)]">
-            Latihan Terakhir
-          </h2>
-          <Link to="/history" className="text-sm text-[var(--matcha-600)] font-semibold hover:underline">
-            Lihat Semua
-          </Link>
-        </div>
-
-        {attempts.length === 0 ? (
-          <Card className="bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)]">
-            <CardContent className="p-6 text-center">
-              <MaterialIcon name="history" className="text-4xl text-[var(--warm-silver)] mx-auto mb-3" />
-              <p className="text-[var(--warm-charcoal)] font-semibold">Belum ada latihan</p>
-              <p className="text-sm text-[var(--warm-silver)] mt-1">
-                Pilih paket soal dan mulai latihan pertama Anda.
-              </p>
-              <Link to="/packages" className="inline-block mt-4">
-                <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] rounded-[var(--radius-lg)]">
-                  <MaterialIcon name="folder" className="mr-2" />
-                  Lihat Paket
-                </Button>
+      {/* Featured Packages */}
+      {featured.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-headline font-bold text-[var(--clay-black)]">
+              Paket Unggulan
+            </h2>
+            <Link to="/packages" className="text-sm text-[var(--matcha-600)] font-semibold hover:underline">
+              Lihat Semua
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {featured.map((pkg) => (
+              <Link key={pkg.id} to="/package/$id" params={{ id: pkg.id }} className="block">
+                <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] h-full transition-all hover:border-[var(--matcha-400)]">
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <span className="px-2 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-xs font-semibold shrink-0">
+                        {pkg.examTypeName}
+                      </span>
+                      <span className="text-xs text-[var(--warm-silver)] whitespace-nowrap">
+                        {pkg.usageCount}x digunakan
+                      </span>
+                    </div>
+                    <h3 className="font-headline text-base font-bold text-[var(--clay-black)] mb-1 line-clamp-2">
+                      {pkg.title}
+                    </h3>
+                    {pkg.description && (
+                      <p className="text-xs text-[var(--warm-charcoal)] line-clamp-2 mb-3">
+                        {pkg.description}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between pt-3 border-t border-[var(--oat-border)]">
+                      <div className="flex gap-3 text-xs text-[var(--warm-charcoal)]">
+                        <span className="flex items-center gap-1">
+                          <MaterialIcon name="quiz" className="text-xs" />
+                          {pkg.totalQuestions}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <MaterialIcon name="folder" className="text-xs" />
+                          {pkg.totalSections}
+                        </span>
+                        {pkg.estimatedDurationMin && (
+                          <span className="flex items-center gap-1">
+                            <MaterialIcon name="timer" className="text-xs" />
+                            {pkg.estimatedDurationMin}m
+                          </span>
+                        )}
+                      </div>
+                      <MaterialIcon name="play_circle" className="text-xl text-[var(--matcha-600)]" />
+                    </div>
+                  </CardContent>
+                </Card>
               </Link>
-            </CardContent>
-          </Card>
-        ) : (
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Recent Attempts */}
+      {attempts.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-headline font-bold text-[var(--clay-black)]">
+              Latihan Terakhir
+            </h2>
+            <Link to="/history" className="text-sm text-[var(--matcha-600)] font-semibold hover:underline">
+              Lihat Semua
+            </Link>
+          </div>
           <div className="space-y-3">
             {attempts.map((a) => {
               const pct =
@@ -182,7 +300,6 @@ function HomeComponent() {
                           {formatDateShort(a.startedAt)}
                         </div>
                       </div>
-
                       <div className="flex items-center gap-4 shrink-0">
                         {pct != null && (
                           <div className="text-right">
@@ -211,59 +328,59 @@ function HomeComponent() {
               );
             })}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
-      {/* Feature Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Link to="/generate" className="block">
-          <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] h-full">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 bg-[var(--matcha-300)] rounded-[var(--radius-md)] flex items-center justify-center">
-                  <MaterialIcon name="auto_awesome" className="text-xl text-[var(--matcha-800)]" />
+      {/* Feature Cards - simplified, only show if new user */}
+      {isNewUser && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Link to="/bank" className="block">
+            <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] h-full">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-9 w-9 bg-[var(--slushie-500)] rounded-[var(--radius-md)] flex items-center justify-center">
+                    <MaterialIcon name="database" className="text-lg text-[var(--clay-black)]" />
+                  </div>
+                  <h3 className="font-headline font-bold text-[var(--clay-black)]">Bank Soal</h3>
                 </div>
-                <h3 className="font-headline text-lg font-bold text-[var(--clay-black)]">AI Generator</h3>
-              </div>
-              <p className="text-sm text-[var(--warm-charcoal)]">
-                Generate soal dengan AI menggunakan API key sendiri. Dua mode: Quick dan Agentic.
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link to="/bank" className="block">
-          <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] h-full">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 bg-[var(--slushie-500)] rounded-[var(--radius-md)] flex items-center justify-center">
-                  <MaterialIcon name="database" className="text-xl text-[var(--clay-black)]" />
+                <p className="text-xs text-[var(--warm-charcoal)]">
+                  Simpan, publikasikan, dan buat paket dari soal pilihan.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/history" className="block">
+            <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] h-full">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-9 w-9 bg-[var(--lemon-400)] rounded-[var(--radius-md)] flex items-center justify-center">
+                    <MaterialIcon name="history" className="text-lg text-[var(--lemon-800)]" />
+                  </div>
+                  <h3 className="font-headline font-bold text-[var(--clay-black)]">Riwayat</h3>
                 </div>
-                <h3 className="font-headline text-lg font-bold text-[var(--clay-black)]">Bank Soal</h3>
-              </div>
-              <p className="text-sm text-[var(--warm-charcoal)]">
-                Simpan, publikasikan, dan gunakan ulang soal latihan Anda. Buat paket dari soal pilihan.
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link to="/analytics" className="block">
-          <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] h-full">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="h-10 w-10 bg-[var(--lemon-400)] rounded-[var(--radius-md)] flex items-center justify-center">
-                  <MaterialIcon name="analytics" className="text-xl text-[var(--lemon-800)]" />
+                <p className="text-xs text-[var(--warm-charcoal)]">
+                  Lihat kembali hasil dan progres latihan kamu.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/settings" className="block">
+            <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] h-full">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-9 w-9 bg-[var(--oat-light)] rounded-[var(--radius-md)] flex items-center justify-center">
+                    <MaterialIcon name="settings" className="text-lg text-[var(--warm-charcoal)]" />
+                  </div>
+                  <h3 className="font-headline font-bold text-[var(--clay-black)]">Pengaturan</h3>
                 </div>
-                <h3 className="font-headline text-lg font-bold text-[var(--clay-black)]">Analytics</h3>
-              </div>
-              <p className="text-sm text-[var(--warm-charcoal)]">
-                Evaluasi per-section, identifikasi kelemahan, dan pantau tren perkembangan Anda.
-              </p>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
+                <p className="text-xs text-[var(--warm-charcoal)]">
+                  Kelola API key dan preferensi akun kamu.
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

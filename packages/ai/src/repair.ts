@@ -144,6 +144,10 @@ function ensureSkillTags(q: GenericQuestion): string[] {
   return ["comprehension"];
 }
 
+function hasCJK(text: string): boolean {
+  return /[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/.test(text);
+}
+
 function ensureExplanation(q: GenericQuestion): string {
   if (q.explanation && q.explanation.trim().length > 0) {
     return q.explanation.trim();
@@ -204,8 +208,12 @@ export function repairQuestion(
     notes.push("questionText too short, used fallback");
     wasRepaired = true;
   }
-  if (!r.explanation || String(r.explanation).trim().length === 0) {
+  const explanationText = String(r.explanation ?? "");
+  if (explanationText.trim().length === 0) {
     notes.push("explanation missing, used fallback");
+    wasRepaired = true;
+  } else if (hasCJK(explanationText)) {
+    notes.push("explanation contains CJK characters (should be Bahasa Indonesia), marked for regeneration");
     wasRepaired = true;
   }
   if (!Array.isArray(r.skillTags) || r.skillTags.length === 0) {

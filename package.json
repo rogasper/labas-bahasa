@@ -38,6 +38,7 @@
   "dependencies": {
     "@labas/env": "workspace:*",
     "dotenv": "catalog:",
+    "react-joyride": "^3.1.0",
     "zod": "catalog:"
   },
   "devDependencies": {

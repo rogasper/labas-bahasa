@@ -19,6 +19,8 @@ interface FilterBarProps {
   activeChips: FilterChip[];
   hasFilters: boolean;
   isAdvancedOpen: boolean;
+  lockedExamType?: string | null;
+  dataTour?: string;
   onToggleAdvanced: () => void;
   onSetMode: (mode: "soal" | "section") => void;
   onSetTab: (tab: "mine" | "public") => void;
@@ -37,6 +39,8 @@ export function FilterBar({
   activeChips,
   hasFilters,
   isAdvancedOpen,
+  lockedExamType,
+  dataTour,
   onToggleAdvanced,
   onSetMode,
   onSetTab,
@@ -47,7 +51,7 @@ export function FilterBar({
   advancedFilters,
 }: FilterBarProps) {
   return (
-    <div className="sticky top-0 z-30 bg-[var(--warm-cream)]/90 backdrop-blur-md border-b border-[var(--oat-border)] transition-all duration-200">
+    <div data-tour={dataTour} className="sticky top-0 z-30 bg-[var(--warm-cream)]/90 backdrop-blur-md border-b border-[var(--oat-border)] transition-all duration-200">
       <div className="px-6 md:px-12 lg:px-16 max-w-7xl mx-auto pt-4 pb-3 space-y-3">
         {/* ── Tier 1: Mode tabs ── */}
         <div className="flex items-center justify-between gap-3">
@@ -73,14 +77,31 @@ export function FilterBar({
 
         {/* ── Tier 2: Exam type chips ── */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          <ChipButton active={examType === ""} onClick={() => onSetExamType("")}>
+          <ChipButton
+            active={examType === ""}
+            onClick={() => onSetExamType("")}
+            disabled={!!lockedExamType}
+          >
             Semua
           </ChipButton>
-          {EXAM_TYPES.map((t) => (
-            <ChipButton key={t.id} active={examType === t.id} onClick={() => onSetExamType(t.id)}>
-              {t.name}
-            </ChipButton>
-          ))}
+          {EXAM_TYPES.map((t) => {
+            const isLocked = !!lockedExamType && lockedExamType !== t.id;
+            return (
+              <ChipButton
+                key={t.id}
+                active={examType === t.id}
+                onClick={() => {
+                  if (!isLocked) onSetExamType(t.id);
+                }}
+                disabled={isLocked}
+              >
+                <span className="flex items-center gap-1.5">
+                  {t.name}
+                  {isLocked && <MaterialIcon name="lock" className="text-[10px]" />}
+                </span>
+              </ChipButton>
+            );
+          })}
         </div>
 
         {/* ── Tier 3: Search + Advanced filter toggle ── */}
@@ -220,14 +241,17 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   );
 }
 
-function ChipButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+function ChipButton({ active, onClick, children, disabled }: { active: boolean; onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all cursor-pointer ${
-        active
-          ? "bg-[var(--clay-black)] text-[var(--pure-white)] clay-shadow"
-          : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] border-2 border-[var(--oat-border)] hover:bg-[var(--oat-light)]"
+      disabled={disabled}
+      className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+        disabled
+          ? "bg-[var(--oat-light)] text-[var(--warm-silver)] border-2 border-[var(--oat-border)] cursor-not-allowed opacity-50"
+          : active
+            ? "bg-[var(--clay-black)] text-[var(--pure-white)] clay-shadow cursor-pointer"
+            : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] border-2 border-[var(--oat-border)] hover:bg-[var(--oat-light)] cursor-pointer"
       }`}
     >
       {children}

@@ -193,7 +193,7 @@ Rules:
 - Questions should test real comprehension, not surface recall
 - For multiple choice: always provide 4 options (A, B, C, D) with one clearly correct answer
 - Options must be plausible distractors
-- explanation (explanation) - dijelaskan dengan bahasa Indonesia
+- explanation — WAJIB ditulis dalam Bahasa Indonesia. DILARANG menggunakan bahasa asing.
 - For true_false_not_given: correctAnswer must be exactly TRUE, FALSE, or NOT_GIVEN (uppercase)
 - For author_view: correctAnswer must be exactly YES, NO, or NOT_GIVEN (uppercase)
 
@@ -302,7 +302,7 @@ Rules:
 - Each question must be directly answerable from the passage
 - Use "passageText" field with relevant excerpt (or full passage)
 - For multiple choice: provide 4 options (A, B, C, D)
-- explanation - dijelaskan dengan bahasa Indonesia
+- explanation — WAJIB ditulis dalam Bahasa Indonesia. DILARANG menggunakan bahasa asing.
 - For true_false_not_given: correctAnswer must be TRUE, FALSE, or NOT_GIVEN (uppercase)
 - For author_view: correctAnswer must be YES, NO, or NOT_GIVEN (uppercase)
 
@@ -439,7 +439,27 @@ export async function generateQuestionsAgentic(
 
     // Repair & parse
     let { valid, invalid, repairLog } = repairAndParseQuestions(rawQuestions, passage);
-    validQuestions = valid;
+
+    // Move questions with non-Indonesian (CJK) explanations to invalid for regeneration
+    const hasCJK = (text: string) => /[\u4E00-\u9FFF\u3400-\u4DBF\u3040-\u309F\u30A0-\u30FF\uAC00-\uD7AF]/.test(text);
+    const cjkInvalid: Array<{ index: number; raw: unknown; errors: string[] }> = [];
+    const filteredValid: typeof valid = [];
+    for (let vi = 0; vi < valid.length; vi++) {
+      const q = valid[vi];
+      if (!q) continue;
+      if (q.explanation && hasCJK(q.explanation)) {
+        cjkInvalid.push({
+          index: vi,
+          raw: q,
+          errors: ["explanation contains CJK characters (should be Bahasa Indonesia)"],
+        });
+        repairLog.push(`Q${vi + 1}: explanation contains CJK characters, moved to regeneration queue`);
+      } else {
+        filteredValid.push(q);
+      }
+    }
+    validQuestions = filteredValid;
+    invalid = [...invalid, ...cjkInvalid];
     allRepairLogs.push(...repairLog);
 
     // Regenerate structural-invalid questions with bounded attempts

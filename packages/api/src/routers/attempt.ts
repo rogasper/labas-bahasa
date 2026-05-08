@@ -46,11 +46,72 @@ function normalizeAnswer(format: string, userAnswer: string, correctAnswer: stri
   }
 }
 
+// ── Simple in-memory rate limiter ──
+const rateLimitMap = new Map<string, number>();
+let rateLimitCleanup: ReturnType<typeof setInterval> | null = null;
+
+function startRateLimitCleanup() {
+  if (rateLimitCleanup) return;
+  rateLimitCleanup = setInterval(() => {
+    const cutoff = Date.now() - 60_000;
+    for (const [key, time] of rateLimitMap) {
+      if (time < cutoff) rateLimitMap.delete(key);
+    }
+  }, 60_000);
+}
+
+function checkRateLimit(key: string, windowMs: number) {
+  startRateLimitCleanup();
+  const now = Date.now();
+  const last = rateLimitMap.get(key) ?? 0;
+  if (now - last < windowMs) {
+    throwBadRequest("Terlalu banyak permintaan. Coba lagi nanti.");
+  }
+  rateLimitMap.set(key, now);
+}
+
 export const attemptRouter = router({
   start: protectedProcedure
     .input(z.object({ packageId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      checkRateLimit(`start:${userId}`, 3000);
+
+      // Check for existing in-progress attempt
+      const [activeAttempt] = await db
+        .select({ id: testAttempt.id })
+        .from(testAttempt)
+        .where(
+          and(
+            eq(testAttempt.userId, userId),
+            eq(testAttempt.packageId, input.packageId),
+            eq(testAttempt.status, "in_progress"),
+          ),
+        )
+        .limit(1);
+      if (activeAttempt) {
+        throwBadRequest("Kamu masih punya latihan yang sedang berjalan untuk paket ini");
+      }
+
+      // Check cooldown (10 detik setelah selesai)
+      const [recentAttempt] = await db
+        .select({ finishedAt: testAttempt.finishedAt })
+        .from(testAttempt)
+        .where(
+          and(
+            eq(testAttempt.userId, userId),
+            eq(testAttempt.packageId, input.packageId),
+            eq(testAttempt.status, "completed"),
+          ),
+        )
+        .orderBy(desc(testAttempt.finishedAt))
+        .limit(1);
+      if (recentAttempt?.finishedAt) {
+        const elapsed = Date.now() - new Date(recentAttempt.finishedAt).getTime();
+        if (elapsed < 10_000) {
+          throwBadRequest("Tunggu 10 detik sebelum memulai latihan ulang");
+        }
+      }
 
       const [pkg] = await db
         .select()
@@ -242,6 +303,7 @@ export const attemptRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      checkRateLimit(`submit:${userId}`, 500);
 
       const [attempt] = await db
         .select()
@@ -300,6 +362,7 @@ export const attemptRouter = router({
     .input(z.object({ attemptId: z.string().uuid() }))
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      checkRateLimit(`finish:${userId}`, 3000);
 
       const [attempt] = await db
         .select()
@@ -310,6 +373,14 @@ export const attemptRouter = router({
       if (!attempt) throwNotFound("Attempt");
       if (attempt.userId !== userId) throwForbidden();
       if (attempt.status !== "in_progress") throwBadRequest("Attempt already finished");
+
+      // Timer validation: must have spent at least 5 seconds
+      if (attempt.startedAt) {
+        const elapsedSec = Math.round((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
+        if (elapsedSec < 5) {
+          throwBadRequest("Latihan terlalu cepat. Harap kerjakan soal dengan benar.");
+        }
+      }
 
       const dbSections = await db
         .select()

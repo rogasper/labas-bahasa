@@ -33,6 +33,7 @@
     "next-themes": "catalog:",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
+    "react-joyride": "^3.1.0",
     "recharts": "^3.8.1",
     "sonner": "^2.0.7",
     "vite-plugin-pwa": "^1.2.0",

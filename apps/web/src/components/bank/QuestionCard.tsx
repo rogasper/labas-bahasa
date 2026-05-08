@@ -6,6 +6,9 @@ interface QuestionCardProps {
   q: any;
   isFeatured?: boolean;
   isInBundle: boolean;
+  disabled?: boolean;
+  selected?: boolean;
+  bulkSelect?: boolean;
   onToggle: () => void;
   onOpenDetail: () => void;
   isOwner: boolean;
@@ -17,6 +20,9 @@ export function QuestionCard({
   q,
   isFeatured = false,
   isInBundle,
+  disabled = false,
+  selected = false,
+  bulkSelect = false,
   onToggle,
   onOpenDetail,
   isOwner,
@@ -25,22 +31,42 @@ export function QuestionCard({
 }: QuestionCardProps) {
   return (
     <div
-      onClick={onOpenDetail}
-      className={`clay-shadow clay-hover bg-[var(--pure-white)] border-2 rounded-[var(--radius-xl)] h-full flex flex-col cursor-pointer transition-all ${
-        isInBundle
-          ? "border-[var(--clay-black)] bg-[var(--matcha-100)]"
-          : "border-[var(--oat-border)]"
+      onClick={() => { if (!disabled) onOpenDetail(); }}
+      className={`border-2 rounded-[var(--radius-xl)] h-full flex flex-col transition-all ${
+        disabled
+          ? "bg-[var(--oat-light)] border-[var(--oat-border)] opacity-40 cursor-not-allowed"
+          : selected
+            ? "bg-[var(--matcha-100)] border-[var(--matcha-600)] clay-hover cursor-pointer ring-2 ring-[var(--matcha-400)]"
+            : isInBundle
+              ? "bg-[var(--matcha-100)] border-[var(--clay-black)] clay-shadow clay-hover cursor-pointer"
+              : "bg-[var(--pure-white)] border-[var(--oat-border)] clay-shadow clay-hover cursor-pointer"
       }`}
     >
       <div className="p-5 flex flex-col h-full">
         <div className="flex items-start justify-between mb-3">
           <div className="flex gap-2 flex-wrap">
+            {bulkSelect && (
+              <span className={`px-2 py-1 rounded-full text-[10px] font-semibold flex items-center gap-1 ${
+                selected
+                  ? "bg-[var(--matcha-600)] text-[var(--pure-white)]"
+                  : "bg-[var(--oat-light)] text-[var(--warm-charcoal)]"
+              }`}>
+                <MaterialIcon name={selected ? "check_circle" : "radio_button_unchecked"} className="text-xs" />
+                {selected ? "Terpilih" : "Pilih"}
+              </span>
+            )}
             <span className="px-2.5 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-xs font-semibold">
               {q.examTypeName}
             </span>
             <span className="px-2.5 py-1 rounded-full bg-[var(--slushie-500)]/20 text-[var(--slushie-800)] text-xs font-semibold">
               {q.sectionTypeName}
             </span>
+            {disabled && (
+              <span className="px-2 py-1 rounded-full bg-[var(--warm-silver)]/30 text-[var(--warm-charcoal)] text-[10px] font-semibold flex items-center gap-1">
+                <MaterialIcon name="lock" className="text-[10px]" />
+                Terkunci
+              </span>
+            )}
           </div>
           {q.avgRating && (
             <div className="flex items-center gap-1 text-[var(--lemon-700)]">
@@ -82,7 +108,7 @@ export function QuestionCard({
 
         {/* Actions row */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-[var(--oat-border)]">
-          {isOwner && (
+          {isOwner && !bulkSelect && (
             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={onTogglePublic}
@@ -102,20 +128,25 @@ export function QuestionCard({
               </button>
             </div>
           )}
+          {!bulkSelect && (
           <Button
             size="sm"
+            disabled={disabled}
             onClick={(e) => {
               e.stopPropagation();
-              onToggle();
+              if (!disabled) onToggle();
             }}
-            className={`ml-auto rounded-[var(--radius-lg)] text-xs cursor-pointer ${
-              isInBundle
-                ? "bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)]"
-                : "bg-[var(--matcha-300)] text-[var(--matcha-800)] hover:bg-[var(--matcha-400)]"
+            className={`ml-auto rounded-[var(--radius-lg)] text-xs ${
+              disabled
+                ? "bg-[var(--oat-light)] text-[var(--warm-silver)] cursor-not-allowed"
+                : isInBundle
+                  ? "bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] cursor-pointer"
+                  : "bg-[var(--matcha-300)] text-[var(--matcha-800)] hover:bg-[var(--matcha-400)] cursor-pointer"
             }`}
           >
-            {isInBundle ? "Hapus dari Paket" : "Tambah ke Paket"}
+            {disabled ? "Tidak Tersedia" : isInBundle ? "Hapus dari Paket" : "Tambah ke Paket"}
           </Button>
+          )}
         </div>
       </div>
     </div>

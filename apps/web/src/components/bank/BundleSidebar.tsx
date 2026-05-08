@@ -21,6 +21,7 @@ interface BundleSidebarProps {
   bundleIsPublic: boolean;
   isCreating: boolean;
   autoBundleExamType: string | null;
+  lockedExamType?: string | null;
   onSetTitle: (v: string) => void;
   onSetDescription: (v: string) => void;
   onSetIsPublic: (v: boolean) => void;
@@ -39,6 +40,7 @@ export function BundleSidebar({
   bundleIsPublic,
   isCreating,
   autoBundleExamType,
+  lockedExamType,
   onSetTitle,
   onSetDescription,
   onSetIsPublic,
@@ -51,17 +53,25 @@ export function BundleSidebar({
   const bundleCount = activeBundle.length;
 
   return (
-    <div className="lg:col-span-4">
-      <div className="sticky top-46 bg-[var(--pure-white)] rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] clay-shadow overflow-hidden flex flex-col max-h-[calc(100vh-6rem)]">
+    <div data-tour="bank-sidebar" className="lg:col-span-4">
+      <div className="sticky top-32 bg-[var(--pure-white)] rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] clay-shadow overflow-hidden flex flex-col max-h-[calc(100vh-8rem)]">
         {/* Header */}
         <div className="p-5 bg-[var(--clay-black)] text-[var(--pure-white)]">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-lg font-bold font-headline">Paket Saat Ini</h3>
             <span className="text-xs font-medium bg-[var(--matcha-600)]/30 px-2 py-1 rounded">DRAFT</span>
           </div>
-          <p className="text-sm text-[var(--warm-silver)]">
-            {bundleCount} {mode === "soal" ? "soal" : "section"} dipilih
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm text-[var(--warm-silver)]">
+              {bundleCount} {mode === "soal" ? "soal" : "section"} dipilih
+            </p>
+            {lockedExamType && (
+              <span className="text-[10px] font-medium bg-[var(--matcha-600)]/40 text-[var(--matcha-300)] px-2 py-0.5 rounded-full flex items-center gap-1">
+                <MaterialIcon name="lock" className="text-[10px]" />
+                {lockedExamType}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Items List */}

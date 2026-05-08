@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { z } from "zod";
@@ -10,6 +10,8 @@ import { usePackageBuilder } from "@/hooks/use-package-builder";
 import { useLocalStorageBoolean } from "@/hooks/use-local-storage-boolean";
 import { AutoBundleModal } from "@/components/bank/AutoBundleModal";
 import { QuestionDetailModal } from "@/components/bank/QuestionDetailModal";
+import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { PageTour, TourHelpButton } from "@/components/TourGuide";
 import { FilterBar } from "@/components/bank/FilterBar";
 import { MobileFilterSheet } from "@/components/bank/MobileFilterSheet";
 import { AdvancedFilters } from "@/components/bank/AdvancedFilters";
@@ -17,6 +19,7 @@ import { SoalBrowser } from "@/components/bank/SoalBrowser";
 import { SectionBrowser } from "@/components/bank/SectionBrowser";
 import { BundleSidebar } from "@/components/bank/BundleSidebar";
 import { toast } from "sonner";
+import type { Step } from "react-joyride";
 
 const FILTER_ADVANCED_KEY = "labas-bank-filter-advanced";
 
@@ -30,7 +33,6 @@ export const Route = createFileRoute("/bank")({
     section: z.string().optional(),
     format: z.string().optional(),
     difficulty: z.coerce.number().optional(),
-    page: z.coerce.number().optional(),
   }).parse,
   beforeLoad: async () => {
     const session = await authClient.getSession();
@@ -51,14 +53,18 @@ function BankComponent() {
   const userId = session?.user.id;
 
   const mode: Mode = search.mode ?? "soal";
-  const tab: QuestionTab = search.tab ?? "mine";
+  const tab: QuestionTab = search.tab ?? "public";
   const searchText = search.search ?? "";
   const examType = search.examType ?? "";
   const section = search.section ?? "";
   const format = search.format ?? "";
   const difficulty = search.difficulty;
-  const page = search.page ?? 1;
+
+  // ── Infinite scroll state ──
+  const [allQuestions, setAllQuestions] = useState<any[]>([]);
+  const [offset, setOffset] = useState(0);
   const limit = 12;
+  const filterKey = JSON.stringify({ searchText, examType, section, format, difficulty, tab, mode });
 
   // ── Sidebar / Bundle State ──
   const [bundleQuestions, setBundleQuestions] = useState<any[]>([]);
@@ -88,11 +94,34 @@ function BankComponent() {
           ? { creatorUserId: userId }
           : { isPublic: true }),
         limit,
-        offset: (page - 1) * limit,
+        offset,
       },
       { enabled: mode === "soal" },
     ),
   );
+
+  // Reset offset when filters change
+  useEffect(() => {
+    setOffset(0);
+  }, [filterKey]);
+
+  // Append / replace questions when query data arrives
+  useEffect(() => {
+    const data = questionQuery.data;
+    if (!data) return;
+    if (offset === 0) {
+      setAllQuestions(data.questions ?? []);
+    } else {
+      setAllQuestions((prev) => {
+        const existingIds = new Set(prev.map((q: any) => q.id));
+        const newQs = (data.questions ?? []).filter((q: any) => !existingIds.has(q.id));
+        return [...prev, ...newQs];
+      });
+    }
+  }, [questionQuery.data]);
+
+  const totalQuestions = questionQuery.data?.total ?? 0;
+  const hasMore = offset + limit < totalQuestions;
 
   const sectionQuery = useQuery(
     trpc.combo.availableSections.queryOptions(
@@ -124,6 +153,15 @@ function BankComponent() {
     onSuccess: () => questionQuery.refetch(),
   });
 
+  const bulkPublish = useMutation({
+    ...trpc.question.bulkPublish.mutationOptions(),
+    onSuccess: () => {
+      questionQuery.refetch();
+      toast.success("Soal berhasil dipublikasikan");
+    },
+    onError: (err: any) => toast.error("Gagal mempublikasikan", { description: err.message }),
+  });
+
   // ── Navigation helpers ──
   const setMode = (newMode: Mode) => {
     navigate({
@@ -135,7 +173,6 @@ function BankComponent() {
         section: "",
         format: "",
         difficulty: undefined,
-        page: 1,
       },
     });
     if (newMode === "soal") setBundleSections([]);
@@ -143,22 +180,19 @@ function BankComponent() {
   };
 
   const setSearch = (value: string) =>
-    navigate({ search: (prev) => ({ ...prev, search: value, page: 1 }) });
+    navigate({ search: (prev) => ({ ...prev, search: value }) });
 
   const setExamType = (value: string) =>
-    navigate({ search: (prev) => ({ ...prev, examType: value, page: 1 }) });
+    navigate({ search: (prev) => ({ ...prev, examType: value }) });
 
   const setSection = (value: string) =>
-    navigate({ search: (prev) => ({ ...prev, section: value, page: 1 }) });
+    navigate({ search: (prev) => ({ ...prev, section: value }) });
 
   const setFormat = (value: string) =>
-    navigate({ search: (prev) => ({ ...prev, format: value, page: 1 }) });
+    navigate({ search: (prev) => ({ ...prev, format: value }) });
 
   const setDifficulty = (value: number | undefined) =>
-    navigate({ search: (prev) => ({ ...prev, difficulty: value, page: 1 }) });
-
-  const setPage = (newPage: number) =>
-    navigate({ search: (prev) => ({ ...prev, page: newPage }) });
+    navigate({ search: (prev) => ({ ...prev, difficulty: value }) });
 
   const setTab = (newTab: QuestionTab) =>
     navigate({
@@ -170,7 +204,6 @@ function BankComponent() {
         section: "",
         format: "",
         difficulty: undefined,
-        page: 1,
       },
     });
 
@@ -183,7 +216,6 @@ function BankComponent() {
         section: "",
         format: "",
         difficulty: undefined,
-        page: 1,
       }),
     });
 
@@ -199,6 +231,8 @@ function BankComponent() {
   ];
 
   // ── Bundle helpers ──
+  const lockedExamType = bundleQuestions.length > 0 ? bundleQuestions[0]?.examTypeId : null;
+
   const isQuestionInBundle = (qid: string) =>
     bundleQuestions.some((q) => q.id === qid);
 
@@ -206,6 +240,10 @@ function BankComponent() {
     bundleSections.some((s) => s.id === sid);
 
   const toggleQuestion = (q: any) => {
+    if (lockedExamType && q.examTypeId !== lockedExamType) {
+      toast.error(`Hanya bisa memilih soal dari ${EXAM_TYPES.find((t) => t.id === lockedExamType)?.name ?? lockedExamType}`);
+      return;
+    }
     setBundleQuestions((prev) => {
       const exists = prev.find((x) => x.id === q.id);
       if (exists) return prev.filter((x) => x.id !== q.id);
@@ -285,7 +323,7 @@ function BankComponent() {
   };
 
   // ── Auto Bundle ──
-  const autoBundleExamType = examType || null;
+  const autoBundleExamType = examType || lockedExamType || null;
   const autoBundleSectionType = section || null;
 
   const onAutoBundle = async (data: {
@@ -328,9 +366,7 @@ function BankComponent() {
   };
 
   // ── Render helpers ──
-  const questions = questionQuery.data?.questions ?? [];
-  const totalQuestions = questionQuery.data?.total ?? 0;
-  const totalPages = Math.ceil(totalQuestions / limit);
+  const questions = allQuestions;
 
   const sections = sectionQuery.data?.sections ?? [];
   const groupedSections = sections.reduce((groups: Record<string, any[]>, s: any) => {
@@ -356,6 +392,8 @@ function BankComponent() {
         activeChips={activeChips}
         hasFilters={hasFilters}
         isAdvancedOpen={isAdvancedOpen}
+        lockedExamType={lockedExamType}
+        dataTour="bank-filters"
         onToggleAdvanced={() => setIsAdvancedOpen((v) => !v)}
         onSetMode={setMode}
         onSetTab={setTab}
@@ -383,18 +421,32 @@ function BankComponent() {
           <p className="text-lg text-[var(--warm-charcoal)] mt-2">
             Pilih soal atau section untuk dibuatkan paket latihan.
           </p>
+          <div className="mt-3 flex flex-wrap gap-3 text-sm text-[var(--warm-charcoal)]">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--matcha-300)]/30 text-[var(--matcha-800)] font-medium">
+              <MaterialIcon name="auto_awesome" className="text-sm" />
+              Auto Bundle — biarkan AI pilihkan soal otomatis
+            </span>
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[var(--slushie-500)]/20 text-[var(--slushie-800)] font-medium">
+              <MaterialIcon name="touch_app" className="text-sm" />
+              Manual — pilih sendiri soal satu per satu
+            </span>
+          </div>
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-8">
+          <div data-tour="bank-questions" className="lg:col-span-8">
             {mode === "soal" ? (
               <SoalBrowser
                 isLoading={questionQuery.isLoading}
                 questions={questions}
-                totalPages={totalPages}
-                page={page}
+                hasMore={hasMore}
+                isFetchingNextPage={questionQuery.isFetching}
+                onLoadMore={() => setOffset((prev) => prev + limit)}
                 hasFilters={hasFilters}
                 userId={userId}
+                lockedExamType={lockedExamType}
+                tab={tab}
+                filterKey={filterKey}
                 isQuestionInBundle={isQuestionInBundle}
                 onToggleQuestion={toggleQuestion}
                 onOpenDetail={setSelectedQuestion}
@@ -402,8 +454,8 @@ function BankComponent() {
                 onDelete={(id) => {
                   if (confirm("Yakin mau hapus soal ini?")) deleteQuestion.mutate({ id });
                 }}
-                onSetPage={setPage}
                 onClearFilters={clearFilters}
+                onBulkPublish={(ids) => bulkPublish.mutate({ ids })}
               />
             ) : (
               <SectionBrowser
@@ -424,6 +476,7 @@ function BankComponent() {
             bundleIsPublic={bundleIsPublic}
             isCreating={isCreating}
             autoBundleExamType={autoBundleExamType}
+            lockedExamType={lockedExamType}
             onSetTitle={setBundleTitle}
             onSetDescription={setBundleDescription}
             onSetIsPublic={setBundleIsPublic}
@@ -468,6 +521,36 @@ function BankComponent() {
           isPending={isPackagePending}
         />
       )}
+
+      <PageTour
+        storageKey={BANK_TOUR_KEY}
+        autoDelay={600}
+        steps={bankPageSteps}
+      />
+      <TourHelpButton storageKey={BANK_TOUR_KEY} />
     </div>
   );
 }
+
+// ── Bank page tour ──
+const BANK_TOUR_KEY = "labas-page-tour-bank";
+const bankPageSteps: Step[] = [
+  {
+    target: "[data-tour='bank-filters']",
+    title: "Filter & Mode",
+    content: "Pilih mode 'Dari Soal' untuk pilih soal satu per satu, atau 'Dari Section' untuk gabung section dari paket yang sudah ada. Filter juga berdasarkan exam type dan kata kunci.",
+    spotlightPadding: 8,
+  },
+  {
+    target: "[data-tour='bank-questions']",
+    title: "Daftar Soal",
+    content: "Semua soal yang sesuai filter ditampilkan di sini. Klik soal untuk melihat detail, atau centang untuk menambahkannya ke paket.",
+    spotlightPadding: 8,
+  },
+  {
+    target: "[data-tour='bank-sidebar']",
+    title: "Sidebar Paket",
+    content: "Soal yang dipilih muncul di sini. Atur judul, deskripsi, dan visibilitas paket. Klik 'Auto Bundle' untuk isi otomatis, atau 'Buat Paket' untuk simpan.",
+    spotlightPadding: 8,
+  },
+];
