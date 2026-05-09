@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as SetupAvatarRouteImport } from './routes/setup-avatar'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PackagesRouteImport } from './routes/packages'
@@ -19,6 +20,7 @@ import { Route as LandingRouteImport } from './routes/landing'
 import { Route as JobsRouteImport } from './routes/jobs'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as GenerateRouteImport } from './routes/generate'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as BankRouteImport } from './routes/bank'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
@@ -29,6 +31,11 @@ import { Route as PackageIdIndexRouteImport } from './routes/package.$id.index'
 import { Route as PackageIdTakeRouteImport } from './routes/package.$id.take'
 import { Route as PackageIdAttemptAttemptIdRouteImport } from './routes/package.$id.attempt.$attemptId'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SetupAvatarRoute = SetupAvatarRouteImport.update({
   id: '/setup-avatar',
   path: '/setup-avatar',
@@ -77,6 +84,11 @@ const HistoryRoute = HistoryRouteImport.update({
 const GenerateRoute = GenerateRouteImport.update({
   id: '/generate',
   path: '/generate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BankRoute = BankRouteImport.update({
@@ -130,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/bank': typeof BankRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/generate': typeof GenerateRoute
   '/history': typeof HistoryRoute
   '/jobs': typeof JobsRoute
@@ -140,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/packages': typeof PackagesRoute
   '/settings': typeof SettingsRoute
   '/setup-avatar': typeof SetupAvatarRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/attempt/$id': typeof AttemptIdRoute
   '/package/$id': typeof PackageIdRouteWithChildren
   '/profile/$userId': typeof ProfileUserIdRoute
@@ -151,6 +165,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/bank': typeof BankRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/generate': typeof GenerateRoute
   '/history': typeof HistoryRoute
   '/jobs': typeof JobsRoute
@@ -161,6 +176,7 @@ export interface FileRoutesByTo {
   '/packages': typeof PackagesRoute
   '/settings': typeof SettingsRoute
   '/setup-avatar': typeof SetupAvatarRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/attempt/$id': typeof AttemptIdRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/package/$id/take': typeof PackageIdTakeRoute
@@ -172,6 +188,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/analytics': typeof AnalyticsRoute
   '/bank': typeof BankRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/generate': typeof GenerateRoute
   '/history': typeof HistoryRoute
   '/jobs': typeof JobsRoute
@@ -182,6 +199,7 @@ export interface FileRoutesById {
   '/packages': typeof PackagesRoute
   '/settings': typeof SettingsRoute
   '/setup-avatar': typeof SetupAvatarRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/attempt/$id': typeof AttemptIdRoute
   '/package/$id': typeof PackageIdRouteWithChildren
   '/profile/$userId': typeof ProfileUserIdRoute
@@ -195,6 +213,7 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/bank'
+    | '/forgot-password'
     | '/generate'
     | '/history'
     | '/jobs'
@@ -205,6 +224,7 @@ export interface FileRouteTypes {
     | '/packages'
     | '/settings'
     | '/setup-avatar'
+    | '/verify-email'
     | '/attempt/$id'
     | '/package/$id'
     | '/profile/$userId'
@@ -216,6 +236,7 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/bank'
+    | '/forgot-password'
     | '/generate'
     | '/history'
     | '/jobs'
@@ -226,6 +247,7 @@ export interface FileRouteTypes {
     | '/packages'
     | '/settings'
     | '/setup-avatar'
+    | '/verify-email'
     | '/attempt/$id'
     | '/profile/$userId'
     | '/package/$id/take'
@@ -236,6 +258,7 @@ export interface FileRouteTypes {
     | '/'
     | '/analytics'
     | '/bank'
+    | '/forgot-password'
     | '/generate'
     | '/history'
     | '/jobs'
@@ -246,6 +269,7 @@ export interface FileRouteTypes {
     | '/packages'
     | '/settings'
     | '/setup-avatar'
+    | '/verify-email'
     | '/attempt/$id'
     | '/package/$id'
     | '/profile/$userId'
@@ -258,6 +282,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnalyticsRoute: typeof AnalyticsRoute
   BankRoute: typeof BankRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   GenerateRoute: typeof GenerateRoute
   HistoryRoute: typeof HistoryRoute
   JobsRoute: typeof JobsRoute
@@ -268,6 +293,7 @@ export interface RootRouteChildren {
   PackagesRoute: typeof PackagesRoute
   SettingsRoute: typeof SettingsRoute
   SetupAvatarRoute: typeof SetupAvatarRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   AttemptIdRoute: typeof AttemptIdRoute
   PackageIdRoute: typeof PackageIdRouteWithChildren
   ProfileUserIdRoute: typeof ProfileUserIdRoute
@@ -275,6 +301,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/setup-avatar': {
       id: '/setup-avatar'
       path: '/setup-avatar'
@@ -343,6 +376,13 @@ declare module '@tanstack/react-router' {
       path: '/generate'
       fullPath: '/generate'
       preLoaderRoute: typeof GenerateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bank': {
@@ -431,6 +471,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
   BankRoute: BankRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   GenerateRoute: GenerateRoute,
   HistoryRoute: HistoryRoute,
   JobsRoute: JobsRoute,
@@ -441,6 +482,7 @@ const rootRouteChildren: RootRouteChildren = {
   PackagesRoute: PackagesRoute,
   SettingsRoute: SettingsRoute,
   SetupAvatarRoute: SetupAvatarRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   AttemptIdRoute: AttemptIdRoute,
   PackageIdRoute: PackageIdRouteWithChildren,
   ProfileUserIdRoute: ProfileUserIdRoute,

@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
-import { Input } from "@labas/ui/components/input";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { formatTime } from "@/lib/time";
+import { QuestionReviewCard } from "@/components/attempt/QuestionReviewCard";
+import { ReviewFilterBar } from "@/components/attempt/ReviewFilterBar";
+import { SkillBreakdown } from "@/components/attempt/SkillBreakdown";
+
+type FilterStatus = "all" | "wrong" | "correct" | "marked";
 
 export const Route = createFileRoute("/attempt/$id")({
   component: AttemptResultComponent,
@@ -46,6 +50,75 @@ function AttemptResultComponent() {
   const durationSec = attempt?.finishedAt && attempt.startedAt
     ? Math.round((new Date(attempt.finishedAt).getTime() - new Date(attempt.startedAt).getTime()) / 1000)
     : 0;
+
+  // ── Filter state ──
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [filterSkills, setFilterSkills] = useState<string[]>([]);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [allExpanded, setAllExpanded] = useState(false);
+
+  // ── Flatten all questions with section context ──
+  const allQuestions = useMemo(() => {
+    if (!attempt?.sections) return [];
+    return attempt.sections.flatMap((sec: any, secIdx: number) =>
+      sec.questions.map((q: any, qIdx: number) => ({
+        q,
+        secIdx,
+        qIdx,
+        ans: sec.answers.find((a: any) => a.questionId === q.id) ?? null,
+      })),
+    );
+  }, [attempt]);
+
+  // ── Filtered questions ──
+  const partialCount = useMemo(
+    () => allQuestions.filter(({ ans }: any) => ans?.partialScore != null && ans?.partialScore < 100).length,
+    [allQuestions],
+  );
+
+  const filteredQuestions = useMemo(() => {
+    return allQuestions.filter(({ q, ans }: any) => {
+      if (filterStatus === "wrong" && ans?.isCorrect !== false) return false;
+      if (filterStatus === "correct" && ans?.isCorrect !== true) return false;
+      if (filterStatus === "marked") {
+        const hasPartial = ans?.partialScore != null && ans?.partialScore < 100;
+        if (!hasPartial) return false;
+      }
+      if (filterSkills.length > 0) {
+        const tags: string[] = q.skillTags ?? [];
+        if (!filterSkills.some((s) => tags.includes(s))) return false;
+      }
+      return true;
+    });
+  }, [allQuestions, filterStatus, filterSkills]);
+
+  // ── Expand/collapse ──
+  const toggleAllExpanded = () => {
+    const next = !allExpanded;
+    setAllExpanded(next);
+    if (next) {
+      setExpandedIds(new Set(filteredQuestions.map(({ q }: any) => q.id)));
+    } else {
+      setExpandedIds(new Set());
+    }
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setAllExpanded(false);
+  };
+
+  const toggleSkill = (skill: string) => {
+    setFilterSkills((prev) =>
+      prev.includes(skill) ? prev.filter((s) => s !== skill) : [skill],
+    );
+    setFilterStatus("all");
+  };
 
   if (attemptQuery.isLoading) {
     return (
@@ -124,7 +197,7 @@ function AttemptResultComponent() {
                     {attempt.totalScore ?? 0} benar
                   </span>
                   <span className="flex items-center gap-1">
-                    <MaterialIcon name="cancel" className="text-sm text-[var(--pomegranate-500)]" />
+                    <MaterialIcon name="cancel" className="text-sm text-[var(--pomegranate-400)]" />
                     {(attempt.maxScore ?? 0) - (attempt.totalScore ?? 0)} salah
                   </span>
                 </div>
@@ -175,7 +248,7 @@ function AttemptResultComponent() {
                       <p className="text-sm text-[var(--warm-charcoal)]">
                         {sec.score ?? 0}/{sec.maxScore ?? 0} benar
                       </p>
-                      {sec.timeSpentSec !== null && sec.timeSpentSec !== undefined && (
+                      {sec.timeSpentSec != null && (
                         <p className="text-xs text-[var(--warm-silver)] mt-1 flex items-center gap-1">
                           <MaterialIcon name="timer" className="text-xs" />
                           {formatTime(sec.timeSpentSec)}
@@ -193,21 +266,71 @@ function AttemptResultComponent() {
         </div>
       </div>
 
+      {/* Skill Breakdown */}
+      <div className="mb-8">
+        <h2 className="text-xl font-headline font-bold text-[var(--clay-black)] mb-4">
+          Kemampuan per Topik
+          <span className="ml-2 text-sm font-normal text-[var(--warm-charcoal)]">Klik topik untuk filter soal</span>
+        </h2>
+        <SkillBreakdown
+          questions={allQuestions.map(({ q, ans }: any) => ({
+            skillTags: q.skillTags,
+            isCorrect: ans?.isCorrect,
+          }))}
+          onSkillClick={toggleSkill}
+          activeSkills={filterSkills}
+        />
+      </div>
+
       {/* Question Review */}
       <div className="mb-8">
-        <h2 className="text-xl font-headline font-bold text-[var(--clay-black)] mb-4">Pembahasan Soal</h2>
-        <div className="space-y-4">
-          {attempt.sections.map((sec: any, secIdx: number) =>
-            sec.questions.map((q: any, qIdx: number) => (
-              <QuestionReviewCard
-                key={q.id}
-                q={q}
-                secIdx={secIdx}
-                qIdx={qIdx}
-                ans={sec.answers.find((a: any) => a.questionId === q.id)}
-                userId={session?.user.id}
-              />
-            )),
+        <h2 className="text-xl font-headline font-bold text-[var(--clay-black)] mb-4">
+          Pembahasan Soal
+          {filterStatus !== "all" && (
+            <span className="ml-2 text-sm font-normal text-[var(--warm-charcoal)]">
+              ({filteredQuestions.length} soal)
+            </span>
+          )}
+        </h2>
+
+        <ReviewFilterBar
+          filterStatus={filterStatus}
+          setFilterStatus={setFilterStatus}
+          filterSkills={filterSkills}
+          setFilterSkills={setFilterSkills}
+          questions={allQuestions.map(({ q, ans }: any) => ({
+            skillTags: q.skillTags ?? [],
+            isCorrect: ans?.isCorrect,
+          }))}
+          markedCount={partialCount}
+          allExpanded={allExpanded}
+          onToggleAllExpanded={toggleAllExpanded}
+        />
+
+        <div className="space-y-3">
+          {filteredQuestions.map(({ q, secIdx, qIdx, ans }: any) => (
+            <QuestionReviewCard
+              key={q.id}
+              q={q}
+              secIdx={secIdx}
+              qIdx={qIdx}
+              ans={ans}
+              userId={session?.user.id}
+              isExpanded={expandedIds.has(q.id)}
+              onToggleExpand={() => toggleExpand(q.id)}
+            />
+          ))}
+          {filteredQuestions.length === 0 && (
+            <div className="text-center py-12">
+              <MaterialIcon name="search_off" className="text-4xl text-[var(--warm-silver)] mx-auto mb-3" />
+              <p className="text-sm text-[var(--warm-charcoal)]">Tidak ada soal yang sesuai filter.</p>
+              <button
+                onClick={() => { setFilterStatus("all"); setFilterSkills([]); }}
+                className="text-sm text-[var(--matcha-600)] font-semibold mt-2 hover:underline"
+              >
+                Reset filter
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -231,245 +354,5 @@ function AttemptResultComponent() {
         </Link>
       </div>
     </div>
-  );
-}
-
-function QuestionReviewCard({
-  q,
-  secIdx,
-  qIdx,
-  ans,
-  userId,
-}: {
-  q: any;
-  secIdx: number;
-  qIdx: number;
-  ans: any;
-  userId?: string;
-}) {
-  const isCorrect = ans?.isCorrect;
-  const userAnswer = ans?.userAnswer ?? "Tidak dijawab";
-  const isOwner = q.creatorUserId === userId;
-
-  const [isEditing, setIsEditing] = useState(false);
-  const [editPassage, setEditPassage] = useState(q.passageText ?? "");
-  const [editCorrectAnswer, setEditCorrectAnswer] = useState(q.correctAnswer ?? "");
-  const [editExplanation, setEditExplanation] = useState(q.explanation ?? "");
-
-  const feedbackQuery = useQuery(
-    trpc.feedback.getQuestionFeedback.queryOptions(
-      { questionId: q.id },
-      { enabled: !!q.id },
-    ),
-  );
-
-  const voteMutation = useMutation({
-    ...trpc.feedback.voteQuestion.mutationOptions(),
-    onSuccess: () => feedbackQuery.refetch(),
-  });
-
-  const updateQuestionMutation = useMutation({
-    ...trpc.question.update.mutationOptions(),
-    onSuccess: () => {
-      setIsEditing(false);
-      // Ideally refetch attempt data here
-      window.location.reload();
-    },
-  });
-
-  const handleSaveEdit = () => {
-    updateQuestionMutation.mutate({
-      id: q.id,
-      passageText: editPassage,
-      correctAnswer: editCorrectAnswer,
-      explanation: editExplanation,
-    });
-  };
-
-  return (
-    <Card
-      className={`clay-shadow bg-[var(--pure-white)] border-2 rounded-[var(--radius-xl)] ${
-        isCorrect === true
-          ? "border-[var(--matcha-400)]"
-          : isCorrect === false
-            ? "border-[var(--pomegranate-400)]"
-            : "border-[var(--oat-border)]"
-      }`}
-    >
-      <CardContent className="p-5">
-        <div className="flex items-start gap-3 mb-3">
-          <span
-            className={`w-8 h-8 rounded-full text-xs flex items-center justify-center font-bold shrink-0 ${
-              isCorrect === true
-                ? "bg-[var(--matcha-600)] text-[var(--pure-white)]"
-                : isCorrect === false
-                  ? "bg-[var(--pomegranate-500)] text-[var(--pure-white)]"
-                  : "bg-[var(--oat-light)] text-[var(--warm-charcoal)]"
-            }`}
-          >
-            {secIdx + 1}.{qIdx + 1}
-          </span>
-          <div className="flex-1">
-            <p className="text-[var(--clay-black)] font-medium">{q.questionText}</p>
-            <div className="flex gap-2 mt-1 flex-wrap">
-              <span className="text-xs px-2 py-0.5 rounded bg-[var(--oat-light)] text-[var(--warm-charcoal)]">
-                {q.format.replace(/_/g, " ")}
-              </span>
-            </div>
-          </div>
-          {isOwner && !isEditing && (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="p-1.5 rounded-md hover:bg-[var(--oat-light)] transition-colors text-[var(--warm-charcoal)]"
-              title="Koreksi soal"
-            >
-              <MaterialIcon name="edit" className="text-sm" />
-            </button>
-          )}
-          {isEditing && (
-            <button
-              onClick={() => setIsEditing(false)}
-              className="p-1.5 rounded-md hover:bg-[var(--oat-light)] transition-colors text-[var(--warm-charcoal)]"
-              title="Batal"
-            >
-              <MaterialIcon name="close" className="text-sm" />
-            </button>
-          )}
-        </div>
-
-        <div className="pl-11 space-y-3">
-          {/* Passage Text */}
-          {q.passageText && (
-            <div className="bg-[var(--oat-light)] rounded-[var(--radius-lg)] p-3 text-sm text-[var(--warm-charcoal)] whitespace-pre-wrap leading-relaxed">
-              <span className="font-semibold text-[var(--clay-black)] block mb-1">Teks Bacaan:</span>
-              {q.passageText}
-            </div>
-          )}
-
-          {/* Owner Inline Edit Form */}
-          {isEditing && isOwner && (
-            <div className="space-y-3 bg-[var(--badge-blue-bg)] rounded-[var(--radius-lg)] p-4 border-2 border-[var(--badge-blue-bg)]">
-              <p className="text-sm font-semibold text-[var(--badge-blue-text)] flex items-center gap-2">
-                <MaterialIcon name="edit_note" className="text-sm" />
-                Koreksi Soal
-              </p>
-              <div>
-                <label className="text-xs font-medium text-[var(--warm-charcoal)] mb-1 block">Teks Bacaan</label>
-                <textarea
-                  value={editPassage}
-                  onChange={(e) => setEditPassage(e.target.value)}
-                  className="w-full min-h-[80px] p-2 rounded-[var(--radius-md)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-sm text-[var(--clay-black)] resize-y"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--warm-charcoal)] mb-1 block">Jawaban Benar</label>
-                <Input
-                  value={editCorrectAnswer}
-                  onChange={(e) => setEditCorrectAnswer(e.target.value)}
-                  className="h-9 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-xs font-medium text-[var(--warm-charcoal)] mb-1 block">Penjelasan</label>
-                <textarea
-                  value={editExplanation}
-                  onChange={(e) => setEditExplanation(e.target.value)}
-                  className="w-full min-h-[60px] p-2 rounded-[var(--radius-md)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-sm text-[var(--clay-black)] resize-y"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={handleSaveEdit}
-                  disabled={updateQuestionMutation.isPending}
-                  className="h-9 text-sm bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] rounded-[var(--radius-lg)]"
-                >
-                  <MaterialIcon name="save" className="text-sm mr-1" />
-                  Simpan
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditing(false)}
-                  className="h-9 text-sm rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)]"
-                >
-                  Batal
-                </Button>
-              </div>
-            </div>
-          )}
-
-          <div className="flex flex-wrap gap-4 text-sm">
-            <div>
-              <span className="text-[var(--warm-silver)]">Jawaban Anda:</span>{" "}
-              <span
-                className={`font-semibold ${
-                  isCorrect === true
-                    ? "text-[var(--matcha-700)]"
-                    : isCorrect === false
-                      ? "text-[var(--pomegranate-600)]"
-                      : "text-[var(--warm-charcoal)]"
-                }`}
-              >
-                {userAnswer}
-              </span>
-            </div>
-            {ans?.partialScore != null && ans?.partialScore < 100 && (
-              <div>
-                <span className="text-[var(--warm-silver)]">Skor Parsial:</span>{" "}
-                <span className="font-semibold text-[var(--lemon-700)]">
-                  {ans.partialScore}%
-                </span>
-              </div>
-            )}
-            {(isCorrect === false || isCorrect === null) && (
-              <div>
-                <span className="text-[var(--warm-silver)]">Jawaban Benar:</span>{" "}
-                <span className="font-semibold text-[var(--matcha-700)]">
-                  {q.correctAnswer}
-                </span>
-              </div>
-            )}
-            {ans?.timeSpentSec !== null && ans?.timeSpentSec !== undefined && (
-              <div className="flex items-center gap-1 text-[var(--warm-silver)]">
-                <MaterialIcon name="timer" className="text-xs" />
-                <span>{formatTime(ans.timeSpentSec)}</span>
-              </div>
-            )}
-          </div>
-
-          {q.explanation && !isEditing && (
-            <div className="bg-[var(--oat-light)] rounded-[var(--radius-lg)] p-3 text-sm text-[var(--warm-charcoal)]">
-              <span className="font-semibold text-[var(--clay-black)]">Penjelasan:</span>{" "}
-              {q.explanation}
-            </div>
-          )}
-
-          {/* Thumbs Feedback */}
-          <div className="flex items-center gap-3 pt-1">
-            <button
-              onClick={() => voteMutation.mutate({ questionId: q.id, type: "up" })}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                feedbackQuery.data?.myFeedback === "up"
-                  ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
-                  : "bg-[var(--oat-light)] text-[var(--warm-charcoal)] hover:bg-[var(--matcha-300)] hover:text-[var(--matcha-800)]"
-              }`}
-            >
-              <MaterialIcon name="thumb_up" className="text-sm" />
-              <span>{feedbackQuery.data?.up ?? 0}</span>
-            </button>
-            <button
-              onClick={() => voteMutation.mutate({ questionId: q.id, type: "down" })}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                feedbackQuery.data?.myFeedback === "down"
-                  ? "bg-[var(--pomegranate-100)] text-[var(--pomegranate-600)]"
-                  : "bg-[var(--oat-light)] text-[var(--warm-charcoal)] hover:bg-[var(--pomegranate-100)] hover:text-[var(--pomegranate-600)]"
-              }`}
-            >
-              <MaterialIcon name="thumb_down" className="text-sm" />
-              <span>{feedbackQuery.data?.down ?? 0}</span>
-            </button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
   );
 }

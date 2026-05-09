@@ -3,11 +3,13 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@labas/ui/components/input";
 import { Label } from "@labas/ui/components/label";
 import { useForm } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import z from "zod";
 
 import { authClient } from "@/lib/auth-client";
+import { trpc } from "@/utils/trpc";
 
 import Loader from "./loader";
 
@@ -16,6 +18,7 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
     from: "/",
   });
   const { isPending } = authClient.useSession();
+  const sendOtpMutation = useMutation(trpc.verification.sendVerificationOtp.mutationOptions());
 
   const form = useForm({
     defaultValues: {
@@ -31,11 +34,15 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
           name: value.name,
         },
         {
-          onSuccess: () => {
+          onSuccess: async () => {
+            try {
+              await sendOtpMutation.mutateAsync({ email: value.email });
+            } catch {}
             navigate({
-              to: "/",
+              to: "/verify-email",
+              search: { email: value.email },
             });
-            toast.success("Sign up successful");
+            toast.success("Akun berhasil dibuat! Cek email Anda untuk kode verifikasi.");
           },
           onError: (error) => {
             toast.error(error.error.message || error.error.statusText);

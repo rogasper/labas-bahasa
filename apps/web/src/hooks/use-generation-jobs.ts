@@ -6,6 +6,7 @@ import { authClient } from "@/lib/auth-client";
 
 const STORAGE_KEY = "labas_active_jobs";
 const RESULTS_KEY = "labas_completed_results";
+const CLEARED_JOBS_KEY = "labas_cleared_jobs";
 const MAX_PARALLEL = 3;
 
 export interface ActiveJob {
@@ -80,6 +81,23 @@ function writeStoredResults(results: CompletedResult[]) {
   }
 }
 
+function readClearedJobIds(): string[] {
+  try {
+    const raw = sessionStorage.getItem(CLEARED_JOBS_KEY);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeClearedJobIds(ids: string[]) {
+  if (ids.length === 0) {
+    sessionStorage.removeItem(CLEARED_JOBS_KEY);
+  } else {
+    sessionStorage.setItem(CLEARED_JOBS_KEY, JSON.stringify(ids));
+  }
+}
+
 function broadcastJobs(ids: string[]) {
   window.dispatchEvent(
     new CustomEvent("labas:jobs-change", { detail: { ids } }),
@@ -135,8 +153,11 @@ export function useGenerationJobs() {
   const resetAll = useCallback(() => {
     setError(null);
     setCompletedResults([]);
-    setJobIds([]);
-    removedJobIdsRef.current.clear();
+    setJobIds((prev) => {
+      writeClearedJobIds(prev);
+      removedJobIdsRef.current.clear();
+      return [];
+    });
     processedJobStates.current = {};
     sessionStorage.removeItem(RESULTS_KEY);
   }, [setJobIds]);
@@ -147,6 +168,11 @@ export function useGenerationJobs() {
     if (saved.length > 0) setJobIdsState(saved);
     const savedResults = readStoredResults();
     if (savedResults.length > 0) setCompletedResults(savedResults);
+
+    const clearedIds = readClearedJobIds();
+    for (const id of clearedIds) {
+      removedJobIdsRef.current.add(id);
+    }
   }, []);
 
   // Persist completedResults to sessionStorage
@@ -173,11 +199,15 @@ export function useGenerationJobs() {
 
   useEffect(() => {
     if (!myJobsQuery.data) return;
+
+    const clearedIds = readClearedJobIds();
+
     const activeIds = myJobsQuery.data
       .filter(
         (j) =>
           ACTIVE_STATUSES.has(j.status) &&
-          !removedJobIdsRef.current.has(j.id),
+          !removedJobIdsRef.current.has(j.id) &&
+          !clearedIds.includes(j.id),
       )
       .map((j) => j.id);
     if (activeIds.length === 0) return;

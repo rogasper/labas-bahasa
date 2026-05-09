@@ -10,6 +10,7 @@ import { ratingRouter } from "./rating";
 import { settingsRouter } from "./settings";
 import { leaderboardRouter } from "./leaderboard";
 import { statsRouter } from "./stats";
+import { verificationRouter } from "./verification";
 
 export const appRouter = router({
   healthCheck: publicProcedure.query(() => {
@@ -32,6 +33,7 @@ export const appRouter = router({
   settings: settingsRouter,
   stats: statsRouter,
   leaderboard: leaderboardRouter,
+  verification: verificationRouter,
 });
 
 export type AppRouter = typeof appRouter;

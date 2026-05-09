@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@labas/ui/components/input";
 import { Label } from "@labas/ui/components/label";
 import { useForm } from "@tanstack/react-form";
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import z from "zod";
 
@@ -30,13 +30,17 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
         },
         {
           onSuccess: () => {
-            navigate({
-              to: "/",
-            });
+            navigate({ to: "/" });
             toast.success("Sign in successful");
           },
           onError: (error) => {
-            toast.error(error.error.message || error.error.statusText);
+            const msg = error.error.message || error.error.statusText;
+            if (msg?.toLowerCase().includes("verify")) {
+              navigate({ to: "/verify-email", search: { email: value.email } });
+              toast.error("Silakan verifikasi email Anda terlebih dahulu");
+            } else {
+              toast.error(msg);
+            }
           },
         },
       );
@@ -95,7 +99,15 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
             <form.Field name="password">
               {(field) => (
                 <div className="space-y-2">
-                  <Label htmlFor={field.name}>Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor={field.name}>Password</Label>
+                    <Link
+                      to="/forgot-password"
+                      className="text-xs text-muted-foreground hover:text-primary"
+                    >
+                      Lupa password?
+                    </Link>
+                  </div>
                   <Input
                     id={field.name}
                     name={field.name}

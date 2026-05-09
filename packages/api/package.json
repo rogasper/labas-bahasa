@@ -18,15 +18,19 @@
     "@labas/env": "workspace:*",
     "@trpc/client": "catalog:",
     "@trpc/server": "catalog:",
+    "bcryptjs": "^3.0.3",
     "bullmq": "^5.76.2",
     "dotenv": "catalog:",
     "drizzle-orm": "^0.45.1",
     "ioredis": "^5.10.1",
+    "nodemailer": "^8.0.7",
     "winston": "^3.19.0",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@labas/config": "workspace:*",
+    "@types/bcryptjs": "^3.0.0",
+    "@types/nodemailer": "^8.0.0",
     "hono": "catalog:",
     "typescript": "catalog:"
   }

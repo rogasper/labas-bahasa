@@ -55,10 +55,10 @@ export function QuestionCard({
                 {selected ? "Terpilih" : "Pilih"}
               </span>
             )}
-            <span className="px-2.5 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-xs font-semibold">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-xs font-semibold leading-none whitespace-nowrap">
               {q.examTypeName}
             </span>
-            <span className="px-2.5 py-1 rounded-full bg-[var(--slushie-500)]/20 text-[var(--slushie-800)] text-xs font-semibold">
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[var(--slushie-500)]/20 text-[var(--slushie-800)] text-xs font-semibold leading-none whitespace-nowrap">
               {q.sectionTypeName}
             </span>
             {disabled && (

@@ -184,7 +184,9 @@ export const attemptRouter = router({
         .where(eq(testPackage.id, input.packageId))
         .limit(1);
 
-      assertOwnership(pkg, userId, "Package");
+      if (!pkg?.isPublic) {
+        assertOwnership(pkg, userId, "Package");
+      }
 
       const sections = await db
         .select({

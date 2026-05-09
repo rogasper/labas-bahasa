@@ -17,6 +17,11 @@ export function createAuth() {
     emailAndPassword: {
       enabled: true,
     },
+    user: {
+      changeEmail: {
+        enabled: true,
+      },
+    },
     secret: env.BETTER_AUTH_SECRET,
     baseURL: env.BETTER_AUTH_URL,
     advanced: {

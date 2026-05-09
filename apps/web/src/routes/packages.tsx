@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
@@ -101,6 +102,38 @@ function PackagesComponent() {
     updateMutation.mutate({ id: pkgId, isPublic: !current });
   };
 
+  const bulkPublish = useMutation({
+    ...trpc.package.bulkPublish.mutationOptions(),
+    onSuccess: (data) => {
+      query.refetch();
+      setBulkMode(false);
+      setSelectedIds(new Set());
+      toast.success(`${data.updated} paket berhasil dipublikasikan`);
+    },
+    onError: (err: any) => toast.error("Gagal mempublikasikan", { description: err.message }),
+  });
+
+  // ── Bulk select ──
+  const [bulkMode, setBulkMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+  const selectAll = () => setSelectedIds(new Set(packages.map((p: any) => p.id)));
+
+  useEffect(() => {
+    setBulkMode(false);
+    setSelectedIds(new Set());
+  }, [tab, searchText, examType]);
+
   const setTab = (newTab: Tab) => {
     navigate({ search: { tab: newTab, search: "", examType: "", page: 1 } });
   };
@@ -194,6 +227,60 @@ function PackagesComponent() {
         </Select>
       </div>
 
+      {/* Bulk toolbar */}
+      {tab === "mine" && (
+        <div className="flex items-center justify-between mb-4 p-3 rounded-[var(--radius-lg)] bg-[var(--oat-light)] border-2 border-[var(--oat-border)]">
+          {bulkMode ? (
+            <>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={clearSelection}
+                  className="text-xs font-semibold text-[var(--warm-charcoal)] hover:text-[var(--clay-black)] transition-colors flex items-center gap-1"
+                >
+                  <MaterialIcon name="close" className="text-xs" />
+                  Batalkan ({selectedIds.size})
+                </button>
+                <button
+                  onClick={selectAll}
+                  className="text-xs font-semibold text-[var(--matcha-600)] hover:text-[var(--matcha-800)] transition-colors flex items-center gap-1"
+                >
+                  <MaterialIcon name="select_all" className="text-xs" />
+                  Pilih Semua
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="lg"
+                  disabled={selectedIds.size === 0 || bulkPublish.isPending}
+                  onClick={() => bulkPublish.mutate({ ids: Array.from(selectedIds) })}
+                  className="rounded-[var(--radius-md)] bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-800)]"
+                >
+                  <MaterialIcon name="public" className="text-xs mr-1" />
+                  {bulkPublish.isPending ? "Mempublikasikan..." : `Jadikan Publik (${selectedIds.size})`}
+                </Button>
+                <button
+                  onClick={() => { setBulkMode(false); setSelectedIds(new Set()); }}
+                  className="text-xs font-semibold text-[var(--warm-charcoal)] hover:text-[var(--clay-black)] transition-colors"
+                >
+                  Selesai
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <span className="text-sm text-[var(--warm-charcoal)]">{packages.length} paket</span>
+              <button
+                onClick={() => setBulkMode(true)}
+                className="text-xs font-semibold text-[var(--matcha-600)] hover:text-[var(--matcha-800)] transition-colors flex items-center gap-1"
+              >
+                <MaterialIcon name="select_all" className="text-sm" />
+                Pilih Banyak
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {/* Results */}
       {query.isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -230,16 +317,42 @@ function PackagesComponent() {
           <div data-tour="packages-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {packages.map((pkg) => {
               const isOwner = pkg.creatorUserId === userId;
+              const isSelected = selectedIds.has(pkg.id);
               return (
-                <Card key={pkg.id} className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] h-full flex flex-col">
+                <Card
+                  key={pkg.id}
+                  className={`clay-shadow clay-hover bg-[var(--pure-white)] border-2 rounded-[var(--radius-xl)] h-full flex flex-col ${
+                    bulkMode && isSelected
+                      ? "border-[var(--matcha-600)] ring-2 ring-[var(--matcha-400)]"
+                      : "border-[var(--oat-border)]"
+                  }`}
+                >
                   <CardContent className="p-5 flex flex-col h-full">
-                    <Link to="/package/$id" params={{ id: pkg.id }} className="block flex-1">
+                    <div
+                      className="block flex-1 cursor-pointer"
+                      onClick={bulkMode ? () => toggleSelect(pkg.id) : undefined}
+                    >
+                      <Link
+                        to="/package/$id"
+                        params={{ id: pkg.id }}
+                        className={bulkMode ? "pointer-events-none" : ""}
+                      >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex gap-2 flex-wrap">
-                          <span className="px-2.5 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-xs font-semibold">
+                          {bulkMode && (
+                            <span className={`px-2 py-1 rounded-full text-[10px] font-semibold flex items-center gap-1 ${
+                              isSelected
+                                ? "bg-[var(--matcha-600)] text-[var(--pure-white)]"
+                                : "bg-[var(--oat-light)] text-[var(--warm-charcoal)]"
+                            }`}>
+                              <MaterialIcon name={isSelected ? "check_circle" : "radio_button_unchecked"} className="text-xs" />
+                              {isSelected ? "Terpilih" : "Pilih"}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-xs font-semibold leading-none whitespace-nowrap">
                             {pkg.examTypeName}
                           </span>
-                          {isOwner && (
+                          {isOwner && !bulkMode && (
                             <span
                               className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
                                 pkg.isPublic
@@ -268,6 +381,7 @@ function PackagesComponent() {
                           {pkg.description}
                         </p>
                       )}
+                      </Link>
 
                       <div className="flex items-center justify-between mt-auto pt-3 border-t border-[var(--oat-border)]">
                         <div className="flex gap-3 text-xs text-[var(--warm-charcoal)]">
@@ -290,10 +404,10 @@ function PackagesComponent() {
                           {pkg.usageCount}x digunakan
                         </span>
                       </div>
-                    </Link>
+                    </div>
 
                     {/* Owner actions */}
-                    {isOwner && (
+                    {isOwner && !bulkMode && (
                       <div className="mt-3 pt-3 border-t border-[var(--oat-border)] flex items-center justify-between">
                         <button
                           onClick={() => togglePublic(pkg.id, pkg.isPublic)}
@@ -322,15 +436,18 @@ function PackagesComponent() {
                       </div>
                     )}
 
-                    <div className="mt-3 pt-3 border-t border-[var(--oat-border)]">
-                      <Button
-                        className="w-full bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-800)] clay-hover rounded-[var(--radius-lg)]"
-                        onClick={() => routerNavigate({ to: '/package/$id/take', params: { id: pkg.id } })}
-                      >
-                        <MaterialIcon name="play_arrow" className="mr-2" />
-                        Mulai Latihan
-                      </Button>
-                    </div>
+                    {!bulkMode && (
+                      <div className="mt-3 pt-3 border-t border-[var(--oat-border)]">
+                        <Button
+                          className="w-full bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-800)] clay-hover rounded-[var(--radius-lg)]"
+                          onClick={() => routerNavigate({ to: '/package/$id/take', params: { id: pkg.id } })}
+                          size="xl"
+                        >
+                          <MaterialIcon name="play_arrow" className="mr-2" />
+                          Mulai Latihan
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );

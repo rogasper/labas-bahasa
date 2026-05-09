@@ -303,6 +303,26 @@ export const packageRouter = router({
       return { success: true };
     }),
 
+  bulkPublish: protectedProcedure
+    .input(z.object({ ids: z.array(z.string().uuid()).min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const rows = await db
+        .select({ id: testPackage.id, creatorUserId: testPackage.creatorUserId, isPublic: testPackage.isPublic })
+        .from(testPackage)
+        .where(inArray(testPackage.id, input.ids));
+
+      for (const row of rows) {
+        assertOwnership(row, ctx.session.user.id, "Package");
+      }
+
+      await db
+        .update(testPackage)
+        .set({ isPublic: true })
+        .where(inArray(testPackage.id, input.ids));
+
+      return { success: true, updated: rows.length };
+    }),
+
   // ── Section Management ───────────────────────────────────
 
   addSection: protectedProcedure

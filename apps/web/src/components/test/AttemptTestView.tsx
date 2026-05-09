@@ -317,7 +317,7 @@ export function AttemptTestView({
             <Button
               onClick={() => setShowFinishDialog(true)}
               disabled={isFinished}
-              className="bg-[var(--pomegranate-500)] text-[var(--pure-white)] hover:bg-[var(--pomegranate-600)] px-4 py-2 rounded-xl text-sm font-bold transition-opacity"
+              className="bg-[var(--pomegranate-400)] text-[var(--pure-white)] hover:bg-[var(--pomegranate-600)] px-4 py-2 rounded-xl text-sm font-bold transition-opacity"
             >
               Selesai Test
             </Button>
@@ -495,7 +495,7 @@ export function AttemptTestView({
           <div className="bg-[var(--warm-cream)] w-full max-w-md rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] shadow-xl p-6 md:p-8">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-[var(--pomegranate-400)]/20 flex items-center justify-center">
-                <MaterialIcon name="help" className="text-[var(--pomegranate-500)]" />
+                <MaterialIcon name="help" className="text-[var(--pomegranate-400)]" />
               </div>
               <h2 className="text-xl font-headline font-bold text-[var(--clay-black)]">
                 Selesaikan Latihan?
@@ -550,7 +550,7 @@ export function AttemptTestView({
           <div className="bg-[var(--warm-cream)] w-full max-w-md rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] shadow-xl p-6 md:p-8">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-[var(--pomegranate-400)]/20 flex items-center justify-center">
-                <MaterialIcon name="warning" className="text-[var(--pomegranate-500)]" />
+                <MaterialIcon name="warning" className="text-[var(--pomegranate-400)]" />
               </div>
               <h2 className="text-xl font-headline font-bold text-[var(--clay-black)]">
                 Keluar dari Latihan?
@@ -576,7 +576,7 @@ export function AttemptTestView({
                   setShowAbandonDialog(false);
                   onAbandon();
                 }}
-                className="flex-1 bg-[var(--pomegranate-500)] text-[var(--pure-white)] hover:bg-[var(--pomegranate-600)] rounded-[var(--radius-lg)]"
+                className="flex-1 bg-[var(--pomegranate-400)] text-[var(--pure-white)] hover:bg-[var(--pomegranate-600)] rounded-[var(--radius-lg)]"
               >
                 Keluar
               </Button>

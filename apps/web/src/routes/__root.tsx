@@ -40,7 +40,9 @@ function RootComponent() {
       m.routeId === "/package/$id/take" ||
       m.routeId === "/package/$id/attempt/$attemptId" ||
       m.routeId === "/login" ||
-      m.routeId === "/setup-avatar",
+      m.routeId === "/setup-avatar" ||
+      m.routeId === "/verify-email" ||
+      m.routeId === "/forgot-password",
   );
   const isLanding = matches.some((m) => m.routeId === "/landing");
 

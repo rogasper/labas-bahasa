@@ -17,12 +17,13 @@ import { ApiKeyList } from "@/components/settings/ApiKeyList";
 import { ApiKeyForm } from "@/components/settings/ApiKeyForm";
 import { TipsCard } from "@/components/settings/TipsCard";
 import { SecurityInfo } from "@/components/settings/SecurityInfo";
+import { AccountSettings } from "@/components/settings/AccountSettings";
 import { z } from "zod";
 
 export const Route = createFileRoute("/settings")({
   component: RouteComponent,
   validateSearch: z.object({
-    tab: z.enum(["api-keys", "token-usage", "security"]).optional(),
+    tab: z.enum(["api-keys", "token-usage", "security", "account"]).optional(),
   }).parse,
   beforeLoad: async () => {
     const session = await authClient.getSession();
@@ -52,7 +53,7 @@ function defaultConfig(): Omit<ApiKeyConfig, "id" | "apiKey"> {
   };
 }
 
-type Tab = "api-keys" | "token-usage" | "security";
+type Tab = "api-keys" | "token-usage" | "security" | "account";
 
 function TokenUsageSection() {
   const { data, isLoading } = useQuery(trpc.ai.tokenUsageToday.queryOptions());
@@ -296,6 +297,7 @@ function RouteComponent() {
         <TabsList variant="line" className="mb-6">
           <TabsTrigger value="api-keys">API Keys</TabsTrigger>
           <TabsTrigger value="token-usage">Token Usage</TabsTrigger>
+          <TabsTrigger value="account">Akun</TabsTrigger>
           <TabsTrigger value="security">Keamanan</TabsTrigger>
         </TabsList>
 
@@ -335,6 +337,10 @@ function RouteComponent() {
 
         <TabsContent value="token-usage">
           <TokenUsageSection />
+        </TabsContent>
+
+        <TabsContent value="account">
+          <AccountSettings />
         </TabsContent>
 
         <TabsContent value="security">

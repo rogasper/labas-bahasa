@@ -107,6 +107,8 @@ function RouteComponent() {
   const [weaknessAlign, setWeaknessAlign] = useState(75);
   const [mode, setMode] = useState<"quick" | "agentic">("quick");
 
+  const isReadingAndWriting = selectedSections.includes("READING") && selectedSections.includes("WRITING");
+
   useEffect(() => {
     setSelectedFormats((prev) => {
       const valid = prev.filter((f) =>
@@ -118,6 +120,13 @@ function RouteComponent() {
       return valid;
     });
   }, [examType]);
+
+  useEffect(() => {
+    if (isReadingAndWriting) {
+      if (questionCount < 20) setQuestionCount(20);
+      if (mode === "quick") setMode("agentic");
+    }
+  }, [isReadingAndWriting]);
 
   const generate = useMutation({
     ...trpc.ai.generate.mutationOptions(),
@@ -257,6 +266,7 @@ function RouteComponent() {
             <Link to="/settings">
               <Button
                 variant="outline"
+                size="xl"
                 className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
               >
                 <MaterialIcon name="settings" className="mr-1" />
@@ -337,26 +347,32 @@ function RouteComponent() {
               <span className="ml-2 text-sm font-normal text-[var(--warm-charcoal)]">{questionCount} soal</span>
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {QUESTION_COUNT_PRESETS.map((p) => (
+              {QUESTION_COUNT_PRESETS.map((p) => {
+                const isDisabled = isReadingAndWriting && (p.value === 5 || p.value === 10);
+                return (
                 <button
                   key={p.value}
                   onClick={() => setQuestionCount(p.value)}
+                  disabled={isDisabled}
                   className={`py-4 px-2 rounded-[var(--radius-lg)] text-sm font-semibold transition-all clay-hover flex flex-col items-center gap-1 min-h-[72px] ${
-                    questionCount === p.value
-                      ? "bg-[var(--clay-black)] text-[var(--pure-white)] clay-shadow"
-                      : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] border-2 border-[var(--oat-border)]"
+                    isDisabled
+                      ? "bg-[var(--oat-light)] text-[var(--warm-silver)] cursor-not-allowed opacity-50 border-2 border-[var(--oat-border)]"
+                      : questionCount === p.value
+                        ? "bg-[var(--clay-black)] text-[var(--pure-white)] clay-shadow"
+                        : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] border-2 border-[var(--oat-border)]"
                   }`}
                 >
                   <span>{p.label}</span>
                   <span className={`text-xs ${questionCount === p.value ? "text-[var(--pure-white)]/70" : "text-[var(--warm-charcoal)]/70"}`}>{p.desc}</span>
                 </button>
-              ))}
+              );
+              })}
             </div>
             <div className="flex items-center gap-3 mt-1">
               <span className="text-xs font-medium text-[var(--warm-charcoal)] whitespace-nowrap">Custom:</span>
               <input
                 type="range"
-                min={1}
+                min={isReadingAndWriting ? 20 : 1}
                 max={40}
                 value={questionCount}
                 onChange={(e) => setQuestionCount(Number(e.target.value))}
@@ -514,6 +530,7 @@ function RouteComponent() {
             error={error}
             onGenerate={handleGenerate}
             onDismissError={() => setError(null)}
+            disableQuick={isReadingAndWriting}
           />
         </div>
       </div>

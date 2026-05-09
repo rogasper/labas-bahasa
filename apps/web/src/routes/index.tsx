@@ -13,6 +13,9 @@ export const Route = createFileRoute("/")({
     if (!session.data) {
       throw redirect({ to: "/landing" });
     }
+    if (!session.data.user.emailVerified) {
+      throw redirect({ to: "/verify-email", search: { email: session.data.user.email } });
+    }
     if (!session.data.user.image) {
       throw redirect({ to: "/setup-avatar" });
     }
