@@ -122,7 +122,7 @@ export const verificationRouter = router({
       z.object({
         email: z.string().email(),
         otp: z.string().length(6),
-        newPassword: z.string().min(8),
+        newPassword: z.string().regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/, "Password must be at least 8 characters with uppercase, lowercase, and number"),
       }),
     )
     .mutation(async ({ input }) => {

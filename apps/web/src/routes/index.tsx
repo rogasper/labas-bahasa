@@ -5,6 +5,7 @@ import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { TourGuide } from "@/components/TourGuide";
 
 export const Route = createFileRoute("/")({
   component: HomeComponent,
@@ -384,6 +385,8 @@ function HomeComponent() {
           </Link>
         </div>
       )}
+
+      <TourGuide />
     </div>
   );
 }

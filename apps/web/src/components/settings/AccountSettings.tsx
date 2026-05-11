@@ -20,8 +20,8 @@ export function AccountSettings() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 8) {
-      toast.error("Password minimal 8 karakter");
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(newPassword)) {
+      toast.error("Password minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka");
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -123,6 +123,7 @@ export function AccountSettings() {
             </div>
             <Button
               type="submit"
+              className="rounded-[var(--radius-lg)]"
               disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword}
             >
               {isChangingPassword ? "Menyimpan..." : "Ubah Password"}
@@ -150,7 +151,7 @@ export function AccountSettings() {
                 placeholder="nama@email.com"
               />
             </div>
-            <Button type="submit" disabled={isChangingEmail || !newEmail}>
+            <Button type="submit" className="rounded-[var(--radius-lg)]" disabled={isChangingEmail || !newEmail}>
               {isChangingEmail ? "Menyimpan..." : "Ubah Email"}
             </Button>
           </form>

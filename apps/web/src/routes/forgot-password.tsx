@@ -133,8 +133,8 @@ function StepReset({ email }: { email: string }) {
       toast.error("Masukkan 6 digit kode OTP");
       return;
     }
-    if (newPassword.length < 8) {
-      toast.error("Password minimal 8 karakter");
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(newPassword)) {
+      toast.error("Password minimal 8 karakter, mengandung huruf besar, huruf kecil, dan angka");
       return;
     }
     if (newPassword !== confirmPassword) {

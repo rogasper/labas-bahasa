@@ -222,6 +222,19 @@ function MeComponent() {
             </CardContent>
           </Card>
         </Link>
+        <Link to="/settings" search={{ tab: "account" }} className="block">
+          <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)]">
+            <CardContent className="p-5 flex items-center gap-4">
+              <div className="w-10 h-10 rounded-[var(--radius-lg)] bg-[var(--clay-black)] flex items-center justify-center">
+                <MaterialIcon name="settings" className="text-[var(--pure-white)]" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-[var(--clay-black)]">Pengaturan Akun</h3>
+                <p className="text-xs text-[var(--warm-charcoal)]">Ubah password, email, dan lainnya</p>
+              </div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
     </div>
   );

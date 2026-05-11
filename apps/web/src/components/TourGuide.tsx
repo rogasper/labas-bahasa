@@ -32,7 +32,7 @@ const globalSteps: Step[] = [
   { target: "[data-tour='nav-bank']", title: "Bank Soal — Buat Paket", content: "Atur soal-soal kamu jadi paket latihan dari bank soal.", spotlightPadding: 4 },
   { target: "[data-tour='nav-packages']", title: "Paket Soal — Mulai Latihan", content: "Temukan paket soal dari komunitas atau buatan sendiri.", spotlightPadding: 4 },
   { target: "[data-tour='nav-analytics']", title: "Analytics — Evaluasi", content: "Lihat analitik mendalam: skor, tren, dan rekomendasi belajar.", spotlightPadding: 4 },
-  { target: "body" as any, placement: "center", title: "Siap Belajar?", content: "Setiap halaman punya panduan sendiri. Cari tombol <strong>?</strong> di pojok kanan bawah halaman!", hideOverlay: true },
+  { target: "body" as any, placement: "center", title: "Siap Belajar?", content: "Setiap halaman punya panduan sendiri. Cari tombol ? di pojok kanan bawah halaman!", hideOverlay: true },
 ];
 
 export function TourGuide() {

@@ -54,7 +54,7 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
       onSubmit: z.object({
         name: z.string().min(2, "Name must be at least 2 characters"),
         email: z.email("Invalid email address"),
-        password: z.string().min(8, "Password must be at least 8 characters"),
+        password: z.string().regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/, "Password must be at least 8 characters with uppercase, lowercase, and number"),
       }),
     },
   });
@@ -150,7 +150,7 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
             selector={(state) => ({ canSubmit: state.canSubmit, isSubmitting: state.isSubmitting })}
           >
             {({ canSubmit, isSubmitting }) => (
-              <Button type="submit" className="w-full" disabled={!canSubmit || isSubmitting}>
+              <Button type="submit" className="w-full rounded-[var(--radius-lg)]" disabled={!canSubmit || isSubmitting}>
                 {isSubmitting ? "Submitting..." : "Sign Up"}
               </Button>
             )}
