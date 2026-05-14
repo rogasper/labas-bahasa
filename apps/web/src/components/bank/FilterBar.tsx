@@ -16,6 +16,7 @@ interface FilterBarProps {
   tab: "mine" | "public";
   searchText: string;
   examType: string;
+  visibility?: "all" | "private" | "public";
   activeChips: FilterChip[];
   hasFilters: boolean;
   isAdvancedOpen: boolean;
@@ -26,6 +27,7 @@ interface FilterBarProps {
   onSetTab: (tab: "mine" | "public") => void;
   onSetSearch: (value: string) => void;
   onSetExamType: (value: string) => void;
+  onSetVisibility?: (value: "all" | "private" | "public") => void;
   onClearFilters: () => void;
   onOpenMobileSheet: () => void;
   advancedFilters: React.ReactNode;
@@ -36,6 +38,7 @@ export function FilterBar({
   tab,
   searchText,
   examType,
+  visibility = "all",
   activeChips,
   hasFilters,
   isAdvancedOpen,
@@ -46,6 +49,7 @@ export function FilterBar({
   onSetTab,
   onSetSearch,
   onSetExamType,
+  onSetVisibility,
   onClearFilters,
   onOpenMobileSheet,
   advancedFilters,
@@ -103,6 +107,33 @@ export function FilterBar({
             );
           })}
         </div>
+
+        {/* ── Visibility sub-filter (only in "mine" tab) ── */}
+        {mode === "soal" && tab === "mine" && onSetVisibility && (
+          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+            <VisChipButton
+              active={visibility === "all"}
+              onClick={() => onSetVisibility("all")}
+            >
+              <MaterialIcon name="visibility" className="text-xs" />
+              Semua
+            </VisChipButton>
+            <VisChipButton
+              active={visibility === "private"}
+              onClick={() => onSetVisibility("private")}
+            >
+              <MaterialIcon name="lock" className="text-xs" />
+              Privat
+            </VisChipButton>
+            <VisChipButton
+              active={visibility === "public"}
+              onClick={() => onSetVisibility("public")}
+            >
+              <MaterialIcon name="public" className="text-xs" />
+              Publik
+            </VisChipButton>
+          </div>
+        )}
 
         {/* ── Tier 3: Search + Advanced filter toggle ── */}
         <div className="flex flex-col md:flex-row gap-3">
@@ -233,6 +264,21 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
       className={`px-3 py-1.5 rounded-[var(--radius-lg)] text-xs font-semibold transition-all cursor-pointer ${
         active
           ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
+          : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] border-2 border-[var(--oat-border)] hover:bg-[var(--oat-light)]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function VisChipButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+        active
+          ? "bg-[var(--clay-black)] text-[var(--pure-white)] clay-shadow"
           : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] border-2 border-[var(--oat-border)] hover:bg-[var(--oat-light)]"
       }`}
     >

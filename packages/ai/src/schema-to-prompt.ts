@@ -1,4 +1,4 @@
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { toJSONSchema } from "zod";
 import { questionSchema } from "./schemas";
 
 /**
@@ -6,15 +6,8 @@ import { questionSchema } from "./schemas";
  * suitable for embedding into an LLM prompt.
  */
 export function getQuestionJsonSchemaDescription(): string {
-  const jsonSchema = zodToJsonSchema(questionSchema as any, {
-    name: "Question",
-    $refStrategy: "none",
-  });
-
-  // Strip the top-level wrapper so the AI sees just the object shape
-  const defs = (jsonSchema as any).definitions?.Question ?? jsonSchema;
-
-  return JSON.stringify(defs, null, 2);
+  const jsonSchema = toJSONSchema(questionSchema);
+  return JSON.stringify(jsonSchema, null, 2);
 }
 
 /**

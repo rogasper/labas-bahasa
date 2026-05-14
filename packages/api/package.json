@@ -10,7 +10,9 @@
       "default": "./src/*.ts"
     }
   },
-  "scripts": {},
+  "scripts": {
+    "test": "bun test"
+  },
   "dependencies": {
     "@labas/ai": "workspace:*",
     "@labas/auth": "workspace:*",
@@ -28,6 +30,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.4.5",
     "@labas/config": "workspace:*",
     "@types/bcryptjs": "^3.0.0",
     "@types/nodemailer": "^8.0.0",

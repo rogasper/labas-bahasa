@@ -29,6 +29,8 @@ export function QuestionCard({
   onTogglePublic,
   onDelete,
 }: QuestionCardProps) {
+  const isPrivate = isOwner && !q.isPublic;
+
   return (
     <div
       onClick={() => { if (!disabled) onOpenDetail(); }}
@@ -39,7 +41,9 @@ export function QuestionCard({
             ? "bg-[var(--matcha-100)] border-[var(--matcha-600)] clay-hover cursor-pointer ring-2 ring-[var(--matcha-400)]"
             : isInBundle
               ? "bg-[var(--matcha-100)] border-[var(--clay-black)] clay-shadow clay-hover cursor-pointer"
-              : "bg-[var(--pure-white)] border-[var(--oat-border)] clay-shadow clay-hover cursor-pointer"
+              : isPrivate
+                ? "bg-[var(--pure-white)] border-[var(--oat-border)] border-l-[var(--warm-charcoal)] border-l-4 clay-shadow clay-hover cursor-pointer"
+                : "bg-[var(--pure-white)] border-[var(--oat-border)] clay-shadow clay-hover cursor-pointer"
       }`}
     >
       <div className="p-5 flex flex-col h-full">
@@ -112,12 +116,14 @@ export function QuestionCard({
             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={onTogglePublic}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors cursor-pointer ${
+                title={q.isPublic ? "Klik untuk jadikan privat" : "Klik untuk jadikan publik"}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1 ${
                   q.isPublic
                     ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
-                    : "bg-[var(--oat-light)] text-[var(--warm-charcoal)]"
+                    : "bg-[var(--slushie-500)]/15 text-[var(--slushie-800)]"
                 }`}
               >
+                {!q.isPublic && <MaterialIcon name="lock" className="text-xs" />}
                 {q.isPublic ? "Publik" : "Privat"}
               </button>
               <button

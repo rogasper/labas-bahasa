@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, and, desc, sql, inArray, ilike } from "drizzle-orm";
 import { router, protectedProcedure } from "../index";
 import { db } from "@labas/db";
 import {
@@ -627,6 +627,8 @@ export const attemptRouter = router({
       z
         .object({
           packageId: z.string().uuid().optional(),
+          examTypeId: z.string().optional(),
+          search: z.string().optional(),
           ...paginationSchema.shape,
         })
         .optional(),
@@ -638,6 +640,12 @@ export const attemptRouter = router({
 
       if (input?.packageId) {
         conditions.push(eq(testAttempt.packageId, input.packageId));
+      }
+      if (input?.examTypeId) {
+        conditions.push(eq(testPackage.examTypeId, input.examTypeId));
+      }
+      if (input?.search) {
+        conditions.push(ilike(testPackage.title, `%${input.search}%`));
       }
 
       const where = and(...conditions);
@@ -668,6 +676,7 @@ export const attemptRouter = router({
       const [countResult] = await db
         .select({ count: sql<number>`count(*)` })
         .from(testAttempt)
+        .leftJoin(testPackage, eq(testAttempt.packageId, testPackage.id))
         .where(where);
       const totalCount = Number(countResult?.count ?? 0);
 

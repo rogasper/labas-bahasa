@@ -75,6 +75,10 @@ bun run db:generate      # Generate migration files
 bun run db:start         # Start local DB (if configured)
 bun run db:stop          # Stop local DB
 
+# Testing
+bun test                 # Run all tests
+bun run turbo test       # Run via turbo pipeline
+
 # Build
 bun run build            # Build all packages
 ```
@@ -192,4 +196,38 @@ bun run build            # Build all packages
 
 ---
 
-_Last updated: 2026-05-06_
+## 12. Testing
+
+### Test Runner
+- **Bun test** (`bun test`) — built-in, Jest/Vitest compatible API (`describe`, `it`, `expect`).
+- Turbo task `test` sudah dikonfigurasi.
+
+### Test Location
+- Unit tests: `src/__tests__/*.test.ts` di masing-masing package.
+- Integration tests: `packages/api/src/__tests__/*.integration.test.ts` (pakai PGlite in-memory DB).
+
+### Integration DB (PGlite)
+- **PGlite** (`@electric-sql/pglite`) — PostgreSQL WASM in-memory.
+- Strategy: `mock.module("@labas/db")` intercept DB saat dynamic import untuk inject PGlite-based drizzle instance.
+- Setup helper: `packages/api/src/__tests__/test-setup.ts` — skema 14 tabel via raw SQL + seed data.
+- Schema diimport dari `../../../db/src/schema` (langsung, bukan via `@labas/db`) untuk hindari env validation side-effect.
+- Env vars di-mock via `mock.module("@labas/env/server")` sebelum dynamic import.
+
+### tRPC Router Testing
+- Gunakan `router.createCaller({ session, auth })` untuk memanggil procedure.
+- Protected procedure: `session: { user: { id }, expiresAt: new Date() }`.
+- Public procedure: `session: null`.
+
+### Known Limitations
+- **Rate limiter** (`checkRateLimit` di `attempt.ts`) pakai in-memory `Map`. Gunakan user ID berbeda per test atau `Bun.sleep()` untuk menghindari rate limit blocker.
+- **Timer validation** (`finish`) butuh ≥5 detik elapsed sejak `start` — pakai `Bun.sleep()` + `{ timeout: 30000 }` pada `it()`.
+- **Env vars Wajib** untuk di-mock saat integration test: `DATABASE_URL`, `BETTER_AUTH_SECRET` (≥32 chars), `BETTER_AUTH_URL`, `CORS_ORIGIN`, `API_KEY_ENCRYPTION_KEY` (≥32 chars), `REDIS_URL`, `SMTP_HOST`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`.
+
+### TDD Convention
+- TDD: tulis test dulu, lihat fail, baru implementasi.
+- Untuk existing code yang belum ada test: tulis test yang verifikasi behavior saat ini.
+- Fungsi internal yang perlu di-test secara unit harus di-`export`.
+
+---
+
+_Last updated: 2026-05-14_

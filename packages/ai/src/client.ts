@@ -104,7 +104,7 @@ function looksTruncated(content: string): boolean {
   const lastChar = trimmed[trimmed.length - 1];
   if (lastChar === "}" || lastChar === "]") return false;
   // Check for common truncation signatures
-  const unterminated = /Unterminated string|Unexpected end of JSON|Unexpected token/i;
+  const unterminated = /Unterminated string|Unexpected end of JSON|Unexpected (token|EOF)|Expected ('.*'|".*")/i;
   try {
     JSON.parse(trimmed);
     return false;

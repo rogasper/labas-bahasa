@@ -33,6 +33,7 @@ export const Route = createFileRoute("/bank")({
     section: z.string().optional(),
     format: z.string().optional(),
     difficulty: z.coerce.number().optional(),
+    visibility: z.enum(["all", "private", "public"]).optional(),
   }).parse,
   beforeLoad: async () => {
     const session = await authClient.getSession();
@@ -59,12 +60,13 @@ function BankComponent() {
   const section = search.section ?? "";
   const format = search.format ?? "";
   const difficulty = search.difficulty;
+  const visibilityFilter = search.visibility ?? "all";
 
   // ── Infinite scroll state ──
   const [allQuestions, setAllQuestions] = useState<any[]>([]);
   const [offset, setOffset] = useState(0);
   const limit = 12;
-  const filterKey = JSON.stringify({ searchText, examType, section, format, difficulty, tab, mode });
+  const filterKey = JSON.stringify({ searchText, examType, section, format, difficulty, tab, mode, visibility: visibilityFilter });
 
   // ── Sidebar / Bundle State ──
   const [bundleQuestions, setBundleQuestions] = useState<any[]>([]);
@@ -82,6 +84,10 @@ function BankComponent() {
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
 
   // ── Data Queries ──
+  const visibilityFilterParam = tab === "mine" && visibilityFilter !== "all"
+    ? { isPublic: visibilityFilter === "public" }
+    : {};
+
   const questionQuery = useQuery(
     trpc.question.list.queryOptions(
       {
@@ -91,7 +97,7 @@ function BankComponent() {
         format: format || undefined,
         difficulty,
         ...(tab === "mine" && userId
-          ? { creatorUserId: userId }
+          ? { creatorUserId: userId, ...visibilityFilterParam }
           : { isPublic: true }),
         limit,
         offset,
@@ -155,11 +161,20 @@ function BankComponent() {
 
   const bulkPublish = useMutation({
     ...trpc.question.bulkPublish.mutationOptions(),
-    onSuccess: () => {
+    onSuccess: (data) => {
       questionQuery.refetch();
-      toast.success("Soal berhasil dipublikasikan");
+      if (data.skipped > 0) {
+        toast.success(
+          `${data.updated} soal dipublikasikan, ${data.skipped} dilewati`,
+          { description: "Beberapa soal bukan milikmu atau sudah tidak tersedia." },
+        );
+      } else {
+        toast.success(`${data.updated} soal berhasil dipublikasikan`);
+      }
     },
-    onError: (err: any) => toast.error("Gagal mempublikasikan", { description: err.message }),
+    onError: (err: any) => {
+      toast.error("Gagal mempublikasikan. Coba refresh dan pilih ulang soal.", { description: err.message });
+    },
   });
 
   // ── Navigation helpers ──
@@ -194,6 +209,9 @@ function BankComponent() {
   const setDifficulty = (value: number | undefined) =>
     navigate({ search: (prev) => ({ ...prev, difficulty: value }) });
 
+  const setVisibility = (value: "all" | "private" | "public") =>
+    navigate({ search: (prev) => ({ ...prev, visibility: value === "all" ? undefined : value }) });
+
   const setTab = (newTab: QuestionTab) =>
     navigate({
       search: {
@@ -204,6 +222,7 @@ function BankComponent() {
         section: "",
         format: "",
         difficulty: undefined,
+        visibility: undefined,
       },
     });
 
@@ -216,6 +235,7 @@ function BankComponent() {
         section: "",
         format: "",
         difficulty: undefined,
+        visibility: undefined,
       }),
     });
 
@@ -389,6 +409,7 @@ function BankComponent() {
         tab={tab}
         searchText={searchText}
         examType={examType}
+        visibility={visibilityFilter}
         activeChips={activeChips}
         hasFilters={hasFilters}
         isAdvancedOpen={isAdvancedOpen}
@@ -399,6 +420,7 @@ function BankComponent() {
         onSetTab={setTab}
         onSetSearch={setSearch}
         onSetExamType={setExamType}
+        onSetVisibility={setVisibility}
         onClearFilters={clearFilters}
         onOpenMobileSheet={() => setIsMobileSheetOpen(true)}
         advancedFilters={
@@ -456,6 +478,7 @@ function BankComponent() {
                 }}
                 onClearFilters={clearFilters}
                 onBulkPublish={(ids) => bulkPublish.mutate({ ids })}
+                onPublishAllPrivate={(ids) => bulkPublish.mutate({ ids })}
               />
             ) : (
               <SectionBrowser

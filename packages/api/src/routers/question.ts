@@ -82,9 +82,11 @@ export const questionRouter = router({
 
       if (input?.creatorUserId) {
         conditions.push(eq(question.creatorUserId, input.creatorUserId));
-      } else if (input?.isPublic !== undefined) {
+      }
+
+      if (input?.isPublic !== undefined) {
         conditions.push(eq(question.isPublic, input.isPublic));
-      } else {
+      } else if (!input?.creatorUserId) {
         const vis = buildVisibilityCondition(question, userId);
         if (vis) conditions.push(vis);
       }
@@ -296,15 +298,19 @@ export const questionRouter = router({
         .from(question)
         .where(inArray(question.id, input.ids));
 
-      for (const row of rows) {
-        assertOwnership(row, ctx.session.user.id, "Question");
+      const ownRows = rows.filter((r) => r.creatorUserId === ctx.session.user.id);
+      const skipped = rows.length - ownRows.length;
+
+      if (ownRows.length === 0) {
+        throwNotFound("Question");
       }
 
+      const ownIds = ownRows.map((r) => r.id);
       await db
         .update(question)
         .set({ isPublic: true })
-        .where(inArray(question.id, input.ids));
+        .where(inArray(question.id, ownIds));
 
-      return { success: true, updated: rows.length };
+      return { success: true, updated: ownRows.length, skipped };
     }),
 });

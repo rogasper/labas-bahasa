@@ -3,6 +3,7 @@ import { Card } from "@labas/ui/components/card";
 import { Button } from "@labas/ui/components/button";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { QuestionCard } from "./QuestionCard";
+import { CalloutCard } from "./CalloutCard";
 
 interface SoalBrowserProps {
   isLoading: boolean;
@@ -22,6 +23,7 @@ interface SoalBrowserProps {
   onLoadMore: () => void;
   onClearFilters: () => void;
   onBulkPublish?: (ids: string[]) => void;
+  onPublishAllPrivate?: (ids: string[]) => void;
 }
 
 export function SoalBrowser({
@@ -42,6 +44,7 @@ export function SoalBrowser({
   onLoadMore,
   onClearFilters,
   onBulkPublish,
+  onPublishAllPrivate,
 }: SoalBrowserProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const isLocked = (q: any) => !!lockedExamType && q.examTypeId !== lockedExamType;
@@ -54,6 +57,27 @@ export function SoalBrowser({
     setBulkMode(false);
     setSelectedIds(new Set());
   }, [filterKey]);
+
+  // ── Private callout dismiss ──
+  const calloutDismissed = typeof window !== "undefined"
+    ? localStorage.getItem("labas-bank-private-callout-dismissed") === "true"
+    : false;
+
+  const privateQuestions = questions.filter(
+    (q: any) => !q.isPublic && q.creatorUserId === userId,
+  );
+
+  const handleDismissCallout = () => {
+    localStorage.setItem("labas-bank-private-callout-dismissed", "true");
+    // Force re-render by toggling a state
+    setBulkMode((prev) => prev);
+  };
+
+  const handlePublishAllPrivate = () => {
+    if (onPublishAllPrivate && privateQuestions.length > 0) {
+      onPublishAllPrivate(privateQuestions.map((q: any) => q.id));
+    }
+  };
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -182,6 +206,14 @@ export function SoalBrowser({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {renderBulkToolbar()}
         <div className="md:col-span-2" />
+
+        {tab === "mine" && privateQuestions.length > 0 && !calloutDismissed && (
+          <CalloutCard
+            privateCount={privateQuestions.length}
+            onPublishAll={handlePublishAllPrivate}
+            onDismiss={handleDismissCallout}
+          />
+        )}
 
         {questions[0] && (
           <div className="md:col-span-2">

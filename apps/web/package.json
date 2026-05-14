@@ -9,6 +9,7 @@
     "build": "vite build",
     "serve": "vite preview",
     "start": "vite",
+    "test": "bun test",
     "check-types": "vite build && tsc --noEmit",
     "generate-pwa-assets": "pwa-assets-generator"
   },

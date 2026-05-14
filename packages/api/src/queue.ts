@@ -27,7 +27,7 @@ const HEARTBEAT_MS = 10_000;
 const MAX_QUESTIONS_PER_SHARD = 6;
 const FAST_SHARD_CONCURRENCY = 3;
 const QUALITY_SECTION_CONCURRENCY = 2;
-const MAX_SHARD_RETRIES = 2;
+export const MAX_SHARD_RETRIES = 2;
 
 interface SectionSplit {
   section: string;
@@ -78,7 +78,7 @@ export class GenerationJobCancelledError extends Error {
   }
 }
 
-function computeSectionSplit(
+export function computeSectionSplit(
   selectedSections: string[],
   count: number,
 ): SectionSplit[] {
@@ -94,7 +94,7 @@ function computeSectionSplit(
   }));
 }
 
-function splitIntoShards(sectionSplits: SectionSplit[]): ShardPlan[] {
+export function splitIntoShards(sectionSplits: SectionSplit[]): ShardPlan[] {
   const shards: ShardPlan[] = [];
   for (let sectionIndex = 0; sectionIndex < sectionSplits.length; sectionIndex++) {
     const split = sectionSplits[sectionIndex]!;
@@ -136,7 +136,7 @@ function createCancellationPoller(jobId: string) {
   };
 }
 
-async function runWithConcurrency<T, R>(
+export async function runWithConcurrency<T, R>(
   items: T[],
   concurrency: number,
   worker: (item: T, index: number) => Promise<R>,
@@ -156,7 +156,7 @@ async function runWithConcurrency<T, R>(
   return results;
 }
 
-function normalizeQuestions(
+export function normalizeQuestions(
   section: string,
   model: string,
   result: GenerationResult,

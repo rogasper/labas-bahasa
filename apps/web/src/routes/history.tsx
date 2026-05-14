@@ -1,3 +1,4 @@
+import { useCallback, useRef, useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { z } from "zod";
@@ -5,12 +6,24 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
+import { Input } from "@labas/ui/components/input";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@labas/ui/components/select";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { EXAM_TYPES } from "@/lib/exam-constants";
 
 export const Route = createFileRoute("/history")({
   component: HistoryComponent,
   validateSearch: z.object({
     page: z.coerce.number().optional(),
+    examTypeId: z.string().optional(),
+    search: z.string().optional(),
   }).parse,
   beforeLoad: async () => {
     const session = await authClient.getSession();
@@ -63,10 +76,38 @@ export function HistoryComponent() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const page = search.page ?? 1;
+  const examTypeId = search.examTypeId ?? "";
+  const searchQuery = search.search ?? "";
   const limit = 12;
 
+  const [localSearch, setLocalSearch] = useState(searchQuery);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setLocalSearch(searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      if (localSearch !== searchQuery) {
+        navigate({ search: (prev) => ({ ...prev, search: localSearch || undefined, page: 1 }) });
+      }
+    }, 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [localSearch]);
+
+  const setExamTypeFilter = useCallback((value: string) => {
+    navigate({ search: (prev) => ({ ...prev, examTypeId: value || undefined, page: 1 }) });
+  }, [navigate]);
+
   const query = useQuery(
-    trpc.attempt.myAttempts.queryOptions({ limit, offset: (page - 1) * limit }),
+    trpc.attempt.myAttempts.queryOptions({
+      limit,
+      offset: (page - 1) * limit,
+      examTypeId: examTypeId || undefined,
+      search: searchQuery || undefined,
+    }),
   );
 
   const attempts = query.data?.attempts ?? [];
@@ -94,6 +135,32 @@ export function HistoryComponent() {
               Semua attempt latihan Anda.
             </p>
           </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-3 mt-6">
+          <div className="relative flex-1 max-w-md">
+            <MaterialIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--warm-charcoal)]" />
+            <Input
+              placeholder="Cari paket..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              className="pl-10 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] h-11"
+            />
+          </div>
+          <Select value={examTypeId} onValueChange={(v) => setExamTypeFilter(v ?? "")}>
+            <SelectTrigger className="w-36">
+              <SelectValue placeholder="Semua Ujian" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="">Semua Ujian</SelectItem>
+                {EXAM_TYPES.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
