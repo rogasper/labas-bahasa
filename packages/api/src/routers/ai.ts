@@ -7,11 +7,24 @@ import { db } from "@labas/db";
 import { question, generationJob } from "@labas/db";
 import { paginationSchema, paginateDefaults } from "../lib/pagination";
 import { throwNotFound, throwForbidden, throwBadRequest } from "../lib/errors";
+import { checkDailyBudget } from "../lib/rate-limit";
+import { decryptApiKey } from "../lib/encryption";
+
+const DAILY_TOKEN_BUDGET = 500_000;
+
+function sanitizeJobForResponse(row: typeof generationJob.$inferSelect) {
+  const { inputJson, ...safe } = row;
+  return safe;
+}
 
 export const aiRouter = router({
   generate: protectedProcedure
     .input(generationInputSchema)
     .mutation(async ({ ctx, input }) => {
+      const withinBudget = await checkDailyBudget(ctx.session.user.id, DAILY_TOKEN_BUDGET);
+      if (!withinBudget) {
+        throwBadRequest(`Daily token budget (${DAILY_TOKEN_BUDGET.toLocaleString()}) exceeded. Try again tomorrow.`);
+      }
       const jobId = await enqueueGeneration(ctx.session.user.id, input);
       return { jobId };
     }),
@@ -36,6 +49,8 @@ export const aiRouter = router({
         rj && typeof rj.qualityPhase === "string" ? rj.qualityPhase : null;
       const resultIsPartial = rj?.isPartial === true;
 
+      const safe = sanitizeJobForResponse(job);
+
       // Strip correctAnswer & explanation from resultJson to prevent network inspection
       if (rj && Array.isArray(rj.questions)) {
         const sanitizedQuestions = (rj.questions as Array<Record<string, unknown>>).map((q) => {
@@ -43,14 +58,14 @@ export const aiRouter = router({
           return rest;
         });
         return {
-          ...job,
+          ...safe,
           resultJson: { ...rj, questions: sanitizedQuestions },
           qualityPhase,
           resultIsPartial,
         };
       }
 
-      return { ...job, qualityPhase, resultIsPartial };
+      return { ...safe, qualityPhase, resultIsPartial };
     }),
 
   cancelJob: protectedProcedure
@@ -74,7 +89,25 @@ export const aiRouter = router({
     .query(async ({ ctx, input }) => {
       const { limit, offset } = paginateDefaults(input);
       const rows = await db
-        .select()
+        .select({
+          id: generationJob.id,
+          userId: generationJob.userId,
+          status: generationJob.status,
+          mode: generationJob.mode,
+          examTypeId: generationJob.examTypeId,
+          sectionTypeId: generationJob.sectionTypeId,
+          questionCount: generationJob.questionCount,
+          progress: generationJob.progress,
+          progressMessage: generationJob.progressMessage,
+          logs: generationJob.logs,
+          resultJson: generationJob.resultJson,
+          errorMessage: generationJob.errorMessage,
+          tokensUsed: generationJob.tokensUsed,
+          durationMs: generationJob.durationMs,
+          createdAt: generationJob.createdAt,
+          updatedAt: generationJob.updatedAt,
+          completedAt: generationJob.completedAt,
+        })
         .from(generationJob)
         .where(eq(generationJob.userId, ctx.session.user.id))
         .orderBy(desc(generationJob.createdAt))
@@ -257,7 +290,16 @@ export const aiRouter = router({
         throwBadRequest("Invalid API key configuration for retry");
       }
 
-      const newJobId = await enqueueGeneration(ctx.session.user.id, jobInput);
+      // Decrypt the stored apiKey before re-enqueuing
+      const decryptedInput = {
+        ...jobInput,
+        apiKeyConfig: {
+          ...jobInput.apiKeyConfig,
+          apiKey: decryptApiKey(jobInput.apiKeyConfig.apiKey),
+        },
+      };
+
+      const newJobId = await enqueueGeneration(ctx.session.user.id, decryptedInput);
       return { jobId: newJobId };
     }),
 
@@ -266,7 +308,19 @@ export const aiRouter = router({
       z.object({
         examTypeId: z.string(),
         sectionTypeId: z.string(),
-        questions: z.array(z.any()),
+        questions: z.array(
+          z.object({
+            format: z.string(),
+            passageText: z.string().min(1),
+            questionText: z.string().min(1),
+            options: z.any().optional(),
+            correctAnswer: z.string(),
+            explanation: z.string().optional(),
+            difficulty: z.number().min(1).max(5),
+            skillTags: z.array(z.string()),
+            aiModel: z.string().optional(),
+          }),
+        ),
         isPublic: z.boolean().default(false),
       }),
     )

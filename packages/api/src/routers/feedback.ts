@@ -3,6 +3,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { router, protectedProcedure, publicProcedure } from "../index";
 import { db } from "@labas/db";
 import { questionFeedback } from "@labas/db";
+import { checkRateLimit } from "../lib/rate-limit";
 
 export const feedbackRouter = router({
   getQuestionFeedback: publicProcedure
@@ -45,6 +46,8 @@ export const feedbackRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await checkRateLimit({ key: `vote:${ctx.session.user.id}`, limit: 10, windowMs: 10_000 });
+
       const existing = await db
         .select()
         .from(questionFeedback)

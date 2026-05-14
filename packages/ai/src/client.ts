@@ -125,6 +125,31 @@ function isResponseFormatError(status: number, text: string): boolean {
   );
 }
 
+const METADATA_HOSTS = new Set([
+  "169.254.169.254",              // AWS / GCP / Azure metadata
+  "metadata.google.internal",     // GCP metadata
+  "metadata",                     // some cloud providers
+  "100.100.100.200",              // Alibaba Cloud metadata
+]);
+
+const RFC1918_PATTERN = /^(?:10\.\d+\.\d+\.\d+|172\.(?:1[6-9]|2\d|3[01])\.\d+\.\d+|192\.168\.\d+\.\d+)$/;
+
+function isMetadataOrPrivateHost(hostname: string): boolean {
+  const lower = hostname.toLowerCase();
+  if (METADATA_HOSTS.has(lower)) return true;
+  // Allow loopback (localhost/127.0.0.1/::1) for local model backends
+  // Block RFC1918 only in production — dev may have LAN model servers
+  if (RFC1918_PATTERN.test(hostname) && process.env.NODE_ENV === "production") return true;
+  return false;
+}
+
+function sanitizeForLog(text: string, maxLen = 300): string {
+  return text
+    .replace(/Bearer\s+[^\s"']+/gi, "Bearer [REDACTED]")
+    .replace(/sk-[a-zA-Z0-9_-]{20,}/g, "[REDACTED_API_KEY]")
+    .slice(0, maxLen);
+}
+
 export class OpenAICompatibleClient {
   constructor(
     private baseUrl: string,
@@ -143,6 +168,17 @@ export class OpenAICompatibleClient {
     callbacks: StreamCallbacks | undefined,
     ctx: { attempt: number; retriedForTruncation?: boolean; retriedForResponseFormat?: boolean },
   ): Promise<ChatCompletionResult> {
+    let hostname: string;
+    try {
+      hostname = new URL(this.baseUrl).hostname;
+    } catch {
+      throw new Error(`Invalid base URL: ${this.baseUrl}`);
+    }
+
+    if (isMetadataOrPrivateHost(hostname)) {
+      throw new Error(`Requests to metadata/private network addresses are not allowed`);
+    }
+
     const url = `${this.baseUrl.replace(/\/$/, "")}/chat/completions`;
     const stream = true;
     const body: Record<string, unknown> = {
@@ -157,7 +193,7 @@ export class OpenAICompatibleClient {
     }
 
     log("info", "Sending chat completion request", {
-      url,
+      url: sanitizeForLog(url, 200),
       model: opts.model,
       messageCount: opts.messages.length,
       maxTokens: opts.max_tokens,
@@ -183,7 +219,7 @@ export class OpenAICompatibleClient {
 
     if (!res.ok) {
       const text = await res.text();
-      const preview = text.slice(0, 500);
+      const preview = sanitizeForLog(text, 500);
       log("error", "API request failed", {
         status: res.status,
         statusText: res.statusText,

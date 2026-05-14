@@ -7,9 +7,10 @@ import type { GenerationResult } from "@labas/ai";
 interface ResultSectionProps {
   result: GenerationResult;
   generatedPackageId: string | null;
+  onClear?: () => void;
 }
 
-export function ResultSection({ result, generatedPackageId }: ResultSectionProps) {
+export function ResultSection({ result, generatedPackageId, onClear }: ResultSectionProps) {
   return (
     <div className="mt-16 space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -21,14 +22,14 @@ export function ResultSection({ result, generatedPackageId }: ResultSectionProps
         </div>
         <div className="flex gap-3">
           {generatedPackageId && (
-            <Link to="/package/$id" params={{ id: generatedPackageId }}>
+            <Link to="/package/$id" params={{ id: generatedPackageId }} onClick={() => onClear?.()}>
               <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)]">
                 <MaterialIcon name="play_arrow" className="mr-2" />
                 Lihat Paket
               </Button>
             </Link>
           )}
-          <Link to="/bank">
+          <Link to="/bank" onClick={() => onClear?.()}>
             <Button className="bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-800)] clay-hover rounded-[var(--radius-lg)]">
               <MaterialIcon name="database" className="mr-2" />
               Bank Soal

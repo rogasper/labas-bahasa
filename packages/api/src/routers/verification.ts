@@ -8,6 +8,7 @@ import { z } from "zod";
 
 import { sendOtpEmail } from "../lib/email";
 import { publicProcedure, router } from "../index";
+import { checkRateLimit } from "../lib/rate-limit";
 
 const OTP_LENGTH = 6;
 const OTP_EXPIRY_MS = 5 * 60 * 1000;
@@ -16,10 +17,17 @@ function generateOtp(): string {
   return crypto.randomInt(10 ** (OTP_LENGTH - 1), 10 ** OTP_LENGTH - 1).toString();
 }
 
+function genericOtpResponse() {
+  return { success: true, message: "If the email is registered, an OTP has been sent." };
+}
+
 export const verificationRouter = router({
   sendVerificationOtp: publicProcedure
     .input(z.object({ email: z.string().email() }))
     .mutation(async ({ input }) => {
+      await checkRateLimit({ key: `otp-send:email:${input.email}`, limit: 3, windowMs: 300_000 });
+      await checkRateLimit({ key: `otp-send:ip:email`, limit: 20, windowMs: 900_000 });
+
       const db = createDb();
 
       const [existingUser] = await db
@@ -28,12 +36,8 @@ export const verificationRouter = router({
         .where(eq(user.email, input.email))
         .limit(1);
 
-      if (!existingUser) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Email not found" });
-      }
-
-      if (existingUser.emailVerified) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "Email already verified" });
+      if (!existingUser || existingUser.emailVerified) {
+        return genericOtpResponse();
       }
 
       const otp = generateOtp();
@@ -50,12 +54,14 @@ export const verificationRouter = router({
 
       await sendOtpEmail({ to: input.email, otp, type: "email-verification" });
 
-      return { success: true };
+      return genericOtpResponse();
     }),
 
   verifyEmailOtp: publicProcedure
     .input(z.object({ email: z.string().email(), otp: z.string().length(6) }))
     .mutation(async ({ input }) => {
+      await checkRateLimit({ key: `otp-verify:email:${input.email}`, limit: 10, windowMs: 300_000 });
+
       const db = createDb();
 
       const identifier = `email-verification:${input.email}`;
@@ -88,6 +94,9 @@ export const verificationRouter = router({
   sendPasswordResetOtp: publicProcedure
     .input(z.object({ email: z.string().email() }))
     .mutation(async ({ input }) => {
+      await checkRateLimit({ key: `otp-send:email:${input.email}`, limit: 3, windowMs: 300_000 });
+      await checkRateLimit({ key: `otp-send:ip:reset`, limit: 20, windowMs: 900_000 });
+
       const db = createDb();
 
       const [existingUser] = await db
@@ -97,7 +106,7 @@ export const verificationRouter = router({
         .limit(1);
 
       if (!existingUser) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Email not found" });
+        return genericOtpResponse();
       }
 
       const otp = generateOtp();
@@ -114,7 +123,7 @@ export const verificationRouter = router({
 
       await sendOtpEmail({ to: input.email, otp, type: "forget-password" });
 
-      return { success: true };
+      return genericOtpResponse();
     }),
 
   resetPassword: publicProcedure
@@ -126,6 +135,8 @@ export const verificationRouter = router({
       }),
     )
     .mutation(async ({ input }) => {
+      await checkRateLimit({ key: `otp-reset:email:${input.email}`, limit: 5, windowMs: 300_000 });
+
       const db = createDb();
 
       const identifier = `forget-password:${input.email}`;

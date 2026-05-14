@@ -143,6 +143,14 @@ export function useGenerationJobs() {
   const removeJob = useCallback(
     (id: string) => {
       removedJobIdsRef.current.add(id);
+
+      // Sync sessionStorage immediately so removal survives unmount
+      // (React state updater callbacks & effects are discarded on unmount)
+      writeStoredIds(readStoredIds().filter((j) => j !== id));
+      writeStoredResults(readStoredResults().filter((r) => r.jobId !== id));
+      const cleared = readClearedJobIds();
+      if (!cleared.includes(id)) writeClearedJobIds([...cleared, id]);
+
       setJobIds((prev) => prev.filter((j) => j !== id));
       setCompletedResults((prev) => prev.filter((r) => r.jobId !== id));
       trpcClient.ai.cancelJob.mutate({ jobId: id }).catch(() => {});
@@ -152,14 +160,22 @@ export function useGenerationJobs() {
 
   const resetAll = useCallback(() => {
     setError(null);
-    setCompletedResults([]);
-    setJobIds((prev) => {
-      writeClearedJobIds(prev);
-      removedJobIdsRef.current.clear();
-      return [];
-    });
-    processedJobStates.current = {};
+
+    // Sync: clear sessionStorage immediately (survives unmount)
     sessionStorage.removeItem(RESULTS_KEY);
+    sessionStorage.removeItem(STORAGE_KEY);
+
+    // Sync: merge current job IDs into cleared list (accumulate, don't overwrite)
+    const current = readStoredIds();
+    const existing = readClearedJobIds();
+    writeClearedJobIds([...new Set([...existing, ...current])]);
+
+    // Keep blocks in-memory, don't clear
+    for (const id of current) removedJobIdsRef.current.add(id);
+
+    setCompletedResults([]);
+    setJobIds([]);
+    processedJobStates.current = {};
   }, [setJobIds]);
 
   // Recover from sessionStorage on mount
@@ -329,6 +345,7 @@ export function useGenerationJobs() {
       }
 
       if (status === "cancelled") {
+        removedJobIdsRef.current.add(jobId);
         setCompletedResults((prev) =>
           prev.filter((r) => r.jobId !== jobId),
         );

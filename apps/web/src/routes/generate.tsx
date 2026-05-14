@@ -598,6 +598,7 @@ function RouteComponent() {
               <ResultSection
                 result={activeResult.result}
                 generatedPackageId={activeResult.generatedPackageId}
+                onClear={resetAll}
               />
             )}
           </div>

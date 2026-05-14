@@ -17,6 +17,7 @@ import {
   sectionQuestion,
 } from "@labas/db";
 import { and, eq, notInArray } from "drizzle-orm";
+import { encryptApiKey, decryptApiKey } from "./lib/encryption";
 
 const connectionOptions = { maxRetriesPerRequest: null };
 const FAST_QUEUE_NAME = "generation-fast";
@@ -316,6 +317,13 @@ async function completeJobWithResult(params: {
   durationMs: number;
   metrics?: Record<string, unknown>;
 }) {
+  const [currentJob] = await db
+    .select({ status: generationJob.status })
+    .from(generationJob)
+    .where(eq(generationJob.id, params.jobId))
+    .limit(1);
+  if (currentJob?.status === "cancelled") return;
+
   const { savedQuestionIds, generatedPackageId } = await saveGeneratedArtifacts(
     params.jobId,
     params.input,
@@ -351,7 +359,12 @@ async function completeJobWithResult(params: {
       durationMs: params.durationMs,
       completedAt: new Date(),
     })
-    .where(eq(generationJob.id, params.jobId));
+    .where(
+      and(
+        eq(generationJob.id, params.jobId),
+        notInArray(generationJob.status, ["cancelled"]),
+      ),
+    );
 }
 
 export type CancelGenerationJobResult =
@@ -508,7 +521,7 @@ export const generationWorker = new Worker<FastJobData>(
     ) => {
       cancelPoll.check();
       await job.updateProgress(progress);
-      await db
+      const [updated] = await db
         .update(generationJob)
         .set({
           progress,
@@ -516,7 +529,14 @@ export const generationWorker = new Worker<FastJobData>(
           ...(status ? { status } : {}),
           ...(resultJson !== undefined ? { resultJson: resultJson as any } : {}),
         })
-        .where(eq(generationJob.id, jobId));
+        .where(
+          and(
+            eq(generationJob.id, jobId),
+            notInArray(generationJob.status, ["cancelled"]),
+          ),
+        )
+        .returning({ id: generationJob.id });
+      if (!updated) throw new GenerationJobCancelledError();
     };
 
     let approxTokens = 0;
@@ -845,6 +865,21 @@ export const generationQualityWorker = new Worker<QualityJobData>(
   async (job: Job<QualityJobData>) => {
     const { input, jobId, sectionSplits, fastQuestions, fastMeta } = job.data;
     const qualityStart = Date.now();
+
+    const [initialRow] = await db
+      .select({ status: generationJob.status })
+      .from(generationJob)
+      .where(eq(generationJob.id, jobId))
+      .limit(1);
+
+    if (
+      !initialRow ||
+      initialRow.status === "cancelled" ||
+      initialRow.status === "completed"
+    ) {
+      return;
+    }
+
     const cancelPoll = createCancellationPoller(jobId);
     let approxTokens = 0;
     const tokenCounter = (token: string) => {
@@ -855,14 +890,21 @@ export const generationQualityWorker = new Worker<QualityJobData>(
     const updateProgress = async (progress: number, progressMessage: string) => {
       cancelPoll.check();
       await job.updateProgress(progress);
-      await db
+      const [updated] = await db
         .update(generationJob)
         .set({
           status: "running_quality",
           progress,
           progressMessage,
         })
-        .where(eq(generationJob.id, jobId));
+        .where(
+          and(
+            eq(generationJob.id, jobId),
+            notInArray(generationJob.status, ["cancelled"]),
+          ),
+        )
+        .returning({ id: generationJob.id });
+      if (!updated) throw new GenerationJobCancelledError();
     };
 
     const pushLog = async (
@@ -1028,6 +1070,14 @@ export async function enqueueGeneration(
   userId: string,
   input: GenerationInput,
 ): Promise<string> {
+  const encryptedInput = {
+    ...input,
+    apiKeyConfig: {
+      ...input.apiKeyConfig,
+      apiKey: encryptApiKey(input.apiKeyConfig.apiKey),
+    },
+  };
+
   const [jobRecord] = await db
     .insert(generationJob)
     .values({
@@ -1038,7 +1088,7 @@ export async function enqueueGeneration(
       questionCount: input.questionCount,
       status: "pending",
       progress: 0,
-      inputJson: input as any,
+      inputJson: encryptedInput as any,
     })
     .returning();
 
@@ -1060,4 +1110,24 @@ export async function enqueueGeneration(
   );
 
   return jobRecord.id;
+}
+
+export function decryptInputFromDb(inputJson: unknown): GenerationInput {
+  const data = inputJson as Record<string, unknown>;
+  const apiKeyConfig = data.apiKeyConfig as Record<string, unknown>;
+  if (apiKeyConfig?.apiKey && typeof apiKeyConfig.apiKey === "string") {
+    try {
+      return {
+        ...(data as unknown as GenerationInput),
+        apiKeyConfig: {
+          ...(apiKeyConfig as unknown as GenerationInput["apiKeyConfig"]),
+          apiKey: decryptApiKey(apiKeyConfig.apiKey),
+        },
+      };
+    } catch {
+      // If decryption fails, key was likely stored unencrypted (legacy data)
+      return data as unknown as GenerationInput;
+    }
+  }
+  return data as unknown as GenerationInput;
 }

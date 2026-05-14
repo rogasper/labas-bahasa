@@ -55,7 +55,7 @@ function RouteComponent() {
 
   useEffect(() => {
     if (email) {
-      handleSendOtp();
+      setCountdown(60);
     }
   }, [email]);
 

@@ -67,7 +67,12 @@ export const profileRouter = router({
         .limit(6);
 
       return {
-        user: u,
+        user: {
+          id: u.id,
+          name: u.name,
+          image: u.image,
+          createdAt: u.createdAt,
+        },
         stats: {
           totalPackages: Number(pkgStats?.totalPackages ?? 0),
           totalPackageUsage: Number(pkgStats?.totalUsage ?? 0),

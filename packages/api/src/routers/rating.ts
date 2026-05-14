@@ -3,6 +3,7 @@ import { eq, and, avg } from "drizzle-orm";
 import { router, protectedProcedure, publicProcedure } from "../index";
 import { db } from "@labas/db";
 import { questionRating, question, packageRating, testPackage } from "@labas/db";
+import { checkRateLimit } from "../lib/rate-limit";
 
 export const ratingRouter = router({
   getQuestionRating: publicProcedure
@@ -43,6 +44,8 @@ export const ratingRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await checkRateLimit({ key: `rate:${ctx.session.user.id}`, limit: 10, windowMs: 10_000 });
+
       const existing = await db
         .select()
         .from(questionRating)
@@ -119,6 +122,8 @@ export const ratingRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
+      await checkRateLimit({ key: `rate:${ctx.session.user.id}`, limit: 10, windowMs: 10_000 });
+
       const existing = await db
         .select()
         .from(packageRating)
