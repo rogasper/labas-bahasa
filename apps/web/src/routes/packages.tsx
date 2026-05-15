@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
@@ -17,6 +17,7 @@ import {
 } from "@labas/ui/components/select";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { GettingStartedCard } from "@/components/GettingStartedCard";
+import { CalloutCard } from "@/components/bank/CalloutCard";
 import { PageTour, TourHelpButton } from "@/components/TourGuide";
 import type { Step } from "react-joyride";
 import { toast } from "sonner";
@@ -28,6 +29,7 @@ export const Route = createFileRoute("/packages")({
     search: z.string().optional(),
     examType: z.string().optional(),
     page: z.coerce.number().optional(),
+    visibility: z.enum(["all", "private", "public"]).optional(),
   }).parse,
   beforeLoad: async () => {
     const session = await authClient.getSession();
@@ -59,6 +61,7 @@ function PackagesComponent() {
   const searchText = search.search ?? "";
   const examType = search.examType ?? "";
   const page = search.page ?? 1;
+  const visibilityFilter = search.visibility ?? "all";
   const limit = 12;
 
   const allQuery = useQuery(
@@ -74,6 +77,10 @@ function PackagesComponent() {
     ),
   );
 
+  const visibilityFilterParam = tab === "mine" && visibilityFilter !== "all"
+    ? { isPublic: visibilityFilter === "public" }
+    : {};
+
   const mineQuery = useQuery(
     trpc.package.myPackages.queryOptions(
       {
@@ -81,6 +88,7 @@ function PackagesComponent() {
         examTypeId: examType || undefined,
         limit,
         offset: (page - 1) * limit,
+        ...visibilityFilterParam,
       },
       { enabled: tab === "mine" },
     ),
@@ -108,9 +116,18 @@ function PackagesComponent() {
       query.refetch();
       setBulkMode(false);
       setSelectedIds(new Set());
-      toast.success(`${data.updated} paket berhasil dipublikasikan`);
+      if (data.skipped > 0) {
+        toast.success(
+          `${data.updated} paket dipublikasikan, ${data.skipped} dilewati`,
+          { description: "Beberapa paket bukan milikmu atau sudah tidak tersedia." },
+        );
+      } else {
+        toast.success(`${data.updated} paket berhasil dipublikasikan`);
+      }
     },
-    onError: (err: any) => toast.error("Gagal mempublikasikan", { description: err.message }),
+    onError: (err: any) => {
+      toast.error("Gagal mempublikasikan. Coba refresh dan pilih ulang paket.", { description: err.message });
+    },
   });
 
   // ── Bulk select ──
@@ -138,12 +155,34 @@ function PackagesComponent() {
     navigate({ search: { tab: newTab, search: "", examType: "", page: 1 } });
   };
 
+  // ── Private callout state ──
+  const [calloutDismissed, setCalloutDismissed] = useState(
+    typeof window !== "undefined" && localStorage.getItem("labas-packages-private-callout-dismissed") === "true",
+  );
+  const privatePackages = packages.filter(
+    (p: any) => !p.isPublic && p.creatorUserId === userId,
+  );
+
+  const handleDismissCallout = () => {
+    localStorage.setItem("labas-packages-private-callout-dismissed", "true");
+    setCalloutDismissed(true);
+  };
+
+  const handlePublishAllPrivate = () => {
+    const ids = privatePackages.map((p: any) => p.id);
+    if (ids.length > 0) bulkPublish.mutate({ ids });
+  };
+
   const setSearch = (value: string) => {
     navigate({ search: (prev) => ({ ...prev, search: value, page: 1 }) });
   };
 
   const setExamType = (value: string) => {
     navigate({ search: (prev) => ({ ...prev, examType: value, page: 1 }) });
+  };
+
+  const setVisibility = (value: "all" | "private" | "public") => {
+    navigate({ search: (prev) => ({ ...prev, visibility: value === "all" ? undefined : value, page: 1 }) });
   };
 
   const setPage = (newPage: number) => {
@@ -225,6 +264,22 @@ function PackagesComponent() {
             </SelectGroup>
           </SelectContent>
         </Select>
+        {tab === "mine" && (
+          <div className="flex gap-2">
+            <VisChip active={visibilityFilter === "all"} onClick={() => setVisibility("all")}>
+              <MaterialIcon name="visibility" className="text-xs" />
+              Semua
+            </VisChip>
+            <VisChip active={visibilityFilter === "private"} onClick={() => setVisibility("private")}>
+              <MaterialIcon name="lock" className="text-xs" />
+              Privat
+            </VisChip>
+            <VisChip active={visibilityFilter === "public"} onClick={() => setVisibility("public")}>
+              <MaterialIcon name="public" className="text-xs" />
+              Publik
+            </VisChip>
+          </div>
+        )}
       </div>
 
       {/* Bulk toolbar */}
@@ -281,6 +336,17 @@ function PackagesComponent() {
         </div>
       )}
 
+      {/* Private package callout */}
+      {tab === "mine" && privatePackages.length > 0 && !calloutDismissed && (
+        <div className="mb-6">
+          <CalloutCard
+            privateCount={privatePackages.length}
+            onPublishAll={handlePublishAllPrivate}
+            onDismiss={handleDismissCallout}
+          />
+        </div>
+      )}
+
       {/* Results */}
       {query.isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -324,7 +390,9 @@ function PackagesComponent() {
                   className={`clay-shadow clay-hover bg-[var(--pure-white)] border-2 rounded-[var(--radius-xl)] h-full flex flex-col ${
                     bulkMode && isSelected
                       ? "border-[var(--matcha-600)] ring-2 ring-[var(--matcha-400)]"
-                      : "border-[var(--oat-border)]"
+                      : isOwner && !pkg.isPublic && !bulkMode
+                        ? "border-[var(--oat-border)] border-l-[var(--warm-charcoal)] border-l-4"
+                        : "border-[var(--oat-border)]"
                   }`}
                 >
                   <CardContent className="p-5 flex flex-col h-full">
@@ -354,12 +422,13 @@ function PackagesComponent() {
                           </span>
                           {isOwner && !bulkMode && (
                             <span
-                              className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
+                              className={`px-2 py-1 rounded-full text-[10px] font-semibold flex items-center gap-1 ${
                                 pkg.isPublic
                                   ? "bg-[var(--slushie-500)]/20 text-[var(--slushie-800)]"
-                                  : "bg-[var(--oat-light)] text-[var(--warm-charcoal)]"
+                                  : "bg-[var(--slushie-500)]/15 text-[var(--slushie-800)]"
                               }`}
                             >
+                              {!pkg.isPublic && <MaterialIcon name="lock" className="text-[10px]" />}
                               {pkg.isPublic ? "Publik" : "Privat"}
                             </span>
                           )}
@@ -412,12 +481,14 @@ function PackagesComponent() {
                         <button
                           onClick={() => togglePublic(pkg.id, pkg.isPublic)}
                           disabled={updateMutation.isPending}
-                          className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors ${
+                          title={pkg.isPublic ? "Klik untuk jadikan privat" : "Klik untuk jadikan publik"}
+                          className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 cursor-pointer ${
                             pkg.isPublic
                               ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
-                              : "bg-[var(--oat-light)] text-[var(--warm-charcoal)]"
+                              : "bg-[var(--slushie-500)]/15 text-[var(--slushie-800)]"
                           }`}
                         >
+                          {!pkg.isPublic && <MaterialIcon name="lock" className="text-xs" />}
                           {pkg.isPublic ? "Publik" : "Privat"}
                         </button>
                         {pkg.isPublic && (
@@ -508,3 +579,18 @@ const packagesPageSteps: Step[] = [
     spotlightPadding: 8,
   },
 ];
+
+function VisChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
+        active
+          ? "bg-[var(--clay-black)] text-[var(--pure-white)] clay-shadow"
+          : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] border-2 border-[var(--oat-border)] hover:bg-[var(--oat-light)]"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}

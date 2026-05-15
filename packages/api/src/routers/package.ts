@@ -85,6 +85,7 @@ export const packageRouter = router({
         .object({
           search: z.string().optional(),
           examTypeId: z.string().optional(),
+          isPublic: z.boolean().optional(),
           ...paginationSchema.shape,
         })
         .optional(),
@@ -101,6 +102,9 @@ export const packageRouter = router({
       }
       if (input?.examTypeId) {
         conditions.push(eq(testPackage.examTypeId, input.examTypeId));
+      }
+      if (input?.isPublic !== undefined) {
+        conditions.push(eq(testPackage.isPublic, input.isPublic));
       }
 
       const where = and(...conditions);
@@ -311,16 +315,20 @@ export const packageRouter = router({
         .from(testPackage)
         .where(inArray(testPackage.id, input.ids));
 
-      for (const row of rows) {
-        assertOwnership(row, ctx.session.user.id, "Package");
+      const ownRows = rows.filter((r) => r.creatorUserId === ctx.session.user.id);
+      const skipped = rows.length - ownRows.length;
+
+      if (ownRows.length === 0) {
+        throwNotFound("Package");
       }
 
+      const ownIds = ownRows.map((r) => r.id);
       await db
         .update(testPackage)
         .set({ isPublic: true })
-        .where(inArray(testPackage.id, input.ids));
+        .where(inArray(testPackage.id, ownIds));
 
-      return { success: true, updated: rows.length };
+      return { success: true, updated: ownRows.length, skipped };
     }),
 
   // ── Section Management ───────────────────────────────────
