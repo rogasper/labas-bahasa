@@ -11,6 +11,18 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) return "vendor";
+          if (id.includes("node_modules/@tanstack/react-router") || id.includes("node_modules/@tanstack/react-query")) return "router";
+          if (id.includes("node_modules/recharts")) return "charts";
+          if (id.includes("node_modules/react-joyride")) return "tour";
+        },
+      },
+    },
+  },
   plugins: [
     tailwindcss(),
     tanstackRouter({
@@ -23,11 +35,11 @@ export default defineConfig({
       manifest: {
         name: "labas",
         short_name: "labas",
-        description: "labas - PWA Application",
+        description: "AI-powered multi-language test practice platform",
         theme_color: "#0c0c0c",
       },
       pwaAssets: { disabled: false, config: true },
-      devOptions: { enabled: true },
+      devOptions: { enabled: false },
     }),
   ],
 });

@@ -71,6 +71,7 @@ function NavLink({ item, isActive, collapsed }: { item: NavItem; isActive: boole
     <Link
       to={item.to}
       {...tourAttr}
+      aria-current={isActive ? "page" : undefined}
       className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all group clay-hover cursor-pointer ${
         isActive
           ? "bg-[var(--matcha-300)] text-[var(--matcha-800)] font-semibold clay-shadow"
@@ -184,6 +185,7 @@ export function Sidebar() {
           {/* Help Tour Button */}
           <button
             onClick={triggerGlobalTour}
+            aria-label="Panduan"
             className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all clay-hover cursor-pointer text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)] w-full ${
               collapsed ? "justify-center py-3 px-2" : "py-3 px-3 text-left"
             }`}
@@ -196,6 +198,7 @@ export function Sidebar() {
           {isLoggedIn ? (
             <button
               onClick={handleSignOut}
+              aria-label="Keluar"
               className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all clay-hover cursor-pointer text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)] w-full ${
                 collapsed ? "justify-center py-3 px-2" : "py-3 px-3 text-left"
               }`}
@@ -222,6 +225,8 @@ export function Sidebar() {
       {/* Floating toggle button (right edge of sidebar) */}
       <button
         onClick={toggle}
+        aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        aria-expanded={!collapsed}
         title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         style={{ left: collapsed ? "48px" : "240px" }}
         className="hidden md:flex fixed top-6 z-40 items-center justify-center w-10 h-10 rounded-full bg-[var(--pure-white)] border-2 border-[var(--oat-border)] shadow-md hover:bg-[var(--oat-light)] transition-all duration-300 text-[var(--warm-charcoal)] clay-hover cursor-pointer"
@@ -258,6 +263,7 @@ export function Sidebar() {
             <Link
               key={item.to}
               to={item.to}
+              aria-current={isActive ? "page" : undefined}
               className={`flex flex-col items-center justify-center px-3 py-1.5 transition-all rounded-[var(--radius-lg)] cursor-pointer ${
                 isActive
                   ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"

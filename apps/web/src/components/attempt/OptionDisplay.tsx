@@ -1,11 +1,6 @@
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
-const MCQ_FORMATS = [
-  "multiple_choice", "synonym", "grammar_in_context", "sentence_completion",
-  "reference", "kanji_reading", "particle_choice", "article_case",
-  "matching_headings", "matching_information", "summary_completion", "cloze",
-  "error_recognition", "text_insertion",
-];
+import { MCQ_FORMATS, McqFormat } from "@/lib/question-formats";
 
 interface OptionDisplayProps {
   format: string;
@@ -29,7 +24,7 @@ export function OptionDisplay({ format, options, correctAnswer, userAnswer }: Op
     return <TriStateOptions choices={["YES", "NO", "NOT_GIVEN"]} labels={{ YES: "Yes", NO: "No", NOT_GIVEN: "Not Given" }} correctAnswer={correctAnswer} userAnswer={userAnswer} />;
   }
 
-  if (MCQ_FORMATS.includes(format)) {
+  if (MCQ_FORMATS.includes(format as McqFormat)) {
     return <McqOptions options={options} correctAnswer={correctAnswer} userAnswer={userAnswer} />;
   }
 

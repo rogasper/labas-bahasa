@@ -5,38 +5,18 @@ import { trpc } from "@/utils/trpc";
 import { Input } from "@labas/ui/components/input";
 import { Button } from "@labas/ui/components/button";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { Pagination } from "@/components/admin/Pagination";
 
 const PAGE_SIZE = 20;
-
-function Pagination({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
-  if (totalPages <= 1) return null;
-  const pages: (number | "...")[] = [];
-  for (let i = 1; i <= totalPages; i++) {
-    if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) pages.push(i);
-    else if (pages[pages.length - 1] !== "...") pages.push("...");
-  }
-  return (
-    <div className="flex items-center justify-center gap-1 mt-6">
-      <Button variant="outline" size="sm" onClick={() => onChange(page - 1)} disabled={page <= 1}>Previous</Button>
-      {pages.map((p, i) =>
-        p === "..." ? (
-          <span key={`e-${i}`} className="px-2 text-[var(--warm-charcoal)]">...</span>
-        ) : (
-          <Button key={p} variant={p === page ? "default" : "outline"} size="sm" onClick={() => onChange(p as number)}>{p}</Button>
-        ),
-      )}
-      <Button variant="outline" size="sm" onClick={() => onChange(page + 1)} disabled={page >= totalPages}>Next</Button>
-    </div>
-  );
-}
 
 export const Route = createFileRoute("/admin/users")({
   component: AdminUsers,
 });
 
 function AdminUsers() {
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, debouncedSearch, setSearch] = useDebouncedValue("", 300);
   const [page, setPage] = useState(1);
 
   const usersQuery = useQuery(
@@ -49,8 +29,7 @@ function AdminUsers() {
 
   function handleSearch(val: string) {
     setSearch(val);
-    clearTimeout((window as any).__ut);
-    (window as any).__ut = setTimeout(() => { setDebouncedSearch(val); setPage(1); }, 300);
+    setPage(1);
   }
 
   return (
@@ -107,7 +86,7 @@ function UserRow({ user }: { user: { id: string; name: string; email: string; ro
         queryClient.invalidateQueries({ queryKey: trpc.admin.listUsers.queryKey() });
         toast.success(data.suspended ? "User suspended" : "User unsuspended");
       },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   );
 
@@ -117,7 +96,7 @@ function UserRow({ user }: { user: { id: string; name: string; email: string; ro
         queryClient.invalidateQueries({ queryKey: trpc.admin.listUsers.queryKey() });
         toast.success(`Role: ${data.role}`);
       },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   );
 

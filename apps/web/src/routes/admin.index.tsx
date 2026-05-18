@@ -5,6 +5,7 @@ import { trpc } from "@/utils/trpc";
 import { Input } from "@labas/ui/components/input";
 import { Button } from "@labas/ui/components/button";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export const Route = createFileRoute("/admin/")({
   component: AdminDashboard,
@@ -33,7 +34,7 @@ function AdminDashboard() {
         queryClient.invalidateQueries({ queryKey: trpc.admin.dashboardStats.queryKey() });
         toast.success("Config updated");
       },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   );
 

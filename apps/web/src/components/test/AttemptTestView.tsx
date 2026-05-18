@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback, memo } from "react";
-import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@labas/ui/components/button";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
@@ -8,6 +7,10 @@ import { trpc } from "@/utils/trpc";
 import { QuestionInput } from "./QuestionInput";
 import { AccentKeyboard } from "./AccentKeyboard";
 import { parseFurigana } from "@/lib/furigana";
+import { AttemptHeader } from "./attempt/AttemptHeader";
+import { FloatingNav } from "./attempt/FloatingNav";
+import { FinishDialog } from "./attempt/FinishDialog";
+import { AbandonDialog } from "./attempt/AbandonDialog";
 
 interface AttemptTestViewProps {
   attemptId: string;
@@ -85,6 +88,7 @@ const QuestionCard = memo(function QuestionCard({
         </div>
         <button
           onClick={() => toggleMarkQuestion(q.id)}
+          aria-label={isMarked ? "Hapus tanda" : "Tandai untuk review"}
           className={`shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors ${
             isMarked
               ? "bg-[var(--pomegranate-400)]/20 text-[var(--pomegranate-400)]"
@@ -143,7 +147,6 @@ export function AttemptTestView({
   submittingQId,
   markedQuestions,
   toggleMarkQuestion,
-  startQuestionTimer,
 }: AttemptTestViewProps) {
   const [showFinishDialog, setShowFinishDialog] = useState(false);
   const [showAbandonDialog, setShowAbandonDialog] = useState(false);
@@ -151,8 +154,6 @@ export function AttemptTestView({
   const questionPanelRef = useRef<HTMLDivElement>(null);
   const navSliderRef = useRef<HTMLDivElement>(null);
   const hasInitRef = useRef(false);
-
-  console.log("[AttemptTestView] render, attemptId:", attemptId, "sections:", pkg.sections?.length);
 
   const attemptQuery = useQuery(
     trpc.attempt.getById.queryOptions(
@@ -197,9 +198,6 @@ export function AttemptTestView({
       allQuestions.push({ id: q.id, sectionIdx: sIdx, localIdx: qIdx, passageText: q.passageText });
     });
   });
-
-  const isAnswered = (qId: string) => !!answers[qId];
-  const isMarked = (qId: string) => markedQuestions.has(qId);
 
   // Initialize active question once on mount
   useEffect(() => {
@@ -278,51 +276,18 @@ export function AttemptTestView({
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
-      
+
       <div className="h-full flex flex-col bg-[var(--warm-cream)] overflow-hidden">
-        {/* TopAppBar Shell */}
-        <header className="bg-[var(--pure-white)] border-b border-[var(--oat-border)] flex justify-between items-center w-full px-6 py-3 shrink-0 z-50">
-          <div className="flex items-center gap-4">
-            <button onClick={() => setShowAbandonDialog(true)} className="text-[var(--warm-charcoal)] hover:text-[var(--clay-black)] transition-colors flex items-center">
-              <MaterialIcon name="close" />
-            </button>
-            <span className="text-xl font-bold tracking-tight text-[var(--clay-black)] truncate max-w-[200px] md:max-w-sm">{pkg.title}</span>
-            <span className="bg-[var(--oat-light)] px-3 py-1 rounded-full text-xs font-semibold text-[var(--warm-charcoal)] uppercase tracking-widest hidden md:inline-block">
-              {currentSection.title}
-            </span>
-          </div>
-
-          {/* Timer Box */}
-          <div className="bg-[var(--pure-white)]/70 backdrop-blur-md rounded-xl hidden sm:flex items-center gap-3 px-6 py-2 shadow-sm border border-[var(--oat-border)]">
-            <MaterialIcon name="timer" className="text-[var(--matcha-600)]" />
-            <div className="flex flex-col">
-              <span className="text-[10px] leading-none uppercase font-bold text-[var(--warm-silver)] tracking-tighter">Waktu Berlalu</span>
-              <span className="text-xl font-bold font-headline tabular-nums text-[var(--clay-black)]">{formatTime(timeElapsed)}</span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-6">
-            <div className="hidden md:flex items-center gap-2">
-              <div className="w-24 h-2 bg-[var(--oat-light)] rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[var(--matcha-600)] transition-all rounded-full"
-                  style={{ width: `${totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0}%` }}
-                />
-              </div>
-              <span className="text-xs font-bold text-[var(--clay-black)]">{answeredCount}/{totalQuestions} Dijawab</span>
-            </div>
-            <button className="bg-[var(--oat-light)] p-2 rounded-xl text-[var(--warm-charcoal)] hover:text-[var(--clay-black)] transition-colors sm:hidden">
-               <MaterialIcon name="timer" />
-            </button>
-            <Button
-              onClick={() => setShowFinishDialog(true)}
-              disabled={isFinished}
-              className="bg-[var(--pomegranate-400)] text-[var(--pure-white)] hover:bg-[var(--pomegranate-600)] px-4 py-2 rounded-xl text-sm font-bold transition-opacity"
-            >
-              Selesai Test
-            </Button>
-          </div>
-        </header>
+        <AttemptHeader
+          pkgTitle={pkg.title}
+          currentSectionTitle={currentSection.title}
+          timeElapsed={timeElapsed}
+          answeredCount={answeredCount}
+          totalQuestions={totalQuestions}
+          isFinished={isFinished}
+          onAbandon={() => setShowAbandonDialog(true)}
+          onFinish={() => setShowFinishDialog(true)}
+        />
 
         {/* Main Exam Workspace */}
         <main className="flex-1 flex overflow-hidden flex-col lg:flex-row">
@@ -352,7 +317,7 @@ export function AttemptTestView({
                   <span className="text-sm font-bold text-[var(--warm-charcoal)] bg-[var(--oat-light)] px-3 py-1.5 rounded-lg">
                     Soal {activeGlobalIdx} / {totalQuestions}
                   </span>
-                  {isMarked(activeQuestionId ?? "") && (
+                  {markedQuestions.has(activeQuestionId ?? "") && (
                     <span className="flex items-center gap-1 text-xs font-semibold text-[var(--pomegranate-400)] bg-[var(--pomegranate-400)]/10 px-2 py-1 rounded-full">
                       <MaterialIcon name="bookmark" className="text-xs" />
                       Ditandai
@@ -377,7 +342,7 @@ export function AttemptTestView({
                   globalIdx={activeGlobalIdx}
                   answerValue={answers[activeQuestionWithMeta.id] ?? ""}
                   sectionResultId={sectionResultId}
-                  isMarked={isMarked(activeQuestionWithMeta.id)}
+                  isMarked={markedQuestions.has(activeQuestionWithMeta.id)}
                   isFinished={isFinished}
                   isSubmitting={submittingQId === activeQuestionWithMeta.id}
                   onAnswerChange={onAnswerChange}
@@ -390,7 +355,7 @@ export function AttemptTestView({
               )}
 
               {/* Prev / Next Navigation */}
-              <nav className="flex justify-between items-center pt-8">
+              <nav className="flex justify-between items-center pt-8" aria-label="Navigasi soal sebelumnya dan berikutnya">
                 <Button
                   variant="ghost"
                   onClick={goToPrevQuestion}
@@ -414,176 +379,36 @@ export function AttemptTestView({
           </section>
         </main>
 
-        {/* Floating Question Navigation Slider */}
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 bg-[var(--clay-black)]/95 backdrop-blur-md rounded-full shadow-2xl border border-white/10 z-40 max-w-[90vw]">
-          {/* Scroll Left */}
-          <button
-            onClick={() => {
-              navSliderRef.current?.scrollBy({ left: -200, behavior: "smooth" });
-            }}
-            className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all"
-          >
-            <MaterialIcon name="chevron_left" className="text-sm" />
-          </button>
-
-          {/* Scrollable Strip */}
-          <div
-            ref={navSliderRef}
-            className="flex items-center gap-1 overflow-x-auto hide-scrollbar max-w-[60vw] sm:max-w-[50vw] md:max-w-[40vw] lg:max-w-[30vw]"
-          >
-            {allQuestions.map((q, gIdx) => {
-              const answered = isAnswered(q.id);
-              const marked = isMarked(q.id);
-              const isActive = q.id === activeQuestionId;
-
-              return (
-                <button
-                  key={q.id}
-                  data-qid={q.id}
-                  onClick={() => goToQuestion(q.id)}
-                  className={`relative w-7 h-7 sm:w-8 sm:h-8 shrink-0 flex items-center justify-center rounded-full font-bold text-[10px] sm:text-xs transition-all ${
-                    answered
-                      ? "bg-[var(--matcha-600)] text-[var(--pure-white)]"
-                      : isActive
-                        ? "bg-white/30 text-white"
-                        : "bg-white/10 text-white/60 hover:bg-white/20"
-                  }`}
-                  title={`Soal ${gIdx + 1}${marked ? " (ditandai)" : ""}`}
-                >
-                  {gIdx + 1}
-                  {marked && (
-                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[var(--pomegranate-400)] rounded-full border border-[var(--clay-black)]" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Scroll Right */}
-          <button
-            onClick={() => {
-              navSliderRef.current?.scrollBy({ left: 200, behavior: "smooth" });
-            }}
-            className="w-8 h-8 shrink-0 flex items-center justify-center rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-all"
-          >
-            <MaterialIcon name="chevron_right" className="text-sm" />
-          </button>
-
-          <div className="w-px h-6 bg-white/10 shrink-0"></div>
-
-          {/* Top Button */}
-          <button
-            onClick={() => {
-              questionPanelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-            }}
-            className="flex items-center gap-1 px-3 py-2 shrink-0 rounded-full text-white/80 font-semibold text-xs hover:text-white transition-all"
-          >
-            <MaterialIcon name="arrow_upward" className="text-sm" />
-            <span className="hidden sm:inline">Atas</span>
-          </button>
-        </div>
+        <FloatingNav
+          questions={allQuestions}
+          activeQuestionId={activeQuestionId}
+          answers={answers}
+          markedQuestions={markedQuestions}
+          onGoToQuestion={goToQuestion}
+          onScrollToTop={() => questionPanelRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+          navSliderRef={navSliderRef}
+        />
       </div>
 
-      {/* Finish Confirmation Dialog */}
-      {showFinishDialog && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowFinishDialog(false);
-          }}
-        >
-          <div className="bg-[var(--warm-cream)] w-full max-w-md rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] shadow-xl p-6 md:p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-[var(--pomegranate-400)]/20 flex items-center justify-center">
-                <MaterialIcon name="help" className="text-[var(--pomegranate-400)]" />
-              </div>
-              <h2 className="text-xl font-headline font-bold text-[var(--clay-black)]">
-                Selesaikan Latihan?
-              </h2>
-            </div>
+      <FinishDialog
+        open={showFinishDialog}
+        onClose={() => setShowFinishDialog(false)}
+        onConfirm={() => {
+          setShowFinishDialog(false);
+          onFinish();
+        }}
+        answeredCount={answeredCount}
+        totalQuestions={totalQuestions}
+      />
 
-            <div className="space-y-3 mb-6">
-              <p className="text-sm text-[var(--warm-charcoal)]">
-                Kamu sudah menjawab <strong className="text-[var(--clay-black)]">{answeredCount} dari {totalQuestions}</strong> soal.
-              </p>
-              {answeredCount < totalQuestions && (
-                <div className="p-3 rounded-[var(--radius-md)] bg-[var(--lemon-400)]/20 border-2 border-[var(--lemon-500)]/30 text-sm text-[var(--lemon-800)] flex items-start gap-2">
-                  <MaterialIcon name="warning" className="text-sm mt-0.5 shrink-0" />
-                  <span>Masih ada {totalQuestions - answeredCount} soal yang belum dijawab.</span>
-                </div>
-              )}
-              <p className="text-sm text-[var(--warm-charcoal)]">
-                Setelah selesai, jawaban tidak bisa diubah dan hasil akan langsung terlihat.
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowFinishDialog(false)}
-                className="flex-1 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)]"
-              >
-                Lanjutkan
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowFinishDialog(false);
-                  onFinish();
-                }}
-                className="flex-1 bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] rounded-[var(--radius-lg)]"
-              >
-                Selesaikan
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Abandon Confirmation Dialog */}
-      {showAbandonDialog && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowAbandonDialog(false);
-          }}
-        >
-          <div className="bg-[var(--warm-cream)] w-full max-w-md rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] shadow-xl p-6 md:p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-[var(--pomegranate-400)]/20 flex items-center justify-center">
-                <MaterialIcon name="warning" className="text-[var(--pomegranate-400)]" />
-              </div>
-              <h2 className="text-xl font-headline font-bold text-[var(--clay-black)]">
-                Keluar dari Latihan?
-              </h2>
-            </div>
-
-            <div className="space-y-3 mb-6">
-              <p className="text-sm text-[var(--warm-charcoal)]">
-                Apakah Anda yakin ingin meninggalkan sesi latihan ini? Progress pengerjaan Anda mungkin tidak tersimpan dan akan ditandai sebagai gagal atau dibatalkan.
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowAbandonDialog(false)}
-                className="flex-1 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)]"
-              >
-                Batal
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowAbandonDialog(false);
-                  onAbandon();
-                }}
-                className="flex-1 bg-[var(--pomegranate-400)] text-[var(--pure-white)] hover:bg-[var(--pomegranate-600)] rounded-[var(--radius-lg)]"
-              >
-                Keluar
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AbandonDialog
+        open={showAbandonDialog}
+        onClose={() => setShowAbandonDialog(false)}
+        onConfirm={() => {
+          setShowAbandonDialog(false);
+          onAbandon();
+        }}
+      />
     </>
   );
 }

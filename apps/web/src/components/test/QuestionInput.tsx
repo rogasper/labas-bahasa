@@ -1,23 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Input } from "@labas/ui/components/input";
 
-const MCQ_FORMATS = [
-  "multiple_choice",
-  "synonym",
-  "grammar_in_context",
-  "sentence_completion",
-  "reference",
-  "kanji_reading",
-  "particle_choice",
-  "article_case",
-  "matching_headings",
-  "matching_information",
-  "summary_completion",
-  "cloze",
-  "error_recognition",
-  "text_insertion",
-  "matching_pairs",
-];
+import { MCQ_FORMATS } from "@/lib/question-formats";
 
 const TRUE_FALSE_CHOICES = [
   { key: "TRUE", label: "True" },

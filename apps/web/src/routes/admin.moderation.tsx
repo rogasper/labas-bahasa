@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export const Route = createFileRoute("/admin/moderation")({
   component: AdminModeration,
@@ -29,7 +30,7 @@ function AdminModeration() {
         queryClient.invalidateQueries({ queryKey: trpc.admin.listLatestQuestions.queryKey() });
         toast.success(data.isPublic ? "Made public" : "Made private");
       },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   );
 

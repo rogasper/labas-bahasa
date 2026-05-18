@@ -5,14 +5,15 @@ import { trpc } from "@/utils/trpc";
 import { Input } from "@labas/ui/components/input";
 import { Button } from "@labas/ui/components/button";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 export const Route = createFileRoute("/admin/credits")({
   component: AdminCredits,
 });
 
 function AdminCredits() {
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, debouncedSearch, setSearch] = useDebouncedValue("", 300);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [selectedUserName, setSelectedUserName] = useState("");
   const [amount, setAmount] = useState("");
@@ -49,24 +50,14 @@ function AdminCredits() {
         setAmount("");
         setDescription("");
       },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   );
-
-  function handleSearch(val: string) {
-    setSearch(val);
-    const t = (window as any).__ct;
-    if (t) clearTimeout(t);
-    (window as any).__ct = setTimeout(() => {
-      setDebouncedSearch(val);
-    }, 300);
-  }
 
   function selectUser(id: string, name: string) {
     setSelectedUserId(id);
     setSelectedUserName(name);
     setSearch("");
-    setDebouncedSearch("");
   }
 
   function handleAdjust() {
@@ -166,7 +157,7 @@ function AdminCredits() {
               </tr>
             </thead>
             <tbody>
-              {historyQuery.data.transactions.map((txn: any) => (
+              {historyQuery.data.transactions.map((txn) => (
                 <tr key={txn.id} className="border-t border-[var(--oat-border)]">
                   <td className="px-4 py-3">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${

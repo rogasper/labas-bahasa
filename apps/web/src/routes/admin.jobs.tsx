@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 
 const STATUSES = ["all", "pending", "running", "completed", "failed", "cancelled"] as const;
 
@@ -34,7 +35,7 @@ function AdminJobs() {
         queryClient.invalidateQueries({ queryKey: trpc.admin.listAllJobs.queryKey() });
         toast.success("Job cancelled");
       },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   );
 

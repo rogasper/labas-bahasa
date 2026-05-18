@@ -5,6 +5,8 @@ import { trpc } from "@/utils/trpc";
 import { Input } from "@labas/ui/components/input";
 import { Button } from "@labas/ui/components/button";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 export const Route = createFileRoute("/admin/featured")({
   component: AdminFeatured,
@@ -14,8 +16,7 @@ type Tab = "featured" | "packages" | "questions";
 
 function AdminFeatured() {
   const [tab, setTab] = useState<Tab>("featured");
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [search, debouncedSearch, setSearch] = useDebouncedValue("", 300);
   const [page, setPage] = useState(1);
   const limit = 15;
   const queryClient = useQueryClient();
@@ -38,7 +39,7 @@ function AdminFeatured() {
         queryClient.invalidateQueries({ queryKey: trpc.admin.searchContent.queryKey() });
         toast.success("Package updated");
       },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   );
 
@@ -49,18 +50,13 @@ function AdminFeatured() {
         queryClient.invalidateQueries({ queryKey: trpc.admin.searchContent.queryKey() });
         toast.success("Question updated");
       },
-      onError: (e: any) => toast.error(e.message),
+      onError: (e: unknown) => toast.error(getErrorMessage(e)),
     }),
   );
 
   function handleSearch(val: string) {
     setSearch(val);
-    const t = (window as any).__ft;
-    if (t) clearTimeout(t);
-    (window as any).__ft = setTimeout(() => {
-      setDebouncedSearch(val);
-      setPage(1);
-    }, 300);
+    setPage(1);
   }
 
   const tabs: { key: Tab; label: string }[] = [
@@ -78,7 +74,7 @@ function AdminFeatured() {
         {tabs.map((t) => (
           <button
             key={t.key}
-            onClick={() => { setTab(t.key); setSearch(""); setDebouncedSearch(""); setPage(1); }}
+            onClick={() => { setTab(t.key); setSearch(""); setPage(1); }}
             className={`px-4 py-2.5 text-sm font-medium rounded-t-[var(--radius-lg)] transition-colors ${
               tab === t.key
                 ? "bg-[var(--pure-white)] text-[var(--clay-black)] border border-[var(--oat-border)] border-b-[var(--pure-white)] -mb-[1px]"
@@ -101,7 +97,7 @@ function AdminFeatured() {
               <p className="text-sm text-[var(--warm-charcoal)] py-4">No featured packages. Browse and select from the tabs above.</p>
             ) : (
               <div className="space-y-2">
-                {fPackages.map((pkg: any) => (
+                {fPackages.map((pkg) => (
                   <div key={pkg.id} className="flex items-center justify-between bg-[var(--pure-white)] border border-[var(--oat-border)] rounded-[var(--radius-lg)] px-4 py-3">
                     <div>
                       <p className="font-medium text-[var(--clay-black)]">{pkg.title}</p>
@@ -123,7 +119,7 @@ function AdminFeatured() {
               <p className="text-sm text-[var(--warm-charcoal)] py-4">No featured questions.</p>
             ) : (
               <div className="space-y-2">
-                {fQuestions.map((q: any) => (
+                {fQuestions.map((q) => (
                   <div key={q.id} className="flex items-center justify-between bg-[var(--pure-white)] border border-[var(--oat-border)] rounded-[var(--radius-lg)] px-4 py-3">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-[var(--clay-black)] truncate">{q.questionText}</p>
@@ -155,14 +151,14 @@ function AdminFeatured() {
                 {debouncedSearch ? `${searchQuery.data?.total ?? 0} results for "${debouncedSearch}"` : `Showing ${searchQuery.data?.total ?? 0} ${tab}`}
               </p>
               <div className="space-y-2">
-                {(searchQuery.data?.items ?? []).map((item: any) => (
+                {(searchQuery.data?.items ?? []).map((item) => (
                   <div key={item.id} className="flex items-center justify-between bg-[var(--pure-white)] border border-[var(--oat-border)] rounded-[var(--radius-lg)] px-4 py-3">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-[var(--clay-black)] truncate">
-                        {tab === "packages" ? item.title : item.questionText}
+                        {"title" in item ? item.title : item.questionText}
                       </p>
                       <p className="text-xs text-[var(--warm-charcoal)]">
-                        {tab === "packages" ? item.examTypeId : `${item.format} · ${item.examTypeId}`}
+                        {"format" in item ? `${item.format} · ${item.examTypeId}` : item.examTypeId}
                         {item.isFeatured && (
                           <span className="ml-2 text-xs font-semibold px-1.5 py-0.5 rounded-full bg-[var(--sunbeam-300)] text-[var(--sunbeam-800)]">Featured</span>
                         )}

@@ -21,6 +21,8 @@ import { CalloutCard } from "@/components/bank/CalloutCard";
 import { PageTour, TourHelpButton } from "@/components/TourGuide";
 import type { Step } from "react-joyride";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
+import { EXAM_TYPES } from "@/lib/exam-constants";
 
 export const Route = createFileRoute("/packages")({
   component: PackagesComponent,
@@ -39,14 +41,6 @@ export const Route = createFileRoute("/packages")({
     return { session };
   },
 });
-
-const EXAM_TYPES = [
-  { id: "IELTS", name: "IELTS" },
-  { id: "TOEFL", name: "TOEFL" },
-  { id: "JLPT", name: "JLPT" },
-  { id: "HSK", name: "HSK" },
-  { id: "GOETHE", name: "German" },
-];
 
 type Tab = "all" | "mine";
 
@@ -99,36 +93,38 @@ function PackagesComponent() {
   const total = query.data?.total ?? 0;
   const totalPages = Math.ceil(total / limit);
 
-  const updateMutation = useMutation({
-    ...trpc.package.update.mutationOptions(),
-    onSuccess: () => {
-      query.refetch();
-    },
-  });
+  const updateMutation = useMutation(
+    trpc.package.update.mutationOptions({
+      onSuccess: () => {
+        query.refetch();
+      },
+    }),
+  );
 
   const togglePublic = (pkgId: string, current: boolean) => {
     updateMutation.mutate({ id: pkgId, isPublic: !current });
   };
 
-  const bulkPublish = useMutation({
-    ...trpc.package.bulkPublish.mutationOptions(),
-    onSuccess: (data) => {
-      query.refetch();
-      setBulkMode(false);
-      setSelectedIds(new Set());
-      if (data.skipped > 0) {
-        toast.success(
-          `${data.updated} paket dipublikasikan, ${data.skipped} dilewati`,
-          { description: "Beberapa paket bukan milikmu atau sudah tidak tersedia." },
-        );
-      } else {
-        toast.success(`${data.updated} paket berhasil dipublikasikan`);
-      }
-    },
-    onError: (err: any) => {
-      toast.error("Gagal mempublikasikan. Coba refresh dan pilih ulang paket.", { description: err.message });
-    },
-  });
+  const bulkPublish = useMutation(
+    trpc.package.bulkPublish.mutationOptions({
+      onSuccess: (data) => {
+        query.refetch();
+        setBulkMode(false);
+        setSelectedIds(new Set());
+        if (data.skipped > 0) {
+          toast.success(
+            `${data.updated} paket dipublikasikan, ${data.skipped} dilewati`,
+            { description: "Beberapa paket bukan milikmu atau sudah tidak tersedia." },
+          );
+        } else {
+          toast.success(`${data.updated} paket berhasil dipublikasikan`);
+        }
+      },
+      onError: (err: unknown) => {
+        toast.error("Gagal mempublikasikan. Coba refresh dan pilih ulang paket.", { description: getErrorMessage(err) });
+      },
+    }),
+  );
 
   // ── Bulk select ──
   const [bulkMode, setBulkMode] = useState(false);
@@ -144,7 +140,7 @@ function PackagesComponent() {
   };
 
   const clearSelection = () => setSelectedIds(new Set());
-  const selectAll = () => setSelectedIds(new Set(packages.map((p: any) => p.id)));
+  const selectAll = () => setSelectedIds(new Set(packages.map((p) => p.id)));
 
   useEffect(() => {
     setBulkMode(false);
@@ -160,7 +156,7 @@ function PackagesComponent() {
     typeof window !== "undefined" && localStorage.getItem("labas-packages-private-callout-dismissed") === "true",
   );
   const privatePackages = packages.filter(
-    (p: any) => !p.isPublic && p.creatorUserId === userId,
+    (p) => !p.isPublic && p.creatorUserId === userId,
   );
 
   const handleDismissCallout = () => {
@@ -169,7 +165,7 @@ function PackagesComponent() {
   };
 
   const handlePublishAllPrivate = () => {
-    const ids = privatePackages.map((p: any) => p.id);
+    const ids = privatePackages.map((p) => p.id);
     if (ids.length > 0) bulkPublish.mutate({ ids });
   };
 

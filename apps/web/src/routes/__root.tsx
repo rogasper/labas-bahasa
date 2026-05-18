@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { GlobalGenerationProgress } from "@/components/generate/GlobalGenerationProgress";
+import { ErrorFallback } from "@/components/ErrorFallback";
 import type { trpc } from "@/utils/trpc";
 
 import "../index.css";
@@ -19,13 +20,16 @@ export interface RouterAppContext {
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
   component: RootComponent,
+  errorComponent: ({ error, reset }) => <ErrorFallback error={error} reset={reset} />,
   head: () => ({
     meta: [
       { title: "Labas — AI Exam Practice" },
       { name: "description", content: "AI-powered multi-language test practice platform" },
     ],
-    links: [
+      links: [
       { rel: "icon", href: "/favicon.ico" },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" },
     ],
   }),
@@ -77,8 +81,12 @@ function RootComponent() {
         <GlobalGenerationProgress />
         <Toaster richColors />
       </ThemeProvider>
-      <TanStackRouterDevtools position="bottom-left" />
-      <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+      {import.meta.env.DEV && (
+        <>
+          <TanStackRouterDevtools position="bottom-left" />
+          <ReactQueryDevtools position="bottom" buttonPosition="bottom-right" />
+        </>
+      )}
     </>
   );
 }

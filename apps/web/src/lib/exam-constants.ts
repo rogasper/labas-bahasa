@@ -1,46 +1,20 @@
-export const EXAM_TYPES = [
-  { id: "IELTS", name: "IELTS" },
-  { id: "TOEFL", name: "TOEFL" },
-  { id: "JLPT", name: "JLPT" },
-  { id: "HSK", name: "HSK" },
-  { id: "GOETHE", name: "German" },
-  { id: "TOPIK", name: "Korean" },
-  { id: "TOAFL", name: "Arabic" },
-  { id: "DELE", name: "Spanish" },
-];
+import {
+  EXAM_TYPES as RICH_EXAM_TYPES,
+  SECTIONS as RICH_SECTIONS,
+  FORMATS as RICH_FORMATS,
+  DIFFICULTIES as RICH_DIFFICULTIES,
+} from "./generate-constants";
 
-export const SECTIONS = [
-  { id: "READING", name: "Reading" },
-  { id: "WRITING", name: "Writing" },
-];
+/** Derived simple arrays for filter UIs that don't need rich metadata.
+ *  Source of truth lives in generate-constants.ts — edit there. */
 
-export const FORMATS = [
-  "multiple_choice",
-  "true_false_not_given",
-  "fill_blank",
-  "synonym",
-  "grammar_in_context",
-  "sentence_completion",
-  "cloze",
-  "reference",
-  "author_view",
-  "matching_headings",
-  "matching_information",
-  "summary_completion",
-  "matching_pairs",
-  "error_recognition",
-  "text_insertion",
-  "kanji_reading",
-  "particle_choice",
-  "article_case",
-  "character_reading",
-  "sentence_arrangement",
-];
+export const EXAM_TYPES = RICH_EXAM_TYPES.map(({ id, name }) => ({ id, name }));
 
-export const DIFFICULTIES = [
-  { value: 1, label: "Beginner" },
-  { value: 2, label: "Elementary" },
-  { value: 3, label: "Intermediate" },
-  { value: 4, label: "Advanced" },
-  { value: 5, label: "Expert" },
-];
+export const SECTIONS = RICH_SECTIONS.map(({ id, name }) => ({ id, name }));
+
+export const FORMATS = RICH_FORMATS.map(({ id }) => id);
+
+export const DIFFICULTIES = RICH_DIFFICULTIES.map((label, index) => ({
+  value: index + 1,
+  label,
+}));
