@@ -7,7 +7,8 @@ import { Button } from "@labas/ui/components/button";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { Pagination } from "@/components/admin/Pagination";
+import { DataTable } from "@/components/admin/DataTable";
+import type { ColumnDef } from "@/components/admin/DataTable";
 
 const PAGE_SIZE = 20;
 
@@ -15,9 +16,19 @@ export const Route = createFileRoute("/admin/users")({
   component: AdminUsers,
 });
 
+type UserRow = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  suspended: boolean;
+  emailVerified: boolean;
+};
+
 function AdminUsers() {
   const [search, debouncedSearch, setSearch] = useDebouncedValue("", 300);
   const [page, setPage] = useState(1);
+  const queryClient = useQueryClient();
 
   const usersQuery = useQuery(
     trpc.admin.listUsers.queryOptions({ search: debouncedSearch || undefined, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE }),
@@ -31,55 +42,6 @@ function AdminUsers() {
     setSearch(val);
     setPage(1);
   }
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-headline font-bold text-[var(--clay-black)]">Users</h1>
-          <p className="text-[var(--warm-charcoal)] mt-1">{total.toLocaleString()} total users</p>
-        </div>
-      </div>
-
-      <div className="bg-[var(--pure-white)] rounded-[var(--radius-xl)] border border-[var(--oat-border)] overflow-hidden">
-        <div className="px-4 py-3 border-b border-[var(--oat-border)]">
-          <Input
-            placeholder="Search by name or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            aria-label="Cari user"
-            className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] h-11"
-          />
-        </div>
-        <table className="w-full text-sm">
-          <thead className="bg-[var(--oat-light)] text-[var(--warm-charcoal)]">
-            <tr>
-              <th className="text-left px-4 py-3 font-medium w-[25%]">Name</th>
-              <th className="text-left px-4 py-3 font-medium w-[30%]">Email</th>
-              <th className="text-left px-4 py-3 font-medium w-[10%]">Role</th>
-              <th className="text-left px-4 py-3 font-medium w-[10%]">Status</th>
-              <th className="text-right px-4 py-3 font-medium w-[25%]">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {usersQuery.isLoading ? (
-              <tr><td colSpan={5} className="text-center py-16 text-[var(--warm-charcoal)]">Loading...</td></tr>
-            ) : users.length === 0 ? (
-              <tr><td colSpan={5} className="text-center py-16 text-[var(--warm-charcoal)]">No users found.</td></tr>
-            ) : (
-              users.map((u) => <UserRow key={u.id} user={u} />)
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
-    </div>
-  );
-}
-
-function UserRow({ user }: { user: { id: string; name: string; email: string; role: string; suspended: boolean; emailVerified: boolean } }) {
-  const queryClient = useQueryClient();
 
   const suspendMutation = useMutation(
     trpc.admin.suspendUser.mutationOptions({
@@ -101,37 +63,91 @@ function UserRow({ user }: { user: { id: string; name: string; email: string; ro
     }),
   );
 
-  return (
-    <tr className="border-t border-[var(--oat-border)] hover:bg-[var(--oat-light)]/50 transition-colors">
-      <td className="px-4 py-3 font-medium text-[var(--clay-black)]">{user.name}</td>
-      <td className="px-4 py-3 text-[var(--warm-charcoal)]">
-        {user.email}
-        {!user.emailVerified && (
-          <span className="ml-1.5 text-[10px] bg-[var(--sunbeam-300)] text-[var(--sunbeam-800)] px-1.5 py-0.5 rounded-full font-medium">unverified</span>
-        )}
-      </td>
-      <td className="px-4 py-3">
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${user.role === "admin" ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]" : "bg-[var(--oat-border)] text-[var(--warm-charcoal)]"}`}>
-          {user.role}
+  const columns: ColumnDef<UserRow>[] = [
+    {
+      id: "name",
+      header: "Name",
+      accessorKey: "name",
+      size: "w-[25%]",
+      cell: ({ value }) => <span className="font-medium text-[var(--clay-black)]">{value as string}</span>,
+    },
+    {
+      id: "email",
+      header: "Email",
+      accessorKey: "email",
+      size: "w-[30%]",
+      cell: ({ row }) => (
+        <span className="text-[var(--warm-charcoal)]">
+          {row.email}
+          {!row.emailVerified && (
+            <span className="ml-1.5 text-[10px] bg-[var(--sunbeam-300)] text-[var(--sunbeam-800)] px-1.5 py-0.5 rounded-full font-medium">unverified</span>
+          )}
         </span>
-      </td>
-      <td className="px-4 py-3">
+      ),
+    },
+    {
+      id: "role",
+      header: "Role",
+      size: "w-[10%]",
+      cell: ({ row }) => (
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${row.role === "admin" ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]" : "bg-[var(--oat-border)] text-[var(--warm-charcoal)]"}`}>
+          {row.role}
+        </span>
+      ),
+    },
+    {
+      id: "status",
+      header: "Status",
+      size: "w-[10%]",
+      cell: ({ row }) => (
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-          user.suspended ? "bg-[var(--clay-red)]/10 text-[var(--clay-red)]" : "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
+          row.suspended ? "bg-[var(--clay-red)]/10 text-[var(--clay-red)]" : "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
         }`}>
-          {user.suspended ? "Suspended" : "Active"}
+          {row.suspended ? "Suspended" : "Active"}
         </span>
-      </td>
-      <td className="px-4 py-3">
-        <div className="flex items-center justify-end gap-2">
-          <Button variant="outline" onClick={() => suspendMutation.mutate({ userId: user.id, suspended: !user.suspended })} disabled={suspendMutation.isPending} className="h-9 rounded-[var(--radius-lg)] text-xs">
-            {user.suspended ? "Unsuspend" : "Suspend"}
-          </Button>
-          <Button variant="outline" onClick={() => roleMutation.mutate({ userId: user.id, role: user.role === "admin" ? "user" : "admin" })} disabled={roleMutation.isPending} className="h-9 rounded-[var(--radius-lg)] text-xs">
-            {user.role === "admin" ? "Demote" : "Promote"}
-          </Button>
+      ),
+    },
+  ];
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-headline font-bold text-[var(--clay-black)]">Users</h1>
+          <p className="text-[var(--warm-charcoal)] mt-1">{total.toLocaleString()} total users</p>
         </div>
-      </td>
-    </tr>
+      </div>
+
+      <div className="mb-4">
+        <Input
+          placeholder="Search by name or email..."
+          value={search}
+          onChange={(e) => handleSearch(e.target.value)}
+          aria-label="Cari user"
+          className="max-w-md rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] h-11"
+        />
+      </div>
+
+      <DataTable
+        data={users}
+        columns={columns}
+        isLoading={usersQuery.isLoading}
+        emptyMessage="No users found."
+        keyExtractor={(u) => u.id}
+        page={page}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        actions={(u) => (
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="outline" onClick={() => suspendMutation.mutate({ userId: u.id, suspended: !u.suspended })} disabled={suspendMutation.isPending} className="h-9 rounded-[var(--radius-lg)] text-xs">
+              {u.suspended ? "Unsuspend" : "Suspend"}
+            </Button>
+            <Button variant="outline" onClick={() => roleMutation.mutate({ userId: u.id, role: u.role === "admin" ? "user" : "admin" })} disabled={roleMutation.isPending} className="h-9 rounded-[var(--radius-lg)] text-xs">
+              {u.role === "admin" ? "Demote" : "Promote"}
+            </Button>
+          </div>
+        )}
+      />
+    </div>
   );
 }

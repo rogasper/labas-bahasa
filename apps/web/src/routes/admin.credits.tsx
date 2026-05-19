@@ -7,10 +7,21 @@ import { Button } from "@labas/ui/components/button";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { DataTable } from "@/components/admin/DataTable";
+import type { ColumnDef } from "@/components/admin/DataTable";
 
 export const Route = createFileRoute("/admin/credits")({
   component: AdminCredits,
 });
+
+type TxnRow = {
+  id: string;
+  userId: string;
+  amount: number;
+  type: string;
+  description: string | null;
+  createdAt: string | Date;
+};
 
 function AdminCredits() {
   const [search, debouncedSearch, setSearch] = useDebouncedValue("", 300);
@@ -154,34 +165,43 @@ function AdminCredits() {
       {historyQuery.data && historyQuery.data.transactions.length > 0 && (
         <div className="bg-[var(--pure-white)] rounded-[var(--radius-xl)] border border-[var(--oat-border)] overflow-hidden">
           <h2 className="text-lg font-headline font-bold text-[var(--clay-black)] px-6 pt-6 pb-2">Transaction History</h2>
-          <table className="w-full text-sm">
-            <thead className="bg-[var(--oat-light)] text-[var(--warm-charcoal)]">
-              <tr>
-                <th className="text-left px-4 py-3 font-medium">Type</th>
-                <th className="text-left px-4 py-3 font-medium">Amount</th>
-                <th className="text-left px-4 py-3 font-medium">Description</th>
-                <th className="text-left px-4 py-3 font-medium">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historyQuery.data.transactions.map((txn) => (
-                <tr key={txn.id} className="border-t border-[var(--oat-border)]">
-                  <td className="px-4 py-3">
+          <DataTable
+            data={historyQuery.data.transactions}
+            columns={[
+              {
+                id: "type",
+                header: "Type",
+                accessorKey: "type",
+                cell: ({ value }) => {
+                  const t = value as string;
+                  return (
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      txn.type === "signup_bonus" ? "bg-[var(--sunbeam-300)] text-[var(--sunbeam-800)]" :
-                      txn.type === "admin_adjust" ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]" :
+                      t === "signup_bonus" ? "bg-[var(--sunbeam-300)] text-[var(--sunbeam-800)]" :
+                      t === "admin_adjust" ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]" :
                       "bg-[var(--oat-border)] text-[var(--warm-charcoal)]"
-                    }`}>{txn.type}</span>
-                  </td>
-                  <td className={`px-4 py-3 font-medium ${txn.amount >= 0 ? "text-[var(--matcha-700)]" : "text-[var(--clay-red)]"}`}>
-                    {txn.amount >= 0 ? "+" : ""}{txn.amount.toLocaleString()}
-                  </td>
-                  <td className="px-4 py-3 text-[var(--warm-charcoal)]">{txn.description ?? "-"}</td>
-                  <td className="px-4 py-3 text-[var(--warm-charcoal)]">{new Date(txn.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    }`}>{t}</span>
+                  );
+                },
+              },
+              {
+                id: "amount",
+                header: "Amount",
+                accessorFn: (t: TxnRow) => <span className={`font-medium ${t.amount >= 0 ? "text-[var(--matcha-700)]" : "text-[var(--clay-red)]"}`}>{t.amount >= 0 ? "+" : ""}{t.amount.toLocaleString()}</span>,
+              },
+              {
+                id: "description",
+                header: "Description",
+                accessorFn: (t: TxnRow) => <span className="text-[var(--warm-charcoal)]">{t.description ?? "-"}</span>,
+              },
+              {
+                id: "date",
+                header: "Date",
+                accessorFn: (t: TxnRow) => <span className="text-[var(--warm-charcoal)]">{new Date(t.createdAt).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}</span>,
+              },
+            ]}
+            keyExtractor={(t) => t.id}
+            classNames={{ wrapper: "" }}
+          />
         </div>
       )}
     </div>
