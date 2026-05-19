@@ -7,9 +7,9 @@ interface BundleItem {
   id: string;
   questionText?: string;
   title?: string;
-  examTypeName?: string;
+  examTypeName?: string | null;
   format?: string;
-  sectionTypeName?: string;
+  sectionTypeName?: string | null;
 }
 
 interface BundleSidebarProps {
@@ -82,7 +82,7 @@ export function BundleSidebar({
               Belum ada yang dipilih
             </div>
           ) : (
-            activeBundle.map((item: any, idx: number) => {
+            activeBundle.map((item, idx: number) => {
               const isQ = mode === "soal";
               return (
                 <div
@@ -93,17 +93,18 @@ export function BundleSidebar({
                     <MaterialIcon name={isQ ? "quiz" : "folder_open"} className="text-sm" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h5 className="text-sm font-bold text-[var(--clay-black)] truncate">
+                    <h4 className="text-sm font-bold text-[var(--clay-black)] truncate">
                       {isQ ? item.questionText : item.title}
-                    </h5>
+                    </h4>
                     <p className="text-xs text-[var(--warm-charcoal)]">
                       {isQ
-                        ? `${item.examTypeName} \u00B7 ${formatLabel(item.format)}`
+                        ? `${item.examTypeName} \u00B7 ${formatLabel(item.format ?? "")}`
                         : `${item.examTypeName} \u00B7 ${item.sectionTypeName}`}
                     </p>
                   </div>
                   <button
                     onClick={() => onRemoveFromBundle(item.id, isQ ? "question" : "section")}
+                    aria-label={`Hapus ${isQ ? "soal" : "section"} dari bundle`}
                     className="text-[var(--warm-silver)] hover:text-[var(--pomegranate-400)] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 cursor-pointer"
                   >
                     <MaterialIcon name="delete" className="text-sm" />

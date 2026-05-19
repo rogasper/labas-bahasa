@@ -11,6 +11,7 @@
     "start": "vite",
     "test": "bun test",
     "check-types": "vite build && tsc --noEmit",
+    "lint": "eslint src",
     "generate-pwa-assets": "pwa-assets-generator"
   },
   "dependencies": {
@@ -41,6 +42,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@labas/config": "workspace:*",
     "@tanstack/react-query-devtools": "^5.91.1",
     "@tanstack/react-router-devtools": "^1.166.13",
@@ -50,9 +52,11 @@
     "@types/react-dom": "catalog:",
     "@vite-pwa/assets-generator": "^1.0.2",
     "@vitejs/plugin-react": "^6.0.1",
+    "eslint": "^10.4.0",
     "postcss": "^8.5.10",
     "tailwindcss": "^4.2.2",
     "typescript": "catalog:",
+    "typescript-eslint": "^8.59.4",
     "vite": "^8.0.8"
   }
 }

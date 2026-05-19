@@ -7,11 +7,28 @@ import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { formatTime } from "@/lib/time";
+import type { Question } from "@/lib/types";
 import { QuestionReviewCard } from "@/components/attempt/QuestionReviewCard";
 import { ReviewFilterBar } from "@/components/attempt/ReviewFilterBar";
 import { SkillBreakdown } from "@/components/attempt/SkillBreakdown";
 
 type FilterStatus = "all" | "wrong" | "correct" | "marked";
+
+interface AnswerItem {
+  questionId: string;
+  userAnswer?: string;
+  answer?: string;
+  isCorrect?: boolean | null;
+  partialScore?: number | null;
+  timeSpentSec?: number;
+}
+
+interface QuestionAnswer {
+  q: Question;
+  ans: AnswerItem | null;
+  secIdx: number;
+  qIdx: number;
+}
 
 export const Route = createFileRoute("/attempt/$id")({
   component: AttemptResultComponent,
@@ -60,24 +77,24 @@ function AttemptResultComponent() {
   // ── Flatten all questions with section context ──
   const allQuestions = useMemo(() => {
     if (!attempt?.sections) return [];
-    return attempt.sections.flatMap((sec: any, secIdx: number) =>
-      sec.questions.map((q: any, qIdx: number) => ({
+    return attempt.sections.flatMap((sec, secIdx: number) =>
+      sec.questions.map((q: Question, qIdx: number) => ({
         q,
         secIdx,
         qIdx,
-        ans: sec.answers.find((a: any) => a.questionId === q.id) ?? null,
+        ans: sec.answers.find((a: AnswerItem) => a.questionId === q.id) ?? null,
       })),
     );
   }, [attempt]);
 
   // ── Filtered questions ──
   const partialCount = useMemo(
-    () => allQuestions.filter(({ ans }: any) => ans?.partialScore != null && ans?.partialScore < 100).length,
+    () => allQuestions.filter(({ ans }) => ans?.partialScore != null && ans?.partialScore < 100).length,
     [allQuestions],
   );
 
   const filteredQuestions = useMemo(() => {
-    return allQuestions.filter(({ q, ans }: any) => {
+    return allQuestions.filter(({ q, ans }) => {
       if (filterStatus === "wrong" && ans?.isCorrect !== false) return false;
       if (filterStatus === "correct" && ans?.isCorrect !== true) return false;
       if (filterStatus === "marked") {
@@ -97,7 +114,7 @@ function AttemptResultComponent() {
     const next = !allExpanded;
     setAllExpanded(next);
     if (next) {
-      setExpandedIds(new Set(filteredQuestions.map(({ q }: any) => q.id)));
+      setExpandedIds(new Set(filteredQuestions.map(({ q }) => q.id)));
     } else {
       setExpandedIds(new Set());
     }
@@ -210,6 +227,7 @@ function AttemptResultComponent() {
                       <button
                         key={star}
                         onClick={() => ratePackageMutation.mutate({ packageId: attempt.packageId!, score: star })}
+                        aria-label={`Nilai ${star} bintang`}
                         className="transition-transform hover:scale-110"
                       >
                         <MaterialIcon
@@ -235,7 +253,7 @@ function AttemptResultComponent() {
       <div className="mb-8">
         <h2 className="text-xl font-headline font-bold text-[var(--clay-black)] mb-4">Per Section</h2>
         <div className="space-y-3">
-          {attempt.sections.map((sec: any) => {
+          {attempt.sections.map((sec) => {
             const secPct = sec.maxScore && sec.maxScore > 0
               ? Math.round(((sec.score ?? 0) / sec.maxScore) * 100)
               : 0;
@@ -273,9 +291,9 @@ function AttemptResultComponent() {
           <span className="ml-2 text-sm font-normal text-[var(--warm-charcoal)]">Klik topik untuk filter soal</span>
         </h2>
         <SkillBreakdown
-          questions={allQuestions.map(({ q, ans }: any) => ({
-            skillTags: q.skillTags,
-            isCorrect: ans?.isCorrect,
+          questions={allQuestions.map(({ q, ans }) => ({
+            skillTags: q.skillTags ?? [],
+            isCorrect: ans?.isCorrect ?? null,
           }))}
           onSkillClick={toggleSkill}
           activeSkills={filterSkills}
@@ -298,7 +316,7 @@ function AttemptResultComponent() {
           setFilterStatus={setFilterStatus}
           filterSkills={filterSkills}
           setFilterSkills={setFilterSkills}
-          questions={allQuestions.map(({ q, ans }: any) => ({
+          questions={allQuestions.map(({ q, ans }) => ({
             skillTags: q.skillTags ?? [],
             isCorrect: ans?.isCorrect,
           }))}
@@ -308,7 +326,7 @@ function AttemptResultComponent() {
         />
 
         <div className="space-y-3">
-          {filteredQuestions.map(({ q, secIdx, qIdx, ans }: any) => (
+          {filteredQuestions.map(({ q, secIdx, qIdx, ans }) => (
             <QuestionReviewCard
               key={q.id}
               q={q}

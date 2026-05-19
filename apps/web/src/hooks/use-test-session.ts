@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/utils/trpc";
+import { getErrorMessage } from "@/lib/error-utils";
 
 function getTimerKey(attemptId: string | null) {
   return attemptId ? `labas_attempt_timer_${attemptId}` : null;
@@ -168,9 +169,9 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
       // Load any saved timer (in case of refresh during attempt)
       const saved = loadElapsedTime(res.attemptId);
       if (saved > 0) setTimeElapsed(saved);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[useTestSession] Start attempt failed:", err);
-      setStartError(err.message ?? "Gagal memulai latihan. Coba lagi.");
+      setStartError(getErrorMessage(err));
     }
   }, [packageId, startMutation]);
 

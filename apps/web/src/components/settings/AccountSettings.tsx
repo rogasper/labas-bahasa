@@ -4,6 +4,7 @@ import { Input } from "@labas/ui/components/input";
 import { Label } from "@labas/ui/components/label";
 import { Button } from "@labas/ui/components/button";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 import { authClient } from "@/lib/auth-client";
 
 export function AccountSettings() {
@@ -39,8 +40,8 @@ export function AccountSettings() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
-      toast.error(err?.message || "Gagal mengubah password");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Gagal mengubah password");
     } finally {
       setIsChangingPassword(false);
     }
@@ -54,8 +55,8 @@ export function AccountSettings() {
       await authClient.changeEmail({ newEmail });
       toast.success("Email berhasil diubah. Cek email baru Anda untuk verifikasi.");
       setNewEmail("");
-    } catch (err: any) {
-      toast.error(err?.message || "Gagal mengubah email");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Gagal mengubah email");
     } finally {
       setIsChangingEmail(false);
     }

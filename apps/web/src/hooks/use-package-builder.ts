@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { trpc } from "@/utils/trpc";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 
 export function usePackageBuilder() {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export function usePackageBuilder() {
 
   const handleCreatePackage = async (params: {
     selectedIds: Set<string>;
-    questions: Array<{ id: string; examTypeId: string; sectionTypeId: string; sectionTypeName?: string | null; [key: string]: any }>;
+    questions: Array<{ id: string; examTypeId: string; sectionTypeId: string; sectionTypeName?: string | null; [key: string]: unknown }>;
     title: string;
     description: string;
     isPublic: boolean;
@@ -51,8 +52,8 @@ export function usePackageBuilder() {
       }
 
       navigate({ to: "/package/$id", params: { id: pkg.id } });
-    } catch (err: any) {
-      toast.error("Gagal membuat paket", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Gagal membuat paket", { description: getErrorMessage(err) });
     }
   };
 
@@ -106,8 +107,8 @@ export function usePackageBuilder() {
       }
 
       navigate({ to: "/package/$id", params: { id: pkg.id } });
-    } catch (err: any) {
-      toast.error("Gagal membuat paket", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Gagal membuat paket", { description: getErrorMessage(err) });
     }
   };
 

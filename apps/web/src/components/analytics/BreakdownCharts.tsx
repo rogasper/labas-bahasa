@@ -13,7 +13,7 @@ import { formatLabel } from "@/lib/format";
 import { formatTime } from "@/lib/time";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
-interface ExamTypeItem {
+export interface ExamTypeItem {
   examTypeId: string;
   examTypeName: string;
   accuracyPct: number;
@@ -22,7 +22,7 @@ interface ExamTypeItem {
   attempts: number;
 }
 
-interface SectionTypeItem {
+export interface SectionTypeItem {
   sectionTypeId: string;
   sectionTypeName: string;
   accuracyPct: number;
@@ -31,7 +31,7 @@ interface SectionTypeItem {
   attempts: number;
 }
 
-interface FormatItem {
+export interface FormatItem {
   format: string;
   accuracyPct: number;
   avgTimeSpentSec: number;

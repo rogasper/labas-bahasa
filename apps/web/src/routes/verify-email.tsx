@@ -5,6 +5,7 @@ import { Button } from "@labas/ui/components/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@labas/ui/components/card";
 import { Input } from "@labas/ui/components/input";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { z } from "zod";
@@ -69,8 +70,8 @@ function RouteComponent() {
       await sendMutation.mutateAsync({ email });
       toast.success("Kode OTP telah dikirim ke email Anda");
       setCountdown(60);
-    } catch (err: any) {
-      toast.error(err.message || "Gagal mengirim OTP");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Gagal mengirim OTP");
     }
   };
 
@@ -105,8 +106,8 @@ function RouteComponent() {
       } else {
         navigate({ to: "/login" });
       }
-    } catch (err: any) {
-      toast.error(err.message || "Kode OTP tidak valid");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Kode OTP tidak valid");
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     }
@@ -155,6 +156,7 @@ function RouteComponent() {
                 value={digit}
                 onChange={(e) => handleOtpChange(i, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(i, e)}
+                aria-label={`Digit ${i + 1} kode verifikasi`}
                 className="w-12 h-14 text-center text-xl font-bold"
               />
             ))}

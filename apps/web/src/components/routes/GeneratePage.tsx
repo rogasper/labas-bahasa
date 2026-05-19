@@ -181,17 +181,18 @@ export function RouteComponent() {
           maxTokens: selectedConfig!.maxTokens ?? 16384,
         };
 
+    type GenerateMutateInput = Parameters<typeof generate.mutate>[0];
     generate.mutate({
-      examType: examType as any,
-      section: selectedSections[0] as any,
-      selectedSections: selectedSections as any,
-      formats: selectedFormats as any,
+      examType,
+      section: selectedSections[0],
+      selectedSections,
+      formats: selectedFormats,
       difficulty: difficulty + 1,
       topics: selectedTopics,
       questionCount,
       mode,
       apiKeyConfig,
-    } as any);
+    } as GenerateMutateInput);
   };
 
   const sectionSplits = (() => {
@@ -656,13 +657,37 @@ export function RouteComponent() {
             </div>
 
             {/* Tab Bar */}
-            <div className="flex gap-1 mb-6 border-b border-[var(--oat-border)] overflow-x-auto">
+            <div
+              className="flex gap-1 mb-6 border-b border-[var(--oat-border)] overflow-x-auto"
+              role="tablist"
+              aria-label="Hasil generate"
+              onKeyDown={(e) => {
+                if (completedResults.length === 0) return;
+                if (e.key === "ArrowRight") {
+                  e.preventDefault();
+                  setActiveTabIdx((i) => Math.min(completedResults.length - 1, i + 1));
+                } else if (e.key === "ArrowLeft") {
+                  e.preventDefault();
+                  setActiveTabIdx((i) => Math.max(0, i - 1));
+                } else if (e.key === "Home") {
+                  e.preventDefault();
+                  setActiveTabIdx(0);
+                } else if (e.key === "End") {
+                  e.preventDefault();
+                  setActiveTabIdx(completedResults.length - 1);
+                }
+              }}
+            >
               {completedResults.map((res, idx) => {
                 const questions = res.result?.questions ?? [];
                 const isActive = idx === activeTabIdx;
                 return (
                   <button
                     key={res.jobId}
+                    role="tab"
+                    aria-selected={isActive}
+                    aria-controls={`generate-panel-${idx}`}
+                    tabIndex={isActive ? 0 : -1}
                     onClick={() => setActiveTabIdx(idx)}
                     className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold rounded-t-lg transition-all whitespace-nowrap border-b-2 min-h-[44px] ${
                       isActive
@@ -680,15 +705,18 @@ export function RouteComponent() {
                     <span className="text-xs text-[var(--warm-charcoal)]">
                       {questions.length} soal
                     </span>
-                    <button
+                    <span
                       onClick={(e) => {
                         e.stopPropagation();
                         removeJob(res.jobId);
                       }}
-                      className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-[var(--pomegranate-400)]/10 text-[var(--warm-charcoal)] hover:text-[var(--pomegranate-400)] transition-colors"
+                      role="button"
+                      aria-label={`Tutup tab ${res.mode}`}
+                      tabIndex={-1}
+                      className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-[var(--pomegranate-400)]/10 text-[var(--warm-charcoal)] hover:text-[var(--pomegranate-400)] transition-colors cursor-pointer"
                     >
                       <MaterialIcon name="close" className="text-xs" />
-                    </button>
+                    </span>
                   </button>
                 );
               })}
@@ -696,11 +724,17 @@ export function RouteComponent() {
 
             {/* Active Tab Content */}
             {activeResult && (
-              <ResultSection
-                result={activeResult.result}
-                generatedPackageId={activeResult.generatedPackageId}
-                onClear={resetAll}
-              />
+              <div
+                role="tabpanel"
+                id={`generate-panel-${activeTabIdx}`}
+                aria-labelledby={`generate-tab-${activeTabIdx}`}
+              >
+                <ResultSection
+                  result={activeResult.result}
+                  generatedPackageId={activeResult.generatedPackageId}
+                  onClear={resetAll}
+                />
+              </div>
             )}
           </div>
         )}

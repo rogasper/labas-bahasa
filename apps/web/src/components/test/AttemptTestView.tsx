@@ -7,6 +7,7 @@ import { trpc } from "@/utils/trpc";
 import { QuestionInput } from "./QuestionInput";
 import { AccentKeyboard } from "./AccentKeyboard";
 import { parseFurigana } from "@/lib/furigana";
+import type { Question, Package, PackageSection } from "@/lib/types";
 import { AttemptHeader } from "./attempt/AttemptHeader";
 import { FloatingNav } from "./attempt/FloatingNav";
 import { FinishDialog } from "./attempt/FinishDialog";
@@ -14,7 +15,7 @@ import { AbandonDialog } from "./attempt/AbandonDialog";
 
 interface AttemptTestViewProps {
   attemptId: string;
-  pkg: any;
+  pkg: Package & { sections: PackageSection[] };
   currentSectionIdx: number;
   setCurrentSectionIdx: (idx: number) => void;
   answers: Record<string, string>;
@@ -32,7 +33,7 @@ interface AttemptTestViewProps {
 }
 
 interface QuestionCardProps {
-  q: any;
+  q: Question & { _examType?: string; _isRtl?: boolean; _useFurigana?: boolean };
   globalIdx: number;
   answerValue: string;
   sectionResultId: string | undefined;
@@ -83,7 +84,7 @@ const QuestionCard = memo(function QuestionCard({
             {globalIdx}
           </span>
           <h2 className="text-xl font-bold text-[var(--clay-black)] capitalize">
-            {q.format.replace(/_/g, " ")}
+            {(q.format ?? "").replace(/_/g, " ")}
           </h2>
         </div>
         <button
@@ -101,7 +102,7 @@ const QuestionCard = memo(function QuestionCard({
       </div>
 
       <p className="text-[var(--warm-charcoal)] mb-6 font-medium leading-relaxed" dir={q._isRtl ? "rtl" : undefined}>
-        {q._useFurigana ? parseFurigana(q.questionText) : q.questionText}
+        {q._useFurigana ? parseFurigana(q.questionText ?? "") : (q.questionText ?? "")}
       </p>
 
       <div className="pl-0">
@@ -165,7 +166,7 @@ export function AttemptTestView({
   const currentSection = pkg.sections[currentSectionIdx];
   const sectionData = attempt?.sections?.[currentSectionIdx];
   const sectionResultId = sectionData?.sectionResultId;
-  const examType: string = pkg.examType ?? "";
+  const examType: string = pkg.examTypeName ?? "";
   const isRtl = examType === "TOAFL";
   const useFurigana = examType === "JLPT" || examType === "TOPIK";
 
@@ -176,7 +177,7 @@ export function AttemptTestView({
     const key = `${currentSectionIdx}:${sectionResultId}`;
     if (flushKeyRef.current === key) return;
     flushKeyRef.current = key;
-    for (const q of currentSection.questions as any[]) {
+    for (const q of currentSection.questions ?? []) {
       const v = answers[q.id];
       if (v) void onAnswerChange(q.id, sectionResultId, v);
     }
@@ -193,9 +194,9 @@ export function AttemptTestView({
 
   // Build global question index across all sections
   const allQuestions: Array<{ id: string; sectionIdx: number; localIdx: number; passageText?: string }> = [];
-  pkg.sections.forEach((sec: any, sIdx: number) => {
-    sec.questions.forEach((q: any, qIdx: number) => {
-      allQuestions.push({ id: q.id, sectionIdx: sIdx, localIdx: qIdx, passageText: q.passageText });
+  pkg.sections.forEach((sec: PackageSection, sIdx: number) => {
+    sec.questions?.forEach((q: Question, qIdx: number) => {
+      allQuestions.push({ id: q.id, sectionIdx: sIdx, localIdx: qIdx, passageText: q.passageText ?? undefined });
     });
   });
 
@@ -207,7 +208,7 @@ export function AttemptTestView({
     }
   }, [allQuestions]);
 
-  const addQuestionMeta = (q: any) => ({
+  const addQuestionMeta = (q: Question) => ({
     ...q,
     _examType: examType,
     _isRtl: isRtl,
@@ -215,7 +216,7 @@ export function AttemptTestView({
   });
 
   const activeQuestion = currentSection?.questions?.find(
-    (q: any) => q.id === activeQuestionId,
+    (q: Question) => q.id === activeQuestionId,
   );
   const activeQuestionWithMeta = activeQuestion ? addQuestionMeta(activeQuestion) : null;
   const passageToShow =
@@ -279,8 +280,8 @@ export function AttemptTestView({
 
       <div className="h-full flex flex-col bg-[var(--warm-cream)] overflow-hidden">
         <AttemptHeader
-          pkgTitle={pkg.title}
-          currentSectionTitle={currentSection.title}
+          pkgTitle={pkg.title ?? ""}
+          currentSectionTitle={currentSection.title ?? ""}
           timeElapsed={timeElapsed}
           answeredCount={answeredCount}
           totalQuestions={totalQuestions}

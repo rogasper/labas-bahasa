@@ -4,10 +4,11 @@ import { Button } from "@labas/ui/components/button";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { QuestionCard } from "./QuestionCard";
 import { CalloutCard } from "./CalloutCard";
+import type { Question } from "@/lib/types";
 
 interface SoalBrowserProps {
   isLoading: boolean;
-  questions: any[];
+  questions: Question[];
   hasMore: boolean;
   isFetchingNextPage: boolean;
   hasFilters: boolean;
@@ -16,8 +17,8 @@ interface SoalBrowserProps {
   tab: "mine" | "public";
   filterKey: string;
   isQuestionInBundle: (id: string) => boolean;
-  onToggleQuestion: (q: any) => void;
-  onOpenDetail: (q: any) => void;
+  onToggleQuestion: (q: Question) => void;
+  onOpenDetail: (q: Question) => void;
   onTogglePublic: (id: string) => void;
   onDelete: (id: string) => void;
   onLoadMore: () => void;
@@ -47,7 +48,7 @@ export function SoalBrowser({
   onPublishAllPrivate,
 }: SoalBrowserProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const isLocked = (q: any) => !!lockedExamType && q.examTypeId !== lockedExamType;
+  const isLocked = (q: Question) => !!lockedExamType && q.examTypeId !== lockedExamType;
 
   // ── Bulk mode ──
   const [bulkMode, setBulkMode] = useState(false);
@@ -64,7 +65,7 @@ export function SoalBrowser({
     : false;
 
   const privateQuestions = questions.filter(
-    (q: any) => !q.isPublic && q.creatorUserId === userId,
+    (q) => !q.isPublic && q.creatorUserId === userId,
   );
 
   const handleDismissCallout = () => {
@@ -75,7 +76,7 @@ export function SoalBrowser({
 
   const handlePublishAllPrivate = () => {
     if (onPublishAllPrivate && privateQuestions.length > 0) {
-      onPublishAllPrivate(privateQuestions.map((q: any) => q.id));
+      onPublishAllPrivate(privateQuestions.map((q) => q.id));
     }
   };
 
@@ -104,7 +105,7 @@ export function SoalBrowser({
   const clearSelection = () => setSelectedIds(new Set());
 
   const selectAll = () => {
-    setSelectedIds(new Set(questions.map((q: any) => q.id)));
+    setSelectedIds(new Set(questions.map((q) => q.id)));
   };
 
   const handleBulkPublish = () => {

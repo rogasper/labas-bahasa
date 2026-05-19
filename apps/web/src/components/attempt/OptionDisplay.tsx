@@ -2,18 +2,28 @@ import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
 import { MCQ_FORMATS, McqFormat } from "@/lib/question-formats";
 
+interface McqOptionItem {
+  key: string;
+  text: string;
+}
+
+interface MatchingOptionItem {
+  left: string;
+  right?: string;
+}
+
 interface OptionDisplayProps {
   format: string;
-  options: any[];
+  options: unknown;
   correctAnswer: string;
   userAnswer: string;
 }
 
 export function OptionDisplay({ format, options, correctAnswer, userAnswer }: OptionDisplayProps) {
-  if (!options || options.length === 0) return null;
+  if (!Array.isArray(options) || options.length === 0) return null;
 
   if (format === "matching_pairs") {
-    return <MatchingPairsOptions options={options} correctAnswer={correctAnswer} userAnswer={userAnswer} />;
+    return <MatchingPairsOptions options={options as MatchingOptionItem[]} correctAnswer={correctAnswer} userAnswer={userAnswer} />;
   }
 
   if (format === "true_false_not_given") {
@@ -24,8 +34,8 @@ export function OptionDisplay({ format, options, correctAnswer, userAnswer }: Op
     return <TriStateOptions choices={["YES", "NO", "NOT_GIVEN"]} labels={{ YES: "Yes", NO: "No", NOT_GIVEN: "Not Given" }} correctAnswer={correctAnswer} userAnswer={userAnswer} />;
   }
 
-  if (MCQ_FORMATS.includes(format as McqFormat)) {
-    return <McqOptions options={options} correctAnswer={correctAnswer} userAnswer={userAnswer} />;
+  if ((MCQ_FORMATS as readonly string[]).includes(format)) {
+    return <McqOptions options={options as McqOptionItem[]} correctAnswer={correctAnswer} userAnswer={userAnswer} />;
   }
 
   return null;
@@ -114,7 +124,7 @@ function TriStateOptions({ choices, labels, correctAnswer, userAnswer }: { choic
   );
 }
 
-function MatchingPairsOptions({ options, correctAnswer, userAnswer }: { options: { left: string; right?: string }[]; correctAnswer: string; userAnswer: string }) {
+function MatchingPairsOptions({ options, correctAnswer, userAnswer }: { options: MatchingOptionItem[]; correctAnswer: string; userAnswer: string }) {
   const parseMapping = (s: string): Map<string, string> => {
     const map = new Map();
     if (!s) return map;

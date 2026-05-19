@@ -302,3 +302,89 @@ What makes Clay truly distinctive is its hover micro-animations: buttons on hove
 5. Hover animations are the signature — rotation + hard shadow, not subtle fades
 6. Generous radius: 24px cards, 40px sections — nothing looks sharp or corporate
 7. Three weights: 600 (headings), 500 (UI), 400 (body) — strict roles
+
+---
+
+## 4. Architectural Decisions (Q2 2026)
+
+### 4.1 Component Decomposition
+
+| Refactored Component | Original Lines | After | Strategy |
+|---|---|---|---|
+| `AttemptTestView.tsx` | 589 | ~320 | Extract header (AttemptHeader), abandon/finish dialogs, floating nav |
+| `use-generation-jobs.ts` | 391 | ~120 (facade) | Extract `use-job-shared.ts`, `use-job-state.ts`, `use-polling-transport.ts` |
+
+### 4.2 Lazy Loading Architecture
+
+Heavy route components extracted to `apps/web/src/components/routes/*Page.tsx` and loaded via `.lazy.tsx`:
+- `BankPage`, `GeneratePage`, `LandingPage`, `PackagesPage`, `SettingsPage`
+- Libraries `recharts` and `react-joyride` wrapped in lazy bundles (`ChartsBundle.tsx`, `TourGuideImpl.tsx`)
+- Each chunk loaded on-demand via React.lazy + Suspense
+
+### 4.3 Semantic CSS Token Mapping
+
+All `packages/ui` primitives use semantic tokens; zero app-specific CSS vars in primitives:
+- `--primary` → `--matcha-600` (green/action)
+- `--secondary` → `--clay-black` (black/neutral)
+- Theme lives in `packages/ui/src/styles/globals.css`
+- App (`apps/web`) imports only `@import "@labas/ui/globals.css"` — no `index.css` overrides
+
+### 4.4 Accessibility Decisions
+
+| Pattern | Implementation | Files |
+|---------|---------------|-------|
+| Focus trap + escape | shadcn `<Dialog>` (adapter: Base UI) | 6 modals in `components/` |
+| Keyboard tabs | `handleRovingKeyDown` helper + ARIA | `FilterBar.tsx`, `GeneratePage.tsx`, `FloatingNav.tsx` |
+| shadcn Tabs | `<Tabs>` primitive for simple tab groups | `PackagesPage.tsx`, `admin.featured.tsx` |
+| Skip link | `<SkipLink>` component, `#main-content` | `__root.tsx` |
+| Icon buttons | `aria-label` required, `title` insufficient | 16 buttons across 6 files |
+| Heading hierarchy | `h1 → h2 → h3`, never skip | Audited ~15 files |
+
+### 4.5 Admin DataTable API (Design)
+
+```ts
+interface ColumnDef<T> {
+  id: string;
+  header: string;
+  accessorKey?: keyof T & string;
+  accessorFn?: (row: T) => ReactNode;
+  cell?: (props: { row: T; value: ReactNode }) => ReactNode;
+  sortable?: boolean;
+  size?: string;
+}
+
+interface DataTableProps<T> {
+  data: T[];
+  columns: ColumnDef<T>[];
+  keyExtractor: (row: T) => string | number;
+  isLoading?: boolean;
+  emptyMessage?: string;
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (p: number) => void;
+  sortColumn?: string;
+  sortDirection?: "asc" | "desc";
+  onSort?: (column: string) => void;
+  actions?: (row: T) => ReactNode;
+}
+```
+
+- Generic `<T>` for full type safety
+- Opt-in pagination (reuses existing `Pagination` component)
+- Server-side sorting via `sortable` + `onSort` callback
+- Search bars/filter pills sit **above** DataTable, not inside it
+- Card layouts (Featured editor's pick) excluded — DataTable is table-only
+
+### 4.6 Job Transport Abstraction
+
+Polling implemented as `JobTransport` interface in `packages/ai/src/agentic.ts`:
+- Currently: in-memory `Map` for rate limiting
+- Designed to swap to WebSocket/SSE without changing callers
+- Exported: `checkRateLimit(userId)`, `JobTransport` type
+
+### 4.7 Type Safety
+
+- `no-explicit-any: "error"` enforced via `apps/web/eslint.config.mjs`
+- Shared frontend types in `apps/web/src/lib/types.ts` — all fields optional (permissive) to accept diverse tRPC shapes without `any`
+- tRPC errors caught as `unknown`, narrowed via `getErrorMessage(e)` helper
+- Zero `any` violations across entire frontend after Q2 2026 sprint

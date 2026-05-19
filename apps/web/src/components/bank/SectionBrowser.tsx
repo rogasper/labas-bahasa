@@ -1,12 +1,13 @@
 import { Card, CardContent } from "@labas/ui/components/card";
 import { Button } from "@labas/ui/components/button";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import type { PackageSection } from "@/lib/types";
 
 interface SectionBrowserProps {
   isLoading: boolean;
-  groupedSections: Record<string, any[]>;
+  groupedSections: Record<string, PackageSection[]>;
   isSectionInBundle: (id: string) => boolean;
-  onToggleSection: (s: any) => void;
+  onToggleSection: (s: PackageSection) => void;
 }
 
 export function SectionBrowser({
@@ -39,11 +40,11 @@ export function SectionBrowser({
       {Object.entries(groupedSections).map(([groupKey, groupSections]) => (
         <Card key={groupKey} className="clay-shadow bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)]">
           <CardContent className="p-5">
-            <h3 className="font-headline font-bold text-[var(--clay-black)] mb-4 text-sm uppercase tracking-wider">
+            <h2 className="font-headline font-bold text-[var(--clay-black)] mb-4 text-sm uppercase tracking-wider">
               {groupKey}
-            </h3>
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {groupSections.map((s: any) => {
+              {groupSections.map((s) => {
                 const inBundle = isSectionInBundle(s.id);
                 return (
                   <div

@@ -15,7 +15,7 @@ export function ResultSection({ result, generatedPackageId, onClear }: ResultSec
     <div className="mt-16 space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-headline font-bold text-[var(--clay-black)]">Hasil Generate</h2>
+          <h3 className="text-2xl font-headline font-bold text-[var(--clay-black)]">Hasil Generate</h3>
           <p className="text-sm text-[var(--warm-charcoal)] mt-1">
             Paket latihan berhasil dibuat! Soal juga tersimpan di Bank Soal (privat). Jawaban & penjelasan disembunyikan agar latihan tetap fair.
           </p>

@@ -216,7 +216,7 @@ function HomeComponent() {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {featuredPkg.slice(0, 3).map((pkg: any) => (
+            {featuredPkg.slice(0, 3).map((pkg) => (
               <Link key={pkg.id} to="/package/$id" params={{ id: pkg.id }} className="block">
                 <Card className="clay-shadow clay-hover bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] h-full transition-all hover:border-[var(--matcha-400)]">
                   <CardContent className="p-5">

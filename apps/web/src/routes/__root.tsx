@@ -11,6 +11,17 @@ import { GlobalGenerationProgress } from "@/components/generate/GlobalGeneration
 import { ErrorFallback } from "@/components/ErrorFallback";
 import type { trpc } from "@/utils/trpc";
 
+function SkipLink() {
+  return (
+    <a
+      href="#main-content"
+      className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-[var(--clay-black)] focus:text-[var(--pure-white)] focus:rounded-[var(--radius-lg)] focus:font-semibold focus:text-sm focus:shadow-xl"
+    >
+      Lewati ke konten utama
+    </a>
+  );
+}
+
 import "../index.css";
 
 export interface RouterAppContext {
@@ -70,8 +81,10 @@ function RootComponent() {
           </div>
         ) : (
           <div className="min-h-screen bg-background relative">
+            <SkipLink />
             <Sidebar />
             <main
+              id="main-content"
               className={`min-h-screen transition-all duration-300 relative z-0 ${collapsed ? "md:ml-16" : "md:ml-64"}`}
             >
               <Outlet />

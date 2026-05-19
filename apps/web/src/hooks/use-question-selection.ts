@@ -3,7 +3,7 @@ import { useState, useMemo } from "react";
 interface Question {
   id: string;
   examTypeId: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function useQuestionSelection(questions: Question[]) {

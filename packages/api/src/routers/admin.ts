@@ -251,8 +251,25 @@ export const adminRouter = router({
 
   listFeatured: protectedProcedure.query(async () => {
     const packages = await db
-      .select()
+      .select({
+        id: schema.testPackage.id,
+        title: schema.testPackage.title,
+        description: schema.testPackage.description,
+        examTypeId: schema.testPackage.examTypeId,
+        creatorUserId: schema.testPackage.creatorUserId,
+        isPublic: schema.testPackage.isPublic,
+        isFeatured: schema.testPackage.isFeatured,
+        totalQuestions: schema.testPackage.totalQuestions,
+        totalSections: schema.testPackage.totalSections,
+        estimatedDurationMin: schema.testPackage.estimatedDurationMin,
+        usageCount: schema.testPackage.usageCount,
+        avgRating: schema.testPackage.avgRating,
+        createdAt: schema.testPackage.createdAt,
+        updatedAt: schema.testPackage.updatedAt,
+        examTypeName: schema.examType.name,
+      })
       .from(schema.testPackage)
+      .leftJoin(schema.examType, eq(schema.testPackage.examTypeId, schema.examType.id))
       .where(eq(schema.testPackage.isFeatured, true))
       .orderBy(desc(schema.testPackage.updatedAt));
 

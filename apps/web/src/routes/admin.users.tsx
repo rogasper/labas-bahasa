@@ -46,8 +46,9 @@ function AdminUsers() {
           <Input
             placeholder="Search by name or email..."
             value={search}
-            onChange={(e) => handleSearch(e.target.value)}
-            className="max-w-sm"
+            onChange={(e) => setSearch(e.target.value)}
+            aria-label="Cari user"
+            className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] h-11"
           />
         </div>
         <table className="w-full text-sm">

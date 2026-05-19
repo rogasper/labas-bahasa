@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Input } from "@labas/ui/components/input";
 import { Button } from "@labas/ui/components/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@labas/ui/components/dialog";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
 export function CreatePackageModal({
@@ -18,30 +24,18 @@ export function CreatePackageModal({
   examTypeName: string;
   lowCount: boolean;
 }) {
-  const dateStr = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short" });
   const [title, setTitle] = useState(`${examTypeName} Bundle — ${selectedCount} Soal`);
   const [description, setDescription] = useState("");
   const [isPublic, setIsPublic] = useState(false);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="bg-[var(--warm-cream)] w-full max-w-lg rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] clay-shadow p-6 md:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-headline font-bold text-[var(--clay-black)]">
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-headline font-bold text-[var(--clay-black)]">
             Buat Paket Soal
-          </h2>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-[var(--oat-light)] hover:bg-[var(--oat-border)] flex items-center justify-center transition-colors"
-          >
-            <MaterialIcon name="close" className="text-[var(--clay-black)]" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="flex items-center gap-2 mb-4">
           <span className="px-3 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-sm font-semibold">
@@ -115,7 +109,7 @@ export function CreatePackageModal({
             {isPending ? "Membuat..." : "Buat Paket"}
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

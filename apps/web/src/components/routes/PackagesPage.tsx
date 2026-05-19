@@ -8,6 +8,11 @@ import { Input } from "@labas/ui/components/input";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
 import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@labas/ui/components/tabs";
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -209,28 +214,22 @@ export function PackagesComponent() {
       <GettingStartedCard />
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setTab("all")}
-          className={`px-4 py-2 rounded-[var(--radius-lg)] text-sm font-semibold transition-all ${
-            tab === "all"
-              ? "bg-[var(--clay-black)] text-[var(--pure-white)] clay-shadow"
-              : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] border-2 border-[var(--oat-border)] hover:bg-[var(--oat-light)]"
-          }`}
-        >
-          Semua Paket
-        </button>
-        <button
-          onClick={() => setTab("mine")}
-          className={`px-4 py-2 rounded-[var(--radius-lg)] text-sm font-semibold transition-all ${
-            tab === "mine"
-              ? "bg-[var(--clay-black)] text-[var(--pure-white)] clay-shadow"
-              : "bg-[var(--pure-white)] text-[var(--warm-charcoal)] border-2 border-[var(--oat-border)] hover:bg-[var(--oat-light)]"
-          }`}
-        >
-          Paket Saya
-        </button>
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="mb-6">
+        <TabsList variant="line" className="h-11 bg-transparent">
+          <TabsTrigger
+            value="all"
+            className="px-4 py-2 rounded-[var(--radius-lg)] text-sm font-semibold data-[active=true]:bg-[var(--clay-black)] data-[active=true]:text-[var(--pure-white)] data-[active=true]:clay-shadow bg-[var(--pure-white)] text-[var(--warm-charcoal)] border-2 border-[var(--oat-border)] hover:bg-[var(--oat-light)] transition-all"
+          >
+            Semua Paket
+          </TabsTrigger>
+          <TabsTrigger
+            value="mine"
+            className="px-4 py-2 rounded-[var(--radius-lg)] text-sm font-semibold data-[active=true]:bg-[var(--clay-black)] data-[active=true]:text-[var(--pure-white)] data-[active=true]:clay-shadow bg-[var(--pure-white)] text-[var(--warm-charcoal)] border-2 border-[var(--oat-border)] hover:bg-[var(--oat-light)] transition-all"
+          >
+            Paket Saya
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Filters */}
       <div data-tour="packages-filters" className="flex flex-col md:flex-row gap-3 mb-8">
@@ -240,6 +239,7 @@ export function PackagesComponent() {
             placeholder="Cari paket..."
             value={searchText}
             onChange={(e) => setSearch(e.target.value)}
+            aria-label="Cari paket"
             className="pl-10 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] h-11"
           />
         </div>

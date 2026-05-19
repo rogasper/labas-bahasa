@@ -1,67 +1,20 @@
-import { useState, useEffect } from "react";
-import { Joyride, type Step, type EventData } from "react-joyride";
+import { Suspense, lazy } from "react";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import type { Step } from "react-joyride";
 
-const joyrideOptions = {
-  primaryColor: "var(--matcha-600)",
-  textColor: "var(--clay-black)",
-  backgroundColor: "var(--pure-white)",
-  arrowColor: "var(--pure-white)",
-  overlayColor: "rgba(0,0,0,0.4)",
-};
+const TourGuideImpl = lazy(() => import("./TourGuideImpl").then((m) => ({ default: m.TourGuideImpl })));
+const PageTourImpl = lazy(() => import("./TourGuideImpl").then((m) => ({ default: m.PageTourImpl })));
 
-const joyrideStyles = {
-  buttonBack: { color: "var(--warm-charcoal)", fontSize: "14px", fontWeight: 500 } as any,
-  buttonSkip: { color: "var(--warm-charcoal)", fontSize: "14px", fontWeight: 500 } as any,
-  tooltipContainer: { textAlign: "left" } as any,
-  tooltipContent: { fontSize: "14px", lineHeight: "1.6", padding: "8px 0" } as any,
-  tooltipTitle: { fontSize: "18px", fontWeight: 700, fontFamily: "Manrope, sans-serif" } as any,
-};
-
-const joyrideLocale = { back: "Kembali", close: "Tutup", last: "Selesai", next: "Lanjut", skip: "Lewati" };
-
-// ── Global site tour ──
+export type { Step };
 
 const LS_GLOBAL = "labas-tour-completed";
 const TRIGGER_GLOBAL = "labas-tour-trigger";
 
-const globalSteps: Step[] = [
-  { target: "body" as any, placement: "center", title: "Selamat Datang di Labas!", content: "Platform latihan ujian bahasa berbasis AI. Yuk, kita lihat fitur-fitur utamanya!", hideOverlay: true },
-  { target: "[data-tour='dashboard-stats']", title: "Ringkasan Aktivitas", content: "Pantau jumlah latihan, waktu belajar, soal terjawab, dan akurasi kamu di sini.", spotlightPadding: 8 },
-  { target: "[data-tour='nav-generate']", title: "AI Lab — Generate Soal", content: "Buat soal latihan sendiri pakai AI. Pilih jenis ujian, section, format, dan topik.", spotlightPadding: 4 },
-  { target: "[data-tour='nav-bank']", title: "Bank Soal — Buat Paket", content: "Atur soal-soal kamu jadi paket latihan dari bank soal.", spotlightPadding: 4 },
-  { target: "[data-tour='nav-packages']", title: "Paket Soal — Mulai Latihan", content: "Temukan paket soal dari komunitas atau buatan sendiri.", spotlightPadding: 4 },
-  { target: "[data-tour='nav-analytics']", title: "Analytics — Evaluasi", content: "Lihat analitik mendalam: skor, tren, dan rekomendasi belajar.", spotlightPadding: 4 },
-  { target: "body" as any, placement: "center", title: "Siap Belajar?", content: "Setiap halaman punya panduan sendiri. Cari tombol ? di pojok kanan bawah halaman!", hideOverlay: true },
-];
-
 export function TourGuide() {
-  const [run, setRun] = useState(false);
-
-  useEffect(() => {
-    const onTrigger = () => { localStorage.removeItem(LS_GLOBAL); setRun(true); };
-    window.addEventListener(TRIGGER_GLOBAL, onTrigger);
-
-    const completed = localStorage.getItem(LS_GLOBAL);
-    if (!completed) {
-      const timer = setTimeout(() => setRun(true), 800);
-      return () => { clearTimeout(timer); window.removeEventListener(TRIGGER_GLOBAL, onTrigger); };
-    }
-
-    return () => window.removeEventListener(TRIGGER_GLOBAL, onTrigger);
-  }, []);
-
-  const handleEvent = (data: EventData) => {
-    const { action, status } = data;
-    if (status === "finished" || status === "skipped") { localStorage.setItem(LS_GLOBAL, "true"); setRun(false); }
-    if (action === "close" || action === "skip") setRun(false);
-  };
-
   return (
-    <Joyride steps={globalSteps} run={run} continuous
-      options={{ ...joyrideOptions, showProgress: true, buttons: ["back", "primary", "skip"] }}
-      locale={joyrideLocale} styles={joyrideStyles} onEvent={handleEvent}
-    />
+    <Suspense fallback={null}>
+      <TourGuideImpl />
+    </Suspense>
   );
 }
 
@@ -78,32 +31,10 @@ interface PageTourProps {
 }
 
 export function PageTour({ storageKey, steps, autoDelay }: PageTourProps) {
-  const [run, setRun] = useState(false);
-
-  useEffect(() => {
-    const onTrigger = () => { localStorage.removeItem(storageKey); setRun(true); };
-    window.addEventListener(storageKey, onTrigger);
-
-    const completed = localStorage.getItem(storageKey);
-    if (!completed && autoDelay !== undefined) {
-      const timer = setTimeout(() => setRun(true), autoDelay);
-      return () => { clearTimeout(timer); window.removeEventListener(storageKey, onTrigger); };
-    }
-
-    return () => window.removeEventListener(storageKey, onTrigger);
-  }, []);
-
-  const handleEvent = (data: EventData) => {
-    const { action, status } = data;
-    if (status === "finished" || status === "skipped") { localStorage.setItem(storageKey, "true"); setRun(false); }
-    if (action === "close" || action === "skip") setRun(false);
-  };
-
   return (
-    <Joyride steps={steps} run={run} continuous
-      options={{ ...joyrideOptions, showProgress: true, buttons: ["back", "primary", "skip"] }}
-      locale={joyrideLocale} styles={joyrideStyles} onEvent={handleEvent}
-    />
+    <Suspense fallback={null}>
+      <PageTourImpl storageKey={storageKey} steps={steps} autoDelay={autoDelay} />
+    </Suspense>
   );
 }
 

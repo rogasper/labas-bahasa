@@ -80,7 +80,7 @@ function AdminJobs() {
             ) : (!jobs.data?.jobs || jobs.data.jobs.length === 0) ? (
               <tr><td colSpan={8} className="text-center py-16 text-[var(--warm-charcoal)]">No jobs found.</td></tr>
             ) : (
-              jobs.data.jobs.map((job: any) => (
+              jobs.data.jobs.map((job) => (
                 <tr key={job.id} className="border-t border-[var(--oat-border)] hover:bg-[var(--oat-light)]/50 transition-colors">
                   <td className="px-4 py-3 text-[var(--warm-charcoal)] font-mono text-xs">{job.userId?.slice(0, 10)}...</td>
                   <td className="px-4 py-3">{job.examTypeId}</td>

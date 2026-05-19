@@ -59,7 +59,12 @@ export function FilterBar({
       <div className="px-6 md:px-12 lg:px-16 max-w-7xl mx-auto pt-4 pb-3 space-y-3">
         {/* ── Tier 1: Mode tabs ── */}
         <div className="flex items-center justify-between gap-3">
-          <div className="flex gap-2">
+          <div
+            className="flex gap-2"
+            role="tablist"
+            aria-label="Mode bank soal"
+            onKeyDown={(e) => handleRovingKeyDown(e, "tab")}
+          >
             <ModeButton active={mode === "soal"} onClick={() => onSetMode("soal")}>
               Dari Soal
             </ModeButton>
@@ -68,7 +73,12 @@ export function FilterBar({
             </ModeButton>
           </div>
           {mode === "soal" && (
-            <div className="flex gap-2">
+            <div
+              className="flex gap-2"
+              role="tablist"
+              aria-label="Sumber soal"
+              onKeyDown={(e) => handleRovingKeyDown(e, "tab")}
+            >
               <TabButton active={tab === "mine"} onClick={() => onSetTab("mine")}>
                 Soal Saya
               </TabButton>
@@ -80,7 +90,12 @@ export function FilterBar({
         </div>
 
         {/* ── Tier 2: Exam type chips ── */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <div
+          className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
+          role="radiogroup"
+          aria-label="Jenis ujian"
+          onKeyDown={(e) => handleRovingKeyDown(e, "radio")}
+        >
           <ChipButton
             active={examType === ""}
             onClick={() => onSetExamType("")}
@@ -110,7 +125,12 @@ export function FilterBar({
 
         {/* ── Visibility sub-filter (only in "mine" tab) ── */}
         {mode === "soal" && tab === "mine" && onSetVisibility && (
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <div
+            className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide"
+            role="radiogroup"
+            aria-label="Visibilitas soal"
+            onKeyDown={(e) => handleRovingKeyDown(e, "radio")}
+          >
             <VisChipButton
               active={visibility === "all"}
               onClick={() => onSetVisibility("all")}
@@ -143,6 +163,7 @@ export function FilterBar({
               placeholder={mode === "soal" ? "Cari soal..." : "Cari section..."}
               value={searchText}
               onChange={(e) => onSetSearch(e.target.value)}
+              aria-label={mode === "soal" ? "Cari soal" : "Cari section"}
               className="pl-10 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] h-11"
             />
           </div>
@@ -169,6 +190,7 @@ export function FilterBar({
                 <Button
                   variant="outline"
                   onClick={onClearFilters}
+                  aria-label="Reset filter"
                   className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] h-11 clay-hover cursor-pointer"
                 >
                   <MaterialIcon name="filter_alt_off" />
@@ -242,9 +264,32 @@ export function FilterBar({
   );
 }
 
+function handleRovingKeyDown(e: React.KeyboardEvent<HTMLDivElement>, role: string) {
+  const buttons = Array.from(e.currentTarget.querySelectorAll(`[role="${role}"]`)) as HTMLElement[];
+  const idx = buttons.findIndex((b) => b === document.activeElement);
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+    e.preventDefault();
+    const next = buttons[(idx + 1) % buttons.length];
+    next?.focus();
+  } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const prev = buttons[(idx - 1 + buttons.length) % buttons.length];
+    prev?.focus();
+  } else if (e.key === "Home") {
+    e.preventDefault();
+    buttons[0]?.focus();
+  } else if (e.key === "End") {
+    e.preventDefault();
+    buttons[buttons.length - 1]?.focus();
+  }
+}
+
 function ModeButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
+      role="tab"
+      aria-selected={active}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={`px-4 py-2 rounded-[var(--radius-lg)] text-sm font-semibold transition-all cursor-pointer ${
         active
@@ -260,6 +305,9 @@ function ModeButton({ active, onClick, children }: { active: boolean; onClick: (
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
+      role="tab"
+      aria-selected={active}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={`px-3 py-1.5 rounded-[var(--radius-lg)] text-xs font-semibold transition-all cursor-pointer ${
         active
@@ -275,6 +323,9 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 function VisChipButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
+      role="radio"
+      aria-checked={active}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1 cursor-pointer ${
         active
@@ -290,6 +341,9 @@ function VisChipButton({ active, onClick, children }: { active: boolean; onClick
 function ChipButton({ active, onClick, children, disabled }: { active: boolean; onClick: () => void; children: React.ReactNode; disabled?: boolean }) {
   return (
     <button
+      role="radio"
+      aria-checked={active}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       disabled={disabled}
       className={`px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${

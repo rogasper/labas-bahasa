@@ -1,10 +1,17 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@labas/ui/components/dialog";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { formatLabel } from "@/lib/format";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import type { Question } from "@/lib/types";
 
 export function QuestionDetailModal({
   question,
@@ -13,7 +20,7 @@ export function QuestionDetailModal({
   onToggleSelect,
   isSelectable,
 }: {
-  question: any;
+  question: Question;
   onClose: () => void;
   isSelected: boolean;
   onToggleSelect: () => void;
@@ -32,36 +39,26 @@ export function QuestionDetailModal({
   });
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="bg-[var(--warm-cream)] w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] clay-shadow p-6 md:p-8">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div className="flex gap-2 flex-wrap">
-            <span className="px-3 py-1.5 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-sm font-semibold">
-              {question.examTypeName}
-            </span>
-            <span className="px-3 py-1.5 rounded-full bg-[var(--slushie-500)]/20 text-[var(--slushie-800)] text-sm font-semibold">
-              {question.sectionTypeName}
-            </span>
-            <span className="px-3 py-1.5 rounded-full bg-[var(--lemon-400)]/30 text-[var(--lemon-800)] text-sm font-semibold">
-              {formatLabel(question.format)}
-            </span>
-            <span className="px-3 py-1.5 rounded-full bg-[var(--oat-light)] text-[var(--warm-charcoal)] text-sm font-semibold">
-              Level {question.difficulty}
-            </span>
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-start justify-between">
+            <div className="flex gap-2 flex-wrap">
+              <span className="px-3 py-1.5 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-sm font-semibold">
+                {question.examTypeName}
+              </span>
+              <span className="px-3 py-1.5 rounded-full bg-[var(--slushie-500)]/20 text-[var(--slushie-800)] text-sm font-semibold">
+                {question.sectionTypeName}
+              </span>
+              <span className="px-3 py-1.5 rounded-full bg-[var(--lemon-400)]/30 text-[var(--lemon-800)] text-sm font-semibold">
+                {formatLabel(question.format ?? "")}
+              </span>
+              <span className="px-3 py-1.5 rounded-full bg-[var(--oat-light)] text-[var(--warm-charcoal)] text-sm font-semibold">
+                Level {question.difficulty}
+              </span>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-[var(--oat-light)] hover:bg-[var(--oat-border)] flex items-center justify-center transition-colors"
-          >
-            <MaterialIcon name="close" className="text-[var(--clay-black)]" />
-          </button>
-        </div>
+        </DialogHeader>
 
         {/* Passage */}
         <Card className="clay-shadow bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] mb-6">
@@ -112,7 +109,7 @@ export function QuestionDetailModal({
                 <span className="font-semibold text-[var(--clay-black)]">
                   Jenis soal:{" "}
                 </span>
-                {formatLabel(question.format)}
+                {formatLabel(question.format ?? "")}
               </div>
             )}
           </CardContent>
@@ -139,6 +136,7 @@ export function QuestionDetailModal({
               <button
                 key={star}
                 onClick={() => rateMutation.mutate({ questionId: question.id, score: star })}
+                aria-label={`Nilai ${star} bintang`}
                 className="transition-transform hover:scale-110"
               >
                 <MaterialIcon
@@ -208,7 +206,7 @@ export function QuestionDetailModal({
             Tutup
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

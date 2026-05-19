@@ -1,9 +1,10 @@
 import { Button } from "@labas/ui/components/button";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { formatLabel } from "@/lib/format";
+import type { Question } from "@/lib/types";
 
 interface QuestionCardProps {
-  q: any;
+  q: Question;
   isFeatured?: boolean;
   isInBundle: boolean;
   disabled?: boolean;
@@ -99,7 +100,7 @@ export function QuestionCard({
         <div className="flex items-center justify-between mt-auto pt-3 border-t border-[var(--oat-border)]">
           <div className="flex gap-2">
             <span className="px-2 py-0.5 rounded bg-[var(--oat-light)] text-[var(--warm-charcoal)] text-xs font-medium">
-              {formatLabel(q.format)}
+              {formatLabel(q.format ?? "")}
             </span>
             <span className="px-2 py-0.5 rounded bg-[var(--oat-light)] text-[var(--warm-charcoal)] text-xs font-medium">
               Lv.{q.difficulty}
@@ -128,6 +129,7 @@ export function QuestionCard({
               </button>
               <button
                 onClick={onDelete}
+                aria-label="Hapus soal"
                 className="text-[var(--pomegranate-400)] hover:bg-[var(--pomegranate-400)]/10 px-2 py-1 rounded-full transition-colors cursor-pointer"
               >
                 <MaterialIcon name="delete" className="text-sm" />

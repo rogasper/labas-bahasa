@@ -20,6 +20,12 @@ function AdminCredits() {
   const [description, setDescription] = useState("");
   const queryClient = useQueryClient();
 
+  function handleSearch(val: string) {
+    setSearch(val);
+    setSelectedUserId("");
+    setSelectedUserName("");
+  }
+
   const userSearch = useQuery(
     trpc.admin.listUsers.queryOptions(
       { search: debouncedSearch || undefined, limit: 10, offset: 0 },
@@ -81,6 +87,7 @@ function AdminCredits() {
             placeholder="Search by name or email..."
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
+            aria-label="Cari user"
             className="max-w-md"
           />
           {userSearch.data && userSearch.data.users.length > 0 && !selectedUserId && (

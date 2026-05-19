@@ -60,7 +60,7 @@ function AdminLayout() {
               <span className="text-sm text-[var(--warm-charcoal)]">Back to App</span>
             </Link>
           </div>
-          <h2 className="px-2 mb-4 text-xs font-semibold uppercase tracking-wider text-[var(--warm-charcoal)]">Admin Panel</h2>
+          <div className="px-2 mb-4 text-xs font-semibold uppercase tracking-wider text-[var(--warm-charcoal)]">Admin Panel</div>
           <nav className="flex flex-col gap-1">
             {adminNavItems.map((item) => {
               const isActive = location.pathname === item.to;

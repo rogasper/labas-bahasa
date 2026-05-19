@@ -93,6 +93,9 @@ bun run build            # Build all packages
 - ❌ **Do not assume Prisma**. Database layer is **Drizzle ORM**.
 - ❌ **Do not hardcode API keys** in source code. AI keys are user-managed via the Settings UI.
 - ❌ **Do not add global CSS** in `apps/web` without checking `packages/ui/src/styles/globals.css` for existing design tokens and CSS variables.
+- ❌ **Do not skip heading levels**. After `<h1>`, the next heading must be `<h2>`, not `<h3>` (or lower). Never have two `<h1>` on one page.
+- ❌ **Do not create custom modal/dialog components**. Use shadcn `<Dialog>` from `@labas/ui/components/dialog` — it provides built-in focus trap, escape key, scroll lock, and ARIA.
+- ❌ **Do not use `any`** in frontend TypeScript. Enforced by eslint `@typescript-eslint/no-explicit-any: "error"` in `apps/web/eslint.config.mjs`.
 
 ---
 
@@ -109,6 +112,25 @@ bun run build            # Build all packages
   npx shadcn@latest add accordion dialog -c packages/ui
   ```
 - App-specific blocks (non-shared) should be added directly in `apps/web/src/components/`.
+- DevTools (TanStack Router, React Query) are **production-gated** via `import.meta.env.DEV` — do not remove the condition.
+- App-level error boundary is in `__root.tsx` using `<ErrorFallback>` — route-level error boundaries via `errorComponent` route option.
+- Lazy-loaded route components use the `.lazy.tsx` pattern: route file is thin, heavy component lives in `components/routes/*Page.tsx` wrapped in `Suspense`.
+
+---
+
+## 5b. Frontend Accessibility Conventions
+
+- **Skip link**: Root layout in `__root.tsx` has a hidden `<SkipLink>` that appears on Tab press, linking to `#main-content` on the `<main>` element.
+- **Icon-only buttons**: Every `<button>` or `<Button>` with only an icon (no visible text) **must** have `aria-label`. The icon element (`<MaterialIcon>`, `<span>`) should NOT have `aria-hidden="true"` unless decorative.
+- **Heading hierarchy**: Never skip levels (`h1 → h2 → h3`, never `h1 → h3`). Exactly one `<h1>` per page. Heading level corresponds to semantic nesting, not visual size.
+- **Form labels**: Every `<Input>`, `<select>`, `<textarea>` needs an associated `<Label>` (with `htmlFor` + `id`) OR an `aria-label` attribute. Search inputs, OTP digits, and icon-only filter buttons are common offenders.
+- **Dialogs**: All modals use the shadcn `<Dialog>` component (from `@labas/ui/components/dialog`), which provides:
+  - Focus trap inside dialog
+  - Escape key to close
+  - Scroll lock on body
+  - Focus restoration to trigger element on close
+  - ARIA `role="dialog"`, `aria-modal`, `aria-labelledby`
+- **Custom tabs/accordions**: Must have proper ARIA roles (`role="tablist"`, `role="tab"`, `aria-selected`, `tabindex` for roving tabindex) and arrow key handlers. Prefer shadcn `<Tabs>` where possible; use manual ARIA + `handleRovingKeyDown` helper only when tabs have close buttons or other non-standard elements.
 
 ---
 
@@ -187,7 +209,31 @@ bun run build            # Build all packages
 - Routers live in `packages/api/src/routers/`.
 - Register new routers in `packages/api/src/routers/index.ts`.
 
-## 11. Git & Workflow
+## 11. Admin Routes & DataTable
+
+### Admin Route Structure
+- Admin routes are flat files: `routes/admin.users.tsx`, `routes/admin.credits.tsx`, etc.
+- Wrapped by `routes/admin.tsx` layout shell (sidebar + admin role check).
+- All admin tRPC procedures live in `packages/api/src/routers/admin.ts` and use `adminProcedure` (extends `protectedProcedure` with role check).
+- Mutations use `audit()` helper for audit logging to `adminAuditLog` table.
+
+### DataTable Component (Design Reference)
+- Admin table routes should eventually use a `<DataTable<T>>` component from `components/admin/DataTable.tsx`.
+- API design: generic `<T>`, column defs with `accessorKey`/`accessorFn`/`cell` render prop, `actions` render prop, opt-in pagination, server-side sorting.
+- Search bars, filter pills, and status pill buttons live **above** the DataTable in the route component (not inside it).
+- **Do NOT** use DataTable for card-based layouts (e.g., Featured editor's pick) — keep card layouts as-is.
+
+### Current Migration Status
+- `admin.users.tsx` — table-based, good candidate for DataTable
+- `admin.jobs.tsx` — table-based, good candidate
+- `admin.moderation.tsx` — table-based, good candidate
+- `admin.credits.tsx` — transaction table, good candidate
+- `admin.featured.tsx` — card layout, keep as-is
+- `admin.index.tsx` — dashboard stats cards, keep as-is
+
+---
+
+## 11b. Git & Workflow
 
 - Do **NOT** run `git commit`, `git push`, `git rebase`, or force-push unless the user explicitly asks for it.
 - Do **NOT** create `README.md` or documentation files unless explicitly requested.
@@ -230,4 +276,4 @@ bun run build            # Build all packages
 
 ---
 
-_Last updated: 2026-05-14_
+_Last updated: 2026-05-19_

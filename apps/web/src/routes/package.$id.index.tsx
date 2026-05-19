@@ -149,7 +149,7 @@ function PackageDetailComponent() {
                 <p className="text-sm text-[var(--warm-silver)] text-center py-4">Belum ada soal di section ini</p>
               ) : (
                 <div className="space-y-3">
-                  {section.questions.map((q: any, idx: number) => (
+                  {section.questions.map((q, idx: number) => (
                     <div
                       key={q.id}
                       className="block p-4 rounded-[var(--radius-lg)] bg-[var(--oat-light)] hover:bg-[var(--matcha-300)]/10 transition-colors"

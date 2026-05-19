@@ -11,19 +11,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@labas/ui/components/c
 import { formatTime } from "@/lib/time";
 import { formatLabel } from "@/lib/format";
 
-interface SectionTimeItem {
+export interface SectionTimeItem {
   sectionTypeName: string;
   avgTimeSpentSec: number;
   totalTimeSpentSec: number;
 }
 
-interface FormatTimeItem {
+export interface FormatTimeItem {
   format: string;
   avgTimeSpentSec: number;
   totalTimeSpentSec: number;
 }
 
-interface TimeTrendItem {
+export interface TimeTrendItem {
   date: string;
   avgTimeSpentSec: number;
 }

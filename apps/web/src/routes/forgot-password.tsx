@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@laba
 import { Input } from "@labas/ui/components/input";
 import { Label } from "@labas/ui/components/label";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 import { trpc } from "@/utils/trpc";
 
 export const Route = createFileRoute("/forgot-password")({
@@ -23,8 +24,8 @@ function StepEmail({ onNext }: { onNext: (email: string) => void }) {
       await sendMutation.mutateAsync({ email });
       toast.success("Kode OTP telah dikirim ke email Anda");
       onNext(email);
-    } catch (err: any) {
-      toast.error(err.message || "Gagal mengirim OTP");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Gagal mengirim OTP");
     }
   };
 
@@ -120,8 +121,8 @@ function StepReset({ email }: { email: string }) {
       await resendMutation.mutateAsync({ email });
       toast.success("Kode OTP telah dikirim ulang");
       setCountdown(60);
-    } catch (err: any) {
-      toast.error(err.message || "Gagal mengirim ulang OTP");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Gagal mengirim ulang OTP");
     }
   };
 
@@ -146,8 +147,8 @@ function StepReset({ email }: { email: string }) {
       await resetMutation.mutateAsync({ email, otp: code, newPassword });
       toast.success("Password berhasil direset! Silakan masuk.");
       navigate({ to: "/login" });
-    } catch (err: any) {
-      toast.error(err.message || "Gagal mereset password");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err) || "Gagal mereset password");
       setOtp(["", "", "", "", "", ""]);
       inputRefs.current[0]?.focus();
     }
@@ -178,6 +179,7 @@ function StepReset({ email }: { email: string }) {
                   value={digit}
                   onChange={(e) => handleOtpChange(i, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(i, e)}
+                  aria-label={`Digit ${i + 1} kode OTP`}
                   className="w-12 h-14 text-center text-xl font-bold"
                 />
               ))}

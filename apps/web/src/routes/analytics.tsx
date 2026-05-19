@@ -1,12 +1,12 @@
+import { Suspense, lazy } from "react";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { OverviewCards } from "@/components/analytics/OverviewCards";
-import { ScoreTrendChart } from "@/components/analytics/ScoreTrendChart";
-import { BreakdownCharts } from "@/components/analytics/BreakdownCharts";
 import { WeaknessPanel } from "@/components/analytics/WeaknessPanel";
-import { TimeAnalyticsPanel } from "@/components/analytics/TimeAnalyticsPanel";
+
+const ChartsBundle = lazy(() => import("@/components/analytics/ChartsBundle"));
 
 export const Route = createFileRoute("/analytics")({
   component: AnalyticsComponent,
@@ -18,6 +18,15 @@ export const Route = createFileRoute("/analytics")({
     return { session };
   },
 });
+
+function ChartSkeleton() {
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="h-80 bg-[var(--oat-light)] animate-pulse rounded-[var(--radius-xl)]" />
+      <div className="h-80 bg-[var(--oat-light)] animate-pulse rounded-[var(--radius-xl)]" />
+    </div>
+  );
+}
 
 function AnalyticsComponent() {
   const {
@@ -40,10 +49,7 @@ function AnalyticsComponent() {
             <div key={i} className="h-28 bg-[var(--oat-light)] animate-pulse rounded-[var(--radius-xl)]" />
           ))}
         </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="h-80 bg-[var(--oat-light)] animate-pulse rounded-[var(--radius-xl)]" />
-          <div className="h-80 bg-[var(--oat-light)] animate-pulse rounded-[var(--radius-xl)]" />
-        </div>
+        <ChartSkeleton />
       </div>
     );
   }
@@ -77,30 +83,24 @@ function AnalyticsComponent() {
         <OverviewCards data={overview.data} />
       </div>
 
-      {/* Score Trend */}
-      <div className="mb-8">
-        <ScoreTrendChart data={trend.data} />
-      </div>
-
-      {/* Breakdown Charts */}
-      <div className="mb-8">
-        <BreakdownCharts
+      {/* Charts — lazy loaded */}
+      <Suspense fallback={<ChartSkeleton />}>
+        <ChartsBundle
+          trend={trend.data}
           byExamType={byExamType.data}
           bySectionType={bySectionType.data}
           byFormat={byFormat.data}
-        />
-      </div>
-
-      {/* Weaknesses + Time Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <WeaknessPanel
-          weaknesses={weaknesses.data?.weaknesses}
-          recommendations={weaknesses.data?.recommendations}
-        />
-        <TimeAnalyticsPanel
           sectionTime={timeAnalytics.data?.sectionTime}
           formatTimeData={timeAnalytics.data?.formatTime}
           timeTrend={timeAnalytics.data?.timeTrend}
+        />
+      </Suspense>
+
+      {/* Weaknesses */}
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <WeaknessPanel
+          weaknesses={weaknesses.data?.weaknesses}
+          recommendations={weaknesses.data?.recommendations}
         />
       </div>
     </div>

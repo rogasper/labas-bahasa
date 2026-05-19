@@ -90,9 +90,9 @@ function TokenUsageSection() {
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-[var(--clay-black)] mb-3">
+            <h2 className="text-sm font-semibold text-[var(--clay-black)] mb-3">
               Riwayat Generate Hari Ini
-            </h3>
+            </h2>
             {isLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (

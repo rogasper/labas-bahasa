@@ -171,7 +171,7 @@ function RouteComponent() {
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return false;
-      const hasRunning = data.some((j: any) => ACTIVE_STATUSES.has(j.status));
+      const hasRunning = data.some((j) => ACTIVE_STATUSES.has(j.status));
       return hasRunning ? 1000 : false;
     },
   });
@@ -335,7 +335,7 @@ function RouteComponent() {
                     <div className="flex items-center justify-between mb-3">
                       <div className="text-sm text-[var(--warm-charcoal)]">
                         {(() => {
-                          const splits = (result as any).sectionSplits as { section: string; count: number }[] | undefined;
+                          const splits = (result as unknown as { sectionSplits?: { section: string; count: number }[] }).sectionSplits;
                           if (splits && splits.length > 1) {
                             return (
                               <span>
@@ -387,7 +387,7 @@ function RouteComponent() {
                             {"options" in q && Array.isArray(q.options) && q.options.length > 0 && (
                               <div className="space-y-1 mb-2">
                                 {q.format === "matching_pairs"
-                                  ? q.options.map((opt: any, i: number) => (
+                                  ? q.options.map((opt: { left?: string; key?: string; right?: string }, i: number) => (
                                       <div
                                         key={i}
                                         className="text-sm px-3 py-1.5 rounded-[var(--radius-md)] border border-[var(--oat-border)] text-[var(--warm-charcoal)]"
@@ -396,7 +396,7 @@ function RouteComponent() {
                                         {opt.right ? ` → ${opt.right}` : ""}
                                       </div>
                                     ))
-                                  : q.options.map((opt: any) => (
+                                  : q.options.map((opt: { key: string; text: string }) => (
                                       <div
                                         key={opt.key}
                                         className="text-sm px-3 py-1.5 rounded-[var(--radius-md)] border border-[var(--oat-border)] text-[var(--warm-charcoal)]"

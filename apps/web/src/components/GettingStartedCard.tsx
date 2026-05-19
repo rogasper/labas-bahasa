@@ -73,6 +73,7 @@ export function GettingStartedCard() {
           </div>
           <button
             onClick={dismiss}
+            aria-label="Tutup"
             className="text-[var(--warm-silver)] hover:text-[var(--clay-black)] transition-colors cursor-pointer"
           >
             <MaterialIcon name="close" className="text-xl" />

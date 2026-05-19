@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Input } from "@labas/ui/components/input";
 
 import { MCQ_FORMATS } from "@/lib/question-formats";
+import type { Question } from "@/lib/types";
 
 const TRUE_FALSE_CHOICES = [
   { key: "TRUE", label: "True" },
@@ -82,6 +83,7 @@ function DebouncedTextInput({
 
   return (
     <Input
+      aria-label="Jawaban esai"
       value={localValue}
       onChange={handleChange}
       onBlur={handleBlur}
@@ -98,7 +100,7 @@ export function QuestionInput({
   onChange,
   disabled,
 }: {
-  question: any;
+  question: Question;
   value: string;
   onChange: (val: string) => void;
   disabled?: boolean;
@@ -147,6 +149,7 @@ export function QuestionInput({
                 onChange={(e) => updateMapping(opt.key, e.target.value)}
                 disabled={disabled}
                 placeholder="Padanan..."
+                aria-label="Padanan jawaban"
                 className="w-24 px-3 py-2 text-sm rounded-[var(--radius-md)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] focus:outline-none focus:border-[var(--matcha-600)]"
               />
             </div>
@@ -156,7 +159,7 @@ export function QuestionInput({
     );
   }
 
-  if (MCQ_FORMATS.includes(format)) {
+  if ((MCQ_FORMATS as readonly string[]).includes(format ?? "")) {
     if (!options || options.length === 0) {
       return (
         <div className="text-sm text-[var(--warm-silver)] italic">

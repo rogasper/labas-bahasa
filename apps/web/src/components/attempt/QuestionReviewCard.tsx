@@ -5,13 +5,14 @@ import { Button } from "@labas/ui/components/button";
 import { Input } from "@labas/ui/components/input";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { formatTime } from "@/lib/time";
+import type { Question } from "@/lib/types";
 import { OptionDisplay } from "./OptionDisplay";
 
 interface QuestionReviewCardProps {
-  q: any;
+  q: Question;
   secIdx: number;
   qIdx: number;
-  ans: any;
+  ans: { questionId: string; userAnswer?: string; answer?: string; isCorrect?: boolean | null; partialScore?: number | null; timeSpentSec?: number } | null;
   userId?: string;
   isExpanded: boolean;
   onToggleExpand: () => void;
@@ -97,7 +98,7 @@ export function QuestionReviewCard({
           </p>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[10px] px-1.5 py-0.5 rounded bg-[var(--oat-light)] text-[var(--warm-charcoal)]">
-              {q.format.replace(/_/g, " ")}
+              {(q.format ?? "").replace(/_/g, " ")}
             </span>
             {ans?.timeSpentSec != null && (
               <span className="text-[10px] text-[var(--warm-silver)] flex items-center gap-0.5">
@@ -135,9 +136,9 @@ export function QuestionReviewCard({
           {/* Interactive Option Display */}
           {hasOptions && (
             <OptionDisplay
-              format={q.format}
+              format={q.format ?? ""}
               options={q.options}
-              correctAnswer={q.correctAnswer}
+              correctAnswer={q.correctAnswer ?? ""}
               userAnswer={userAnswer}
             />
           )}

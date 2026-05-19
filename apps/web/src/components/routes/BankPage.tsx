@@ -17,6 +17,8 @@ import { SoalBrowser } from "@/components/bank/SoalBrowser";
 import { SectionBrowser } from "@/components/bank/SectionBrowser";
 import { BundleSidebar } from "@/components/bank/BundleSidebar";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
+import type { Question, PackageSection } from "@/lib/types";
 import type { Step } from "react-joyride";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import z from "zod";
@@ -62,20 +64,20 @@ export function BankComponent() {
   const visibilityFilter = search.visibility ?? "all";
 
   // ── Infinite scroll state ──
-  const [allQuestions, setAllQuestions] = useState<any[]>([]);
+  const [allQuestions, setAllQuestions] = useState<Question[]>([]);
   const [offset, setOffset] = useState(0);
   const limit = 12;
   const filterKey = JSON.stringify({ searchText, examType, section, format, difficulty, tab, mode, visibility: visibilityFilter });
 
   // ── Sidebar / Bundle State ──
-  const [bundleQuestions, setBundleQuestions] = useState<any[]>([]);
-  const [bundleSections, setBundleSections] = useState<any[]>([]);
+  const [bundleQuestions, setBundleQuestions] = useState<Question[]>([]);
+  const [bundleSections, setBundleSections] = useState<PackageSection[]>([]);
   const [bundleTitle, setBundleTitle] = useState("");
   const [bundleDescription, setBundleDescription] = useState("");
   const [bundleIsPublic, setBundleIsPublic] = useState(false);
 
   // ── Modals ──
-  const [selectedQuestion, setSelectedQuestion] = useState<any | null>(null);
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
   const [isAutoBundleOpen, setIsAutoBundleOpen] = useState(false);
 
   // ── Filter UI State ──
@@ -118,8 +120,8 @@ export function BankComponent() {
       setAllQuestions(data.questions ?? []);
     } else {
       setAllQuestions((prev) => {
-        const existingIds = new Set(prev.map((q: any) => q.id));
-        const newQs = (data.questions ?? []).filter((q: any) => !existingIds.has(q.id));
+        const existingIds = new Set(prev.map((q) => q.id));
+        const newQs = (data.questions ?? []).filter((q: Question) => !existingIds.has(q.id));
         return [...prev, ...newQs];
       });
     }
@@ -158,23 +160,24 @@ export function BankComponent() {
     onSuccess: () => questionQuery.refetch(),
   });
 
-  const bulkPublish = useMutation({
-    ...trpc.question.bulkPublish.mutationOptions(),
-    onSuccess: (data) => {
-      questionQuery.refetch();
-      if (data.skipped > 0) {
-        toast.success(
-          `${data.updated} soal dipublikasikan, ${data.skipped} dilewati`,
-          { description: "Beberapa soal bukan milikmu atau sudah tidak tersedia." },
-        );
-      } else {
-        toast.success(`${data.updated} soal berhasil dipublikasikan`);
-      }
-    },
-    onError: (err: any) => {
-      toast.error("Gagal mempublikasikan. Coba refresh dan pilih ulang soal.", { description: err.message });
-    },
-  });
+  const bulkPublish = useMutation(
+    trpc.question.bulkPublish.mutationOptions({
+      onSuccess: (data) => {
+        questionQuery.refetch();
+        if (data.skipped > 0) {
+          toast.success(
+            `${data.updated} soal dipublikasikan, ${data.skipped} dilewati`,
+            { description: "Beberapa soal bukan milikmu atau sudah tidak tersedia." },
+          );
+        } else {
+          toast.success(`${data.updated} soal berhasil dipublikasikan`);
+        }
+      },
+      onError: (err) => {
+        toast.error("Gagal mempublikasikan. Coba refresh dan pilih ulang soal.", { description: getErrorMessage(err) });
+      },
+    }),
+  );
 
   // ── Navigation helpers ──
   const setMode = (newMode: Mode) => {
@@ -258,7 +261,7 @@ export function BankComponent() {
   const isSectionInBundle = (sid: string) =>
     bundleSections.some((s) => s.id === sid);
 
-  const toggleQuestion = (q: any) => {
+  const toggleQuestion = (q: Question) => {
     if (lockedExamType && q.examTypeId !== lockedExamType) {
       toast.error(`Hanya bisa memilih soal dari ${EXAM_TYPES.find((t) => t.id === lockedExamType)?.name ?? lockedExamType}`);
       return;
@@ -270,7 +273,7 @@ export function BankComponent() {
     });
   };
 
-  const toggleSection = (s: any) => {
+  const toggleSection = (s: PackageSection) => {
     setBundleSections((prev) => {
       const exists = prev.find((x) => x.id === s.id);
       if (exists) return prev.filter((x) => x.id !== s.id);
@@ -314,8 +317,8 @@ export function BankComponent() {
       setBundleQuestions([]);
       setBundleTitle("");
       setBundleDescription("");
-    } catch (err: any) {
-      toast.error("Gagal membuat paket", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Gagal membuat paket", { description: getErrorMessage(err) });
     }
   };
 
@@ -327,7 +330,7 @@ export function BankComponent() {
         description: bundleDescription,
         isPublic: bundleIsPublic,
         sections: bundleSections.map((s, i) => ({
-          sourcePackageId: s.packageId,
+          sourcePackageId: s.packageId ?? "",
           sourceSectionId: s.id,
           orderIndex: i,
         })),
@@ -336,8 +339,8 @@ export function BankComponent() {
       setBundleTitle("");
       setBundleDescription("");
       toast.success("Combo paket berhasil dibuat!");
-    } catch (err: any) {
-      toast.error("Gagal membuat combo", { description: err.message });
+    } catch (err: unknown) {
+      toast.error("Gagal membuat combo", { description: getErrorMessage(err) });
     }
   };
 
@@ -388,12 +391,12 @@ export function BankComponent() {
   const questions = allQuestions;
 
   const sections = sectionQuery.data?.sections ?? [];
-  const groupedSections = sections.reduce((groups: Record<string, any[]>, s: any) => {
+  const groupedSections = sections.reduce<Record<string, PackageSection[]>>((groups, s) => {
     const key = `${s.examTypeName ?? "Unknown"} — ${s.packageTitle ?? "Untitled"}`;
     if (!groups[key]) groups[key] = [];
-    groups[key].push(s);
+    groups[key].push(s as PackageSection);
     return groups;
-  }, {} as Record<string, any[]>);
+  }, {});
 
   const isCreating =
     createPackage.isPending ||

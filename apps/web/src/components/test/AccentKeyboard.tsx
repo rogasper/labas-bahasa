@@ -7,13 +7,14 @@ const ACCENT_CHARS: Record<string, string[]> = {
 };
 
 interface AccentKeyboardProps {
-  examType: string;
+  examType?: string;
   onInsert: (char: string) => void;
   disabled?: boolean;
 }
 
 export function AccentKeyboard({ examType, onInsert, disabled }: AccentKeyboardProps) {
-  const chars = ACCENT_CHARS[examType];
+  if (!examType) return null;
+  const chars: string[] | undefined = ACCENT_CHARS[examType];
   if (!chars || chars.length === 0) return null;
 
   return (
@@ -21,7 +22,7 @@ export function AccentKeyboard({ examType, onInsert, disabled }: AccentKeyboardP
       <span className="w-full text-[10px] font-medium text-[var(--warm-charcoal)] uppercase tracking-wider mb-0.5">
         Special Characters
       </span>
-      {chars.map((char) => (
+      {chars.map((char: string) => (
         <button
           key={char}
           type="button"

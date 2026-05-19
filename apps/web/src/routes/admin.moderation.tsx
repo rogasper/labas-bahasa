@@ -58,7 +58,7 @@ function AdminModeration() {
             ) : (!questions.data?.questions || questions.data.questions.length === 0) ? (
               <tr><td colSpan={7} className="text-center py-16 text-[var(--warm-charcoal)]">No questions yet.</td></tr>
             ) : (
-              questions.data.questions.map((q: any) => (
+              questions.data.questions.map((q) => (
                 <tr key={q.id} className="border-t border-[var(--oat-border)] hover:bg-[var(--oat-light)]/50 transition-colors">
                   <td className="px-4 py-3 max-w-xs">
                     <p className="font-medium text-[var(--clay-black)] truncate">{q.questionText}</p>

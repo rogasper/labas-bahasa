@@ -145,6 +145,7 @@ export function HistoryComponent() {
               placeholder="Cari paket..."
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
+              aria-label="Cari paket"
               className="pl-10 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] h-11"
             />
           </div>
@@ -211,9 +212,9 @@ export function HistoryComponent() {
                           )}
                         </div>
 
-                        <h3 className="font-headline text-lg font-bold text-[var(--clay-black)] truncate">
+                        <h2 className="font-headline text-lg font-bold text-[var(--clay-black)] truncate">
                           {attempt.packageTitle ?? "Paket tidak diketahui"}
-                        </h3>
+                        </h2>
 
                         <div className="flex items-center gap-4 mt-1 text-xs text-[var(--warm-charcoal)]">
                           <span className="flex items-center gap-1">

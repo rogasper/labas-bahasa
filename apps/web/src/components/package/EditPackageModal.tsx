@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { Input } from "@labas/ui/components/input";
 import { Button } from "@labas/ui/components/button";
-import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@labas/ui/components/dialog";
 
 export function EditPackageModal({
   initialTitle,
@@ -27,24 +32,13 @@ export function EditPackageModal({
   const [isPublic, setIsPublic] = useState(initialIsPublic);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="bg-[var(--warm-cream)] w-full max-w-lg rounded-[var(--radius-xl)] border-2 border-[var(--oat-border)] clay-shadow p-6 md:p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-headline font-bold text-[var(--clay-black)]">
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-headline font-bold text-[var(--clay-black)]">
             Edit Paket
-          </h2>
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-[var(--oat-light)] hover:bg-[var(--oat-border)] flex items-center justify-center transition-colors"
-          >
-            <MaterialIcon name="close" className="text-[var(--clay-black)]" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         <div className="space-y-4">
           <div>
@@ -100,7 +94,7 @@ export function EditPackageModal({
             {isPending ? "Menyimpan..." : "Simpan"}
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

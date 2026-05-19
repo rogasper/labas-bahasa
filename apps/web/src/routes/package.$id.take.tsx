@@ -87,7 +87,7 @@ function TakeTestComponent() {
     );
   }
 
-  const totalQuestions = pkg.sections.reduce((sum: number, sec: any) => sum + sec.questions.length, 0);
+  const totalQuestions = pkg.sections.reduce((sum: number, sec) => sum + sec.questions.length, 0);
   const answeredCount = Object.keys(answers).length;
 
   // Start screen
