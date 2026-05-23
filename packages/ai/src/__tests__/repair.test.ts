@@ -3,6 +3,7 @@ import {
   repairQuestion,
   repairAndParseQuestions,
   tryParseQuestion,
+  isGenericOptionText,
 } from "../repair";
 
 const fullPassage = "A".repeat(200);
@@ -18,7 +19,7 @@ const baseRaw = {
     { key: "D", text: "Fourth option" },
   ],
   correctAnswer: "A",
-  explanation: "This is the correct answer because...",
+  explanation: "Jawaban A benar karena pilihan ini sesuai dengan isi teks.",
   difficulty: 3,
   skillTags: ["comprehension"],
 };
@@ -143,16 +144,48 @@ describe("coerceCorrectAnswer — multiple_choice with invalid key", () => {
   });
 });
 
+describe("isGenericOptionText", () => {
+  it("detects common placeholder patterns", () => {
+    expect(isGenericOptionText("Option A")).toBe(true);
+    expect(isGenericOptionText("option b")).toBe(true);
+    expect(isGenericOptionText("Pilihan C")).toBe(true);
+    expect(isGenericOptionText("Placeholder option")).toBe(true);
+    expect(isGenericOptionText("")).toBe(true);
+  });
+
+  it("accepts real answer text", () => {
+    expect(isGenericOptionText("The author argues for renewable energy")).toBe(false);
+    expect(isGenericOptionText("Pada paragraf kedua")).toBe(false);
+  });
+});
+
 describe("ensureOptions", () => {
-  it("injects placeholder options when missing for multiple_choice", () => {
+  it("rejects missing options via repairAndParseQuestions instead of injecting placeholders", () => {
     const raw = {
       ...baseRaw,
       format: "multiple_choice",
       options: [],
     };
-    const { question, wasRepaired } = repairQuestion(raw, fullPassage);
-    expect(question.options).toHaveLength(4);
-    expect(wasRepaired).toBe(true);
+    const result = repairAndParseQuestions([raw], fullPassage);
+    expect(result.valid).toHaveLength(0);
+    expect(result.invalid).toHaveLength(1);
+    expect(result.invalid[0]!.errors.some((e) => e.includes("options missing"))).toBe(true);
+  });
+
+  it("rejects model-provided generic option text", () => {
+    const raw = {
+      ...baseRaw,
+      options: [
+        { key: "A", text: "Option A" },
+        { key: "B", text: "Option B" },
+        { key: "C", text: "Option C" },
+        { key: "D", text: "Option D" },
+      ],
+    };
+    const result = repairAndParseQuestions([raw], fullPassage);
+    expect(result.valid).toHaveLength(0);
+    expect(result.invalid).toHaveLength(1);
+    expect(result.invalid[0]!.errors.some((e) => e.includes("generic placeholder"))).toBe(true);
   });
 
   it("deduplicates options by key", () => {
@@ -177,14 +210,14 @@ describe("repairAndParseQuestions", () => {
     expect(result.invalid).toHaveLength(0);
   });
 
-  it("repairs and processes mixed valid/invalid questions", () => {
+  it("repairs valid questions and rejects structurally incomplete ones", () => {
     const raw = [
       baseRaw,
       { format: "multiple_choice", passageText: "", questionText: "", correctAnswer: "", explanation: "", difficulty: 99, skillTags: [] },
     ];
     const result = repairAndParseQuestions(raw, fullPassage);
-    expect(result.valid).toHaveLength(2);
-    expect(result.invalid).toHaveLength(0);
+    expect(result.valid).toHaveLength(1);
+    expect(result.invalid).toHaveLength(1);
     expect(result.repairLog.length).toBeGreaterThan(0);
   });
 

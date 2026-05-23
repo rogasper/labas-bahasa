@@ -26,6 +26,7 @@ export function useGenerationJobs() {
     trackStatus,
     setResult,
     clearResult,
+    dismissResult,
   } = useJobState();
 
   /* Fallback: discover active jobs from myJobs endpoint */
@@ -157,6 +158,7 @@ export function useGenerationJobs() {
     addJob,
     removeJob: wrappedRemoveJob,
     resetAll,
+    dismissResult,
     setError,
     myJobsQuery,
   };

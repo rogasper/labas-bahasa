@@ -56,6 +56,22 @@ function broadcastJobs(ids: string[]) {
   );
 }
 
+function broadcastResults(results: CompletedResult[]) {
+  window.dispatchEvent(
+    new CustomEvent("labas:results-change", { detail: { results } }),
+  );
+}
+
+function createInitialState(): State {
+  return {
+    jobIds: readStoredIds(),
+    completedResults: readStoredResults(),
+    error: null,
+    processedStates: {},
+    removedIds: new Set(readClearedJobIds()),
+  };
+}
+
 /* ── State shape ── */
 
 interface State {
@@ -72,6 +88,7 @@ type Action =
   | { type: "removeJob"; id: string }
   | { type: "reset" }
   | { type: "syncIds"; ids: string[] }
+  | { type: "syncResults"; results: CompletedResult[] }
   | { type: "trackStatus"; jobId: string; status: string }
   | { type: "setResult"; result: CompletedResult }
   | { type: "clearResult"; jobId: string }
@@ -99,18 +116,15 @@ function reducer(state: State, action: Action): State {
 
     case "removeJob": {
       const nextIds = state.jobIds.filter((j) => j !== action.id);
-      const nextResults = state.completedResults.filter((r) => r.jobId !== action.id);
       const nextRemoved = new Set(state.removedIds).add(action.id);
 
       writeStoredIds(nextIds);
-      writeStoredResults(nextResults);
       const cleared = readClearedJobIds();
       if (!cleared.includes(action.id)) writeClearedJobIds([...cleared, action.id]);
 
       return {
         ...state,
         jobIds: nextIds,
-        completedResults: nextResults,
         removedIds: nextRemoved,
       };
     }
@@ -125,6 +139,7 @@ function reducer(state: State, action: Action): State {
       const nextRemoved = new Set(state.removedIds);
       for (const id of current) nextRemoved.add(id);
 
+      broadcastResults([]);
       return {
         ...state,
         jobIds: [],
@@ -139,6 +154,10 @@ function reducer(state: State, action: Action): State {
       return { ...state, jobIds: action.ids };
     }
 
+    case "syncResults": {
+      return { ...state, completedResults: action.results };
+    }
+
     case "trackStatus": {
       return {
         ...state,
@@ -148,18 +167,25 @@ function reducer(state: State, action: Action): State {
 
     case "setResult": {
       const idx = state.completedResults.findIndex((r) => r.jobId === action.result.jobId);
+      let nextResults: CompletedResult[];
       if (idx >= 0) {
-        const updated = [...state.completedResults];
-        updated[idx] = action.result;
-        return { ...state, completedResults: updated };
+        nextResults = [...state.completedResults];
+        nextResults[idx] = action.result;
+      } else {
+        nextResults = [...state.completedResults, action.result];
       }
-      return { ...state, completedResults: [...state.completedResults, action.result] };
+      writeStoredResults(nextResults);
+      broadcastResults(nextResults);
+      return { ...state, completedResults: nextResults };
     }
 
     case "clearResult": {
+      const nextResults = state.completedResults.filter((r) => r.jobId !== action.jobId);
+      writeStoredResults(nextResults);
+      broadcastResults(nextResults);
       return {
         ...state,
-        completedResults: state.completedResults.filter((r) => r.jobId !== action.jobId),
+        completedResults: nextResults,
       };
     }
 
@@ -175,31 +201,22 @@ function reducer(state: State, action: Action): State {
 /* ── Hook ── */
 
 export function useJobState() {
-  const [state, dispatch] = useReducer(reducer, {
-    jobIds: [],
-    completedResults: [],
-    error: null,
-    processedStates: {},
-    removedIds: new Set<string>(),
-  });
+  const [state, dispatch] = useReducer(reducer, undefined, createInitialState);
+  const skipPersistRef = useRef(true);
 
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  /* Recover from sessionStorage on mount */
+  /* Persist completedResults — skip first run (lazy init already loaded from storage) */
   useEffect(() => {
-    const saved = readStoredIds();
-    const savedResults = readStoredResults();
-    const clearedIds = readClearedJobIds();
-    dispatch({ type: "init", jobIds: saved, results: savedResults, clearedIds });
-  }, []);
-
-  /* Persist completedResults */
-  useEffect(() => {
+    if (skipPersistRef.current) {
+      skipPersistRef.current = false;
+      return;
+    }
     writeStoredResults(state.completedResults);
   }, [state.completedResults]);
 
-  /* Sync across hook instances via custom event */
+  /* Sync job IDs across hook instances */
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail as { ids: string[] };
@@ -207,6 +224,17 @@ export function useJobState() {
     };
     window.addEventListener("labas:jobs-change", handler);
     return () => window.removeEventListener("labas:jobs-change", handler);
+  }, []);
+
+  /* Sync completed results across hook instances (GeneratePage + GlobalProgress) */
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { results: CompletedResult[] };
+      skipPersistRef.current = true;
+      dispatch({ type: "syncResults", results: detail.results });
+    };
+    window.addEventListener("labas:results-change", handler);
+    return () => window.removeEventListener("labas:results-change", handler);
   }, []);
 
   const addJob = useCallback((id: string) => dispatch({ type: "addJob", id }), []);
@@ -225,6 +253,10 @@ export function useJobState() {
     (jobId: string) => dispatch({ type: "clearResult", jobId }),
     [],
   );
+  const dismissResult = useCallback((jobId: string) => {
+    dispatch({ type: "clearResult", jobId });
+    dispatch({ type: "removeJob", id: jobId });
+  }, []);
 
   return {
     jobIds: state.jobIds,
@@ -239,5 +271,6 @@ export function useJobState() {
     trackStatus,
     setResult,
     clearResult,
+    dismissResult,
   };
 }

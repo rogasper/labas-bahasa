@@ -5,6 +5,10 @@ import {
   questionSchema,
   type Question,
 } from "./schemas";
+import {
+  getQuestionLanguageErrors,
+  getExplanationLanguageErrors,
+} from "./language-rules";
 
 // ── Generic Question Schema (for AI prompt) ─────────────────
 // Simplified schema that AI can understand easily.
@@ -43,6 +47,58 @@ const FORMATS_WITH_OPTIONS = new Set([
   "sentence_arrangement",
 ]);
 
+const FORMATS_MIN_TWO_OPTIONS = new Set([
+  "multiple_choice",
+  "synonym",
+  "grammar_in_context",
+  "sentence_completion",
+  "reference",
+  "kanji_reading",
+  "particle_choice",
+  "article_case",
+  "character_reading",
+  "sentence_arrangement",
+  "error_recognition",
+  "text_insertion",
+  "summary_completion",
+  "cloze",
+  "matching_headings",
+  "matching_information",
+]);
+
+/** Detect generic placeholder option text from lazy AI output or repair fallbacks. */
+export function isGenericOptionText(text: string): boolean {
+  const t = text.trim();
+  if (!t) return true;
+  if (/^placeholder/i.test(t)) return true;
+  if (/^(option|pilihan|choice|opsi)(\s+[a-d0-9]+)?\.?$/i.test(t)) return true;
+  return false;
+}
+
+/** Semantic quality checks beyond Zod structural validation. */
+export function getQuestionSemanticErrors(q: GenericQuestion): string[] {
+  if (!FORMATS_WITH_OPTIONS.has(q.format)) return [];
+
+  const errors: string[] = [];
+  if (!Array.isArray(q.options) || q.options.length === 0) {
+    errors.push("options missing or empty");
+    return errors;
+  }
+
+  const minOptions = FORMATS_MIN_TWO_OPTIONS.has(q.format) ? 2 : 1;
+  if (q.options.length < minOptions) {
+    errors.push(`options must have at least ${minOptions} item(s)`);
+  }
+
+  for (const opt of q.options) {
+    if (isGenericOptionText(opt.text)) {
+      errors.push(`generic placeholder option text: "${opt.text}"`);
+    }
+  }
+
+  return errors;
+}
+
 function normalizeOptionKey(key: string): string {
   return key.trim().toUpperCase();
 }
@@ -58,26 +114,10 @@ function ensureOptions(
 
   let opts = q.options;
   if (!Array.isArray(opts) || opts.length === 0) {
-    // AI forgot options — inject plausible placeholders so parsing can succeed
-    // We'll mark them for later regeneration if needed
-    if (q.format === "multiple_choice" || q.format === "synonym" || q.format === "grammar_in_context" ||
-        q.format === "sentence_completion" || q.format === "reference" || q.format === "kanji_reading" ||
-        q.format === "particle_choice" || q.format === "article_case" || q.format === "character_reading" ||
-        q.format === "sentence_arrangement" || q.format === "error_recognition" || q.format === "text_insertion") {
-      return [
-        { key: "A", text: "Option A" },
-        { key: "B", text: "Option B" },
-        { key: "C", text: "Option C" },
-        { key: "D", text: "Option D" },
-      ];
-    }
-    if (q.format === "matching_headings" || q.format === "matching_information" ||
-        q.format === "summary_completion" || q.format === "cloze") {
-      return [{ key: "1", text: "Placeholder option" }];
-    }
+    return undefined;
   }
 
-  opts = opts!.map((o) => ({
+  opts = opts.map((o) => ({
     key: normalizeOptionKey(o.key),
     text: normalizeOptionText(o.text),
   }));
@@ -158,10 +198,13 @@ function ensureExplanation(q: GenericQuestion): string {
   return "Penjelasan tidak tersedia.";
 }
 
-function ensureQuestionText(q: GenericQuestion): string {
+function ensureQuestionText(q: GenericQuestion, examType?: string): string {
   const text = q.questionText?.trim();
   if (text && text.length >= 10) return text;
-  return text || "Soal latihan membaca.";
+  if (examType === "JLPT") return "この文章の内容について正しいものはどれですか。";
+  if (examType === "HSK") return "根据短文，下列哪项正确？";
+  if (examType === "TOPIK") return "글의 내용과 일치하는 것은 무엇입니까?";
+  return text || "What is the correct answer based on the passage?";
 }
 
 function ensureDifficulty(q: GenericQuestion): number {
@@ -176,6 +219,7 @@ function ensureDifficulty(q: GenericQuestion): number {
 export function repairQuestion(
   raw: unknown,
   fullPassage: string,
+  examType?: string,
 ): { question: GenericQuestion; wasRepaired: boolean; repairNotes: string[] } {
   const notes: string[] = [];
   let wasRepaired = false;
@@ -190,7 +234,7 @@ export function repairQuestion(
   const q: GenericQuestion = {
     format: String(r.format || "multiple_choice").trim().toLowerCase() as any,
     passageText: ensurePassageText(r as GenericQuestion, fullPassage),
-    questionText: ensureQuestionText(r as GenericQuestion),
+    questionText: ensureQuestionText(r as GenericQuestion, examType),
     options: Array.isArray(r.options)
       ? r.options
           .filter((o: any) => o && typeof o === "object")
@@ -215,8 +259,8 @@ export function repairQuestion(
   if (explanationText.trim().length === 0) {
     notes.push("explanation missing, used fallback");
     wasRepaired = true;
-  } else if (hasCJK(explanationText)) {
-    notes.push("explanation contains CJK characters (should be Bahasa Indonesia), marked for regeneration");
+  } else if (getExplanationLanguageErrors(explanationText).length > 0) {
+    notes.push("explanation not in Bahasa Indonesia, marked for regeneration");
     wasRepaired = true;
   }
   if (!Array.isArray(r.skillTags) || r.skillTags.length === 0) {
@@ -232,14 +276,12 @@ export function repairQuestion(
     wasRepaired = true;
   }
 
-  // Ensure options
+  // Normalize options (no placeholder injection — missing options fail semantic validation)
   const repairedOptions = ensureOptions(q);
   if (repairedOptions !== undefined) {
-    if (!q.options || q.options.length === 0) {
-      notes.push("options missing, injected placeholders");
-      wasRepaired = true;
-    }
     q.options = repairedOptions;
+  } else if (FORMATS_WITH_OPTIONS.has(q.format)) {
+    q.options = undefined;
   }
 
   return { question: q, wasRepaired, repairNotes: notes };
@@ -263,6 +305,7 @@ export function tryParseQuestion(generic: GenericQuestion): Question | null {
 export function repairAndParseQuestions(
   rawQuestions: unknown[],
   fullPassage: string,
+  options?: { examType?: string },
 ): {
   valid: Question[];
   invalid: { index: number; raw: unknown; errors: string[] }[];
@@ -272,13 +315,27 @@ export function repairAndParseQuestions(
   const invalid: { index: number; raw: unknown; errors: string[] }[] = [];
   const repairLog: string[] = [];
 
+  const examType = options?.examType;
+
   for (let i = 0; i < rawQuestions.length; i++) {
     const raw = rawQuestions[i];
     try {
-      const { question: repaired, wasRepaired, repairNotes } = repairQuestion(raw, fullPassage);
+      const { question: repaired, wasRepaired, repairNotes } = repairQuestion(raw, fullPassage, examType);
       if (wasRepaired) {
         repairLog.push(`Q${i + 1}: ${repairNotes.join("; ")}`);
       }
+
+      const semanticErrors = [
+        ...getQuestionSemanticErrors(repaired),
+        ...(examType ? getQuestionLanguageErrors(repaired, examType) : []),
+        ...getExplanationLanguageErrors(repaired.explanation),
+      ];
+      if (semanticErrors.length > 0) {
+        invalid.push({ index: i, raw, errors: semanticErrors });
+        repairLog.push(`Q${i + 1}: semantic quality failure — ${semanticErrors.join(", ")}`);
+        continue;
+      }
+
       const parsed = tryParseQuestion(repaired);
       if (parsed) {
         valid.push(parsed);
@@ -349,7 +406,7 @@ export function getGenericQuestionJsonSchemaDescription(): string {
                   type: "object",
                   properties: {
                     key: { type: "string", description: "Option identifier (e.g. A, B, C, D)" },
-                    text: { type: "string", description: "Option text" },
+                    text: { type: "string", description: "Meaningful answer text from the passage — never generic labels like 'Option A'" },
                   },
                   required: ["key", "text"],
                 },
@@ -358,7 +415,7 @@ export function getGenericQuestionJsonSchemaDescription(): string {
                 type: "string",
                 description: "For true_false_not_given use TRUE/FALSE/NOT_GIVEN. For author_view use YES/NO/NOT_GIVEN. For multiple choice use the option key (e.g. A).",
               },
-              explanation: { type: "string", description: "Explanation in Indonesian" },
+              explanation: { type: "string", description: "Explanation in Bahasa Indonesia; may include exam-language terms/kanji when relevant" },
               difficulty: { type: "integer", minimum: 1, maximum: 5 },
               skillTags: { type: "array", items: { type: "string" } },
             },

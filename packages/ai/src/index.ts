@@ -1,6 +1,7 @@
 export { OpenAICompatibleClient } from "./client";
 export { generateQuestionsQuick } from "./pipeline";
-export { generateQuestionsAgentic } from "./agentic";
+export { generateQuestionsAgentic, generatePassageForInput, generateQuestionsAgenticFromPassage } from "./agentic";
+export { getTargetLanguage, buildContentLanguageRules } from "./language-rules";
 export type {
   AgenticProgress,
   AgenticGenerationOptions,

@@ -2,10 +2,13 @@ import { OpenAICompatibleClient } from "./client";
 import { GenerationError } from "./errors";
 import { buildQuickModePrompt } from "./prompts";
 import { repairAndParseQuestions } from "./repair";
+import { regenerateQuestions, buildRegenerationContext } from "./regenerate-questions";
 import {
   type GenerationInput,
   type GenerationResult,
 } from "./schemas";
+
+const MAX_QUICK_REGEN_ATTEMPTS = 2;
 
 export interface QuickModeCallbacks {
   onToken?: (token: string) => void;
@@ -115,36 +118,69 @@ export async function generateQuestionsQuick(
   ) as any;
   const fallbackPassage = firstWithPassage?.passageText ?? "No passage available.";
 
-  const { valid, invalid, repairLog } = repairAndParseQuestions(raw.questions, fallbackPassage);
+  let { valid: validQuestions, invalid: pendingInvalid, repairLog } = repairAndParseQuestions(
+    raw.questions,
+    fallbackPassage,
+    { examType: input.examType },
+  );
+
+  let accumulatedTokens = tokensUsed ?? 0;
+
+  for (let attempt = 0; attempt < MAX_QUICK_REGEN_ATTEMPTS && pendingInvalid.length > 0; attempt++) {
+    log("warn", "Regenerating invalid questions in quick mode", {
+      attempt: attempt + 1,
+      count: pendingInvalid.length,
+    });
+
+    const context = buildRegenerationContext(pendingInvalid);
+    const regen = await regenerateQuestions(
+      client,
+      input,
+      fallbackPassage,
+      pendingInvalid.length,
+      context,
+      callbacks?.onToken,
+    );
+    accumulatedTokens += regen.tokensUsed ?? 0;
+
+    const regenResult = repairAndParseQuestions(regen.questions, fallbackPassage, {
+      examType: input.examType,
+    });
+    validQuestions = [...validQuestions, ...regenResult.valid];
+    pendingInvalid = regenResult.invalid;
+    if (regenResult.repairLog.length > 0) {
+      repairLog = [...repairLog, ...regenResult.repairLog.map((l) => `[Regen ${attempt + 1}] ${l}`)];
+    }
+  }
 
   if (repairLog.length > 0) {
     log("warn", "Repairs applied", { count: repairLog.length, details: repairLog });
   }
-  if (invalid.length > 0) {
-    log("warn", "Invalid questions after repair", {
-      count: invalid.length,
-      details: invalid.map((i) => ({ index: i.index, errors: i.errors })),
+  if (pendingInvalid.length > 0) {
+    log("warn", "Invalid questions after repair and regeneration", {
+      count: pendingInvalid.length,
+      details: pendingInvalid.map((i) => ({ index: i.index, errors: i.errors })),
     });
   }
 
-  if (valid.length === 0) {
+  if (validQuestions.length === 0) {
     log("error", "No valid questions after repair", { rawCount: raw.questions.length });
-    throw new GenerationError("No valid questions generated", { tokensUsed });
+    throw new GenerationError("No valid questions generated", { tokensUsed: accumulatedTokens });
   }
 
   log("info", "Quick mode generation completed", {
-    validCount: valid.length,
+    validCount: validQuestions.length,
     rawCount: raw.questions.length,
     durationMs: Date.now() - start,
   });
 
-  const questions = valid;
+  const questions = validQuestions;
 
   return {
     questions,
     meta: {
       model: input.apiKeyConfig.model,
-      tokensUsed,
+      tokensUsed: accumulatedTokens,
       durationMs: Date.now() - start,
       mode: "quick",
     },

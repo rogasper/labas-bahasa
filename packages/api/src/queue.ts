@@ -9,7 +9,10 @@ async function log(level: "debug" | "warn", message: string, meta?: Record<strin
 import {
   generateQuestionsQuick,
   generateQuestionsAgentic,
+  generatePassageForInput,
+  generateQuestionsAgenticFromPassage,
   GenerationError,
+  type AgenticProgress,
   type GenerationInput,
   type GenerationResult,
 } from "@labas/ai";
@@ -81,6 +84,74 @@ export class GenerationJobCancelledError extends Error {
     super("JOB_CANCELLED");
     this.name = "GenerationJobCancelledError";
   }
+}
+
+const AGENTIC_STEP_FRACTIONS = [0.12, 0.28, 0.62, 0.92] as const;
+
+const AGENTIC_STEP_LABELS: Record<string, string> = {
+  generate_passage: "Menulis bacaan...",
+  validate_passage: "Memvalidasi bacaan...",
+  generate_questions: "Membuat soal...",
+  self_validate: "Validasi kualitas...",
+};
+
+function mapAgenticProgressInShard(
+  agentic: AgenticProgress,
+  completedShards: number,
+  totalShards: number,
+): { progress: number; message: string } {
+  const shardSpan = 65 / Math.max(totalShards, 1);
+  const shardBase = 15 + completedShards * shardSpan;
+  const stepFrac = AGENTIC_STEP_FRACTIONS[agentic.currentStep] ?? 0.5;
+  const progress = Math.min(Math.round(shardBase + shardSpan * stepFrac), 84);
+  const step = agentic.steps[agentic.currentStep];
+  const message =
+    step?.message ??
+    AGENTIC_STEP_LABELS[step?.step ?? ""] ??
+    "Agentic generation...";
+  return { progress, message };
+}
+
+function mapAgenticProgressInQuality(agentic: AgenticProgress): { progress: number; message: string } {
+  const stepFrac = AGENTIC_STEP_FRACTIONS[agentic.currentStep] ?? 0.5;
+  const progress = Math.min(86 + Math.round(stepFrac * 10), 96);
+  const step = agentic.steps[agentic.currentStep];
+  const message =
+    step?.message ??
+    AGENTIC_STEP_LABELS[step?.step ?? ""] ??
+    "Quality validation...";
+  return { progress, message };
+}
+
+function createAgenticProgressHandler(
+  updateProgress: (progress: number, progressMessage: string) => Promise<void>,
+  pushLog: (
+    step: string,
+    message: string,
+    status: "running" | "done" | "error",
+    details?: string,
+  ) => Promise<void>,
+  mapProgress: (agentic: AgenticProgress) => { progress: number; message: string },
+) {
+  const seenSteps = new Set<string>();
+
+  return (agentic: AgenticProgress) => {
+    const { progress, message } = mapProgress(agentic);
+    void updateProgress(progress, message).catch(() => {});
+
+    for (const step of agentic.steps) {
+      if (!step || step.status === "pending") continue;
+      const key = `${step.step}:${step.status}`;
+      if (seenSteps.has(key)) continue;
+      seenSteps.add(key);
+      void pushLog(
+        step.step,
+        step.message ?? AGENTIC_STEP_LABELS[step.step] ?? step.step,
+        step.status as "running" | "done" | "error",
+        step.output,
+      ).catch(() => {});
+    }
+  };
 }
 
 export function computeSectionSplit(
@@ -532,6 +603,7 @@ export const generationWorker = new Worker<FastJobData>(
         .where(eq(generationJob.id, jobId));
     };
 
+    let maxProgress = 0;
     const updateProgress = async (
       progress: number,
       progressMessage: string,
@@ -539,11 +611,13 @@ export const generationWorker = new Worker<FastJobData>(
       resultJson?: unknown,
     ) => {
       cancelPoll.check();
-      await job.updateProgress(progress);
+      const next = Math.max(maxProgress, progress);
+      maxProgress = next;
+      await job.updateProgress(next);
       const [updated] = await db
         .update(generationJob)
         .set({
-          progress,
+          progress: next,
           progressMessage,
           ...(status ? { status } : {}),
           ...(resultJson !== undefined ? { resultJson: resultJson as any } : {}),
@@ -590,6 +664,29 @@ export const generationWorker = new Worker<FastJobData>(
       let completedShards = 0;
       let partialPublished = false;
       let timeToFirstValidQuestionMs: number | null = null;
+      const sectionPassages = new Map<string, string>();
+
+      if (selectedMode === "agentic") {
+        for (const split of sectionSplits) {
+          if (sectionPassages.has(split.section)) continue;
+          await updateProgress(8, `Menulis bacaan ${split.section}...`);
+          const passageInput: GenerationInput = {
+            ...input,
+            section: split.section as GenerationInput["section"],
+            questionCount: split.count,
+          };
+          const passageResult = await generatePassageForInput(passageInput, tokenCounter);
+          totalTokens += passageResult.tokensUsed ?? 0;
+          sectionPassages.set(split.section, passageResult.passage);
+          await pushLog(
+            "generate_passage",
+            `Bacaan siap: ${passageResult.title}`,
+            "done",
+            passageResult.passage.slice(0, 400),
+          );
+        }
+      }
+
       const shardResults: Array<{
         shard: ShardPlan;
         questions: PersistableQuestion[];
@@ -610,14 +707,30 @@ export const generationWorker = new Worker<FastJobData>(
         };
 
         let sectionResult: GenerationResult;
+        const onAgenticProgress = createAgenticProgressHandler(
+          (progress, progressMessage) => updateProgress(progress, progressMessage),
+          pushLog,
+          (agentic) => mapAgenticProgressInShard(agentic, completedShards, shards.length),
+        );
         try {
           if (selectedMode === "agentic") {
-            sectionResult = await generateQuestionsAgentic(
-              subInput,
-              undefined,
-              tokenCounter,
-              { strategy: "lean", maxRegenerateAttempts: 1 },
-            );
+            const sharedPassage = sectionPassages.get(shard.section);
+            if (sharedPassage) {
+              sectionResult = await generateQuestionsAgenticFromPassage(
+                subInput,
+                sharedPassage,
+                onAgenticProgress,
+                tokenCounter,
+                { strategy: "full", maxRegenerateAttempts: 1 },
+              );
+            } else {
+              sectionResult = await generateQuestionsAgentic(
+                subInput,
+                onAgenticProgress,
+                tokenCounter,
+                { strategy: "full", maxRegenerateAttempts: 1 },
+              );
+            }
           } else {
             sectionResult = await generateQuestionsQuick(subInput, {
               onToken: tokenCounter,
@@ -637,9 +750,9 @@ export const generationWorker = new Worker<FastJobData>(
 
           sectionResult = await generateQuestionsAgentic(
             { ...subInput, mode: "agentic" },
-            undefined,
+            onAgenticProgress,
             tokenCounter,
-            { strategy: "lean", maxRegenerateAttempts: 1 },
+            { strategy: "full", maxRegenerateAttempts: 1 },
           );
         }
 
@@ -780,43 +893,24 @@ export const generationWorker = new Worker<FastJobData>(
       };
 
       if (selectedMode === "agentic") {
-        await updateProgress(85, "Fast phase done, enqueuing quality phase...", "running_quality", {
-          ...fastResult,
+        await pushLog("save", "Saving agentic result...", "running");
+        await completeJobWithResult({
+          jobId,
+          input,
+          allQuestions,
           sectionSplits,
-          qualityPhase: "fast",
-          isPartial: true,
+          totalTokens: totalTokens || approxTokens,
+          durationMs: Date.now() - start,
+          statusMessage: "Completed",
           metrics: {
             timeToFirstValidQuestionMs: timeToFirstValidQuestionMs ?? Date.now() - start,
             shardCount: shards.length,
             shardRetryBudget: MAX_SHARD_RETRIES,
+            shardFailures: failedShards.length,
+            singlePassAgentic: true,
           },
         });
-        await pushLog(
-          "quality_queue",
-          "Partial result ready, lanjut quality upgrade di background",
-          "done",
-        );
-        await generationQualityQueue.add(
-          "quality-upgrade",
-          {
-            input,
-            jobId,
-            sectionSplits,
-            fastQuestions: allQuestions,
-            fastMeta: {
-              tokensUsed: totalTokens,
-              durationMs: totalDurationMs || Date.now() - start,
-              approxTokens,
-            },
-          },
-          {
-            jobId,
-            removeOnComplete: { count: 100 },
-            removeOnFail: { count: 100 },
-            attempts: 2,
-            backoff: { type: "exponential", delay: 4000 },
-          },
-        );
+        await pushLog("save", `Saved ${allQuestions.length} questions`, "done");
         return;
       }
 
@@ -902,6 +996,7 @@ export const generationQualityWorker = new Worker<QualityJobData>(
 
     const cancelPoll = createCancellationPoller(jobId);
     let approxTokens = 0;
+    let maxProgress = 0;
     const tokenCounter = (token: string) => {
       cancelPoll.check();
       approxTokens += Math.ceil(token.length / 4);
@@ -909,12 +1004,14 @@ export const generationQualityWorker = new Worker<QualityJobData>(
 
     const updateProgress = async (progress: number, progressMessage: string) => {
       cancelPoll.check();
-      await job.updateProgress(progress);
+      const next = Math.max(maxProgress, progress);
+      maxProgress = next;
+      await job.updateProgress(next);
       const [updated] = await db
         .update(generationJob)
         .set({
           status: "running_quality",
-          progress,
+          progress: next,
           progressMessage,
         })
         .where(
@@ -961,9 +1058,14 @@ export const generationQualityWorker = new Worker<QualityJobData>(
               questionCount: split.count,
               mode: "agentic",
             };
+            const onQualityProgress = createAgenticProgressHandler(
+              updateProgress,
+              pushLog,
+              mapAgenticProgressInQuality,
+            );
             const result = await generateQuestionsAgentic(
               sectionInput,
-              undefined,
+              onQualityProgress,
               tokenCounter,
               { strategy: "full", maxRegenerateAttempts: 2 },
             );

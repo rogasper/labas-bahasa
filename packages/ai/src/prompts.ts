@@ -1,5 +1,9 @@
 import type { GenerationInput } from "./schemas";
 import { getQuestionJsonSchemaDescription } from "./schema-to-prompt";
+import { buildContentLanguageRules, buildExplanationLanguageRule } from "./language-rules";
+
+export const OPTION_QUALITY_RULES = `- Each option "text" must be meaningful content derived from the passage or question — NEVER use generic labels like "Option A", "Option B", "Pilihan A", "Choice B", or "Placeholder".
+- For multiple choice: always provide at least 4 real answer choices labeled A, B, C, D with plausible distractors.`;
 
 export function buildQuickModePrompt(input: GenerationInput): string {
   const { examType, section, formats, difficulty, topics, questionCount } = input;
@@ -17,22 +21,24 @@ TOPICS: ${topics.join(", ")}
 FORMATS TO GENERATE: ${formats.join(", ")}
 
 INSTRUCTIONS:
-- The reading passage must be written in the target language of the exam (${examType === "JLPT" ? "Japanese" : examType === "HSK" ? "Chinese" : examType === "GOETHE" ? "German" : examType === "TOPIK" ? "Korean" : examType === "TOAFL" ? "Arabic" : examType === "DELE" ? "Spanish" : "English"}).
+${buildContentLanguageRules(examType)}
+${buildExplanationLanguageRule(examType)}
 - For Korean (TOPIK): Focus on particles, honorifics (speech levels), and functional grammar.
 - For Arabic (TOAFL): Support RTL text. Focus on I'rab (case endings/vowel changes) and grammar.
 - For Spanish (DELE): Focus on verb conjugation by subject and agreement.
-- For JLPT/TOPIK kanji/hanja: Include reading annotations in format: 漢字(かんじ) for words that have readings.
 - Passage length should be appropriate for the exam type and difficulty.
 - Each question must have:
   * a reading passage (passageText)
-   * a clear question prompt (questionText)
+   * a clear question prompt (questionText) — in exam language, NOT Bahasa Indonesia
    * a correct answer (correctAnswer)
-   * an explanation (explanation) — WAJIB ditulis dalam Bahasa Indonesia. DILARANG menggunakan bahasa asing (China, Jepang, Jerman, Inggris) untuk explanation.
+   * an explanation (explanation) — Bahasa Indonesia, boleh sisipkan istilah/kanji/kata ujian bila perlu
   * difficulty level (${difficulty})
   * relevant skill tags (skillTags)
+- For JLPT/TOPIK kanji/hanja: Include reading annotations in format: 漢字(かんじ) for words that have readings.
 - Questions should test real comprehension, not just surface-level recall.
 - For multiple choice: always provide 4 options labeled A, B, C, D.
 - Options must be plausible distractors — one clearly correct answer.
+${OPTION_QUALITY_RULES}
 - For matching_pairs: Provide options as an array of {key, text} where key is the left item identifier and text is the left item. correctAnswer should be a serialized mapping like "A:1,B:2,C:3" matching each left key to its right pair.
 - For error_recognition: options are error segments (A, B, C, D) and correctAnswer is the key of the segment containing an error.
 - For text_insertion: options are position markers (A, B, C, D) within the passage where a sentence could be inserted. correctAnswer is the best position key.

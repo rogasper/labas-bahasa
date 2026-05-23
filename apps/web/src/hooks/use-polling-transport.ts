@@ -11,9 +11,15 @@ function jobStatusRefetchInterval(query: unknown): number | false {
   return 1000;
 }
 
-/** Track previous active job IDs and per-job statuses to avoid redundant state updates. */
-function serializeJobIds(jobs: ActiveJob[]): string {
-  return jobs.map((j) => j.id).sort().join(",");
+/** Track job snapshots so progress/message/log updates propagate without ID churn. */
+function serializeJobSnapshot(jobs: ActiveJob[]): string {
+  return jobs
+    .map((j) => {
+      const logsLen = Array.isArray(j.logs) ? j.logs.length : 0;
+      return [j.id, j.status, j.progress ?? 0, j.progressMessage ?? "", logsLen].join(":");
+    })
+    .sort()
+    .join("|");
 }
 
 /** Polling-based implementation of JobTransport.
@@ -30,7 +36,7 @@ export function usePollingTransport({
   const onUpdateRef = useRef<(event: JobTransportEvent) => void>(undefined);
   const onErrorRef = useRef<(error: Error) => void>(undefined);
 
-  const prevActiveIdsRef = useRef("");
+  const prevSnapshotRef = useRef("");
   const prevStatusesRef = useRef<Record<string, string>>({});
 
   const jobQueries = useQueries({
@@ -46,9 +52,9 @@ export function usePollingTransport({
       .filter((q) => q.data && !isTerminal((q.data as { status: string }).status))
       .map((q) => q.data as unknown as ActiveJob);
 
-    const nextIds = serializeJobIds(nextActive);
-    if (nextIds !== prevActiveIdsRef.current) {
-      prevActiveIdsRef.current = nextIds;
+    const nextIds = serializeJobSnapshot(nextActive);
+    if (nextIds !== prevSnapshotRef.current) {
+      prevSnapshotRef.current = nextIds;
       setActiveJobs(nextActive);
     }
 

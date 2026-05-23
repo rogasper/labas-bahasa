@@ -60,8 +60,8 @@ export function RouteComponent() {
     isGenerating,
     error,
     addJob,
-    removeJob,
     resetAll,
+    dismissResult,
     setError,
   } = useGenerationJobs();
 
@@ -708,7 +708,7 @@ export function RouteComponent() {
                     <span
                       onClick={(e) => {
                         e.stopPropagation();
-                        removeJob(res.jobId);
+                        dismissResult(res.jobId);
                       }}
                       role="button"
                       aria-label={`Tutup tab ${res.mode}`}
