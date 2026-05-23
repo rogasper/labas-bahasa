@@ -473,14 +473,14 @@ export const attemptRouter = router({
         const counts = await db
           .select({
             sectionId: sectionQuestion.sectionId,
-            count: sql<number>`count(*)`,
+            count: sql<number>`count(*)::int`,
           })
           .from(sectionQuestion)
           .where(inArray(sectionQuestion.sectionId, psIds))
           .groupBy(sectionQuestion.sectionId);
 
         for (const c of counts) {
-          questionCounts.set(c.sectionId, c.count);
+          questionCounts.set(c.sectionId, Number(c.count));
         }
       }
 
@@ -528,7 +528,7 @@ export const attemptRouter = router({
             .where(eq(answer.id, a.answerId));
         }
 
-        const sectionMax = questionCounts.get(pkgSec.id) ?? secAnswers.length;
+        const sectionMax = Number(questionCounts.get(pkgSec.id) ?? secAnswers.length);
         const sectionTimeSpent = secAnswers.reduce((sum, a) => sum + (a.timeSpentSec ?? 0), 0);
 
         await db
@@ -554,7 +554,7 @@ export const attemptRouter = router({
       // Total questions in package
       let totalQuestions = 0;
       for (const count of questionCounts.values()) {
-        totalQuestions += count;
+        totalQuestions += Number(count);
       }
 
       await db

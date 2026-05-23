@@ -60,10 +60,6 @@ function AttemptResultComponent() {
     onSuccess: () => packageRatingQuery.refetch(),
   });
 
-  const percentage = attempt?.maxScore && attempt.maxScore > 0
-    ? Math.round(((attempt.totalScore ?? 0) / attempt.maxScore) * 100)
-    : 0;
-
   const durationSec = attempt?.finishedAt && attempt.startedAt
     ? Math.round((new Date(attempt.finishedAt).getTime() - new Date(attempt.startedAt).getTime()) / 1000)
     : 0;
@@ -86,6 +82,17 @@ function AttemptResultComponent() {
       })),
     );
   }, [attempt]);
+
+  const questionStats = useMemo(() => {
+    const total = allQuestions.length;
+    const correct = allQuestions.filter(({ ans }) => ans?.isCorrect === true).length;
+    const wrong = allQuestions.filter(({ ans }) => ans?.isCorrect === false).length;
+    return { total, correct, wrong };
+  }, [allQuestions]);
+
+  const percentage = questionStats.total > 0
+    ? Math.round((questionStats.correct / questionStats.total) * 100)
+    : 0;
 
   // ── Filtered questions ──
   const partialCount = useMemo(
@@ -186,7 +193,7 @@ function AttemptResultComponent() {
                   {percentage}%
                 </span>
                 <span className="text-xs text-[var(--matcha-700)] font-medium">
-                  {attempt.totalScore ?? 0}/{attempt.maxScore ?? 0}
+                  {questionStats.correct}/{questionStats.total}
                 </span>
               </div>
 
@@ -207,15 +214,15 @@ function AttemptResultComponent() {
                   </span>
                   <span className="flex items-center gap-1">
                     <MaterialIcon name="quiz" className="text-sm" />
-                    {attempt.maxScore ?? 0} soal
+                    {questionStats.total} soal
                   </span>
                   <span className="flex items-center gap-1">
                     <MaterialIcon name="check_circle" className="text-sm text-[var(--matcha-600)]" />
-                    {attempt.totalScore ?? 0} benar
+                    {questionStats.correct} benar
                   </span>
                   <span className="flex items-center gap-1">
                     <MaterialIcon name="cancel" className="text-sm text-[var(--pomegranate-400)]" />
-                    {(attempt.maxScore ?? 0) - (attempt.totalScore ?? 0)} salah
+                    {questionStats.wrong} salah
                   </span>
                 </div>
 

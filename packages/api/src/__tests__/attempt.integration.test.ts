@@ -175,6 +175,85 @@ describe("attempt router", () => {
     expect(result.percentage).toBe(33);
   });
 
+  it("finish sums maxScore across multiple sections", { timeout: 30000 }, async () => {
+    const ownerId = "multi-section-owner";
+    await testDb.insert(schema.user).values({
+      id: ownerId,
+      name: "Multi Section Owner",
+      email: `multi-section-${Date.now()}@test.com`,
+    }).onConflictDoNothing();
+
+    const [pkg] = await testDb.insert(schema.testPackage).values({
+      title: "Multi Section Test",
+      examTypeId: "IELTS",
+      creatorUserId: ownerId,
+      isPublic: true,
+    }).returning();
+
+    const sections = await testDb.insert(schema.packageSection).values([
+      {
+        packageId: pkg.id,
+        sectionTypeId: "READING",
+        title: "Reading Part 1",
+        orderIndex: 0,
+      },
+      {
+        packageId: pkg.id,
+        sectionTypeId: "READING",
+        title: "Reading Part 2",
+        orderIndex: 1,
+      },
+    ]).returning();
+
+    const makeQuestion = (idx: number) => ({
+      examTypeId: "IELTS",
+      sectionTypeId: "READING",
+      format: "multiple_choice" as const,
+      passageText: `Passage ${idx} `.repeat(10),
+      questionText: `Question ${idx}?`,
+      options: [
+        { key: "A", text: "Option A" },
+        { key: "B", text: "Option B" },
+        { key: "C", text: "Option C" },
+        { key: "D", text: "Option D" },
+      ],
+      correctAnswer: "A",
+      explanation: "Because A is correct",
+      difficulty: 2,
+      skillTags: ["main_idea"],
+      creatorUserId: ownerId,
+      isPublic: true,
+    });
+
+    const sectionOneQuestions = await testDb.insert(schema.question).values(
+      Array.from({ length: 10 }, (_, idx) => makeQuestion(idx + 1)),
+    ).returning();
+    const sectionTwoQuestions = await testDb.insert(schema.question).values(
+      Array.from({ length: 10 }, (_, idx) => makeQuestion(idx + 11)),
+    ).returning();
+
+    await testDb.insert(schema.sectionQuestion).values([
+      ...sectionOneQuestions.map((q, orderIndex) => ({
+        sectionId: sections[0]!.id,
+        questionId: q.id,
+        orderIndex,
+      })),
+      ...sectionTwoQuestions.map((q, orderIndex) => ({
+        sectionId: sections[1]!.id,
+        questionId: q.id,
+        orderIndex,
+      })),
+    ]);
+
+    const { caller } = await createUserAndCaller("multisection");
+    const { attemptId } = await caller.start({ packageId: pkg.id });
+    await Bun.sleep(4500);
+
+    const result = await caller.finish({ attemptId });
+    expect(result.maxScore).toBe(20);
+    expect(typeof result.maxScore).toBe("number");
+  });
+
   it("finish rejects attempts under 5 seconds", async () => {
     const { caller } = await createUserAndCaller("fastfinish");
     const { attemptId } = await caller.start({ packageId });
