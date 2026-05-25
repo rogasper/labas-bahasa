@@ -24,6 +24,16 @@ export default defineConfig({
     },
   },
   plugins: [
+    {
+      name: "inject-umami",
+      transformIndexHtml(html) {
+        return html.replace(
+          "</head>",
+          '<script defer src="https://umami-analytic.rogasper.com/script.js" data-website-id="67a18412-12c8-44ef-9cd3-e04238d37e9a"></script></head>',
+        );
+      },
+      apply: "build",
+    },
     tailwindcss(),
     tanstackRouter({
       target: "react",
