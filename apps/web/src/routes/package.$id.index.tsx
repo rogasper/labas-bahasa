@@ -65,73 +65,111 @@ function PackageDetailComponent() {
   const totalQuestions = pkg.sections.reduce((sum, sec) => sum + sec.questions.length, 0);
 
   return (
-    <div className="min-h-screen pt-8 pb-32 px-6 md:px-12 lg:px-16 max-w-4xl mx-auto bg-[var(--warm-cream)]">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-[var(--warm-charcoal)] mb-6">
-        <Link to="/bank" className="hover:text-[var(--clay-black)] transition-colors">Bank Soal</Link>
-        <MaterialIcon name="chevron_right" className="text-xs" />
-        <span className="text-[var(--clay-black)] font-medium">Detail Paket</span>
-      </div>
-
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
-          <div>
-            <h1 className="text-3xl font-headline font-extrabold text-[var(--clay-black)] tracking-tight">
-              {pkg.title}
-            </h1>
-            {pkg.description && (
-              <p className="text-[var(--warm-charcoal)] mt-2">{pkg.description}</p>
-            )}
+    <div className="min-h-screen pb-32 bg-[var(--warm-cream)]">
+      {/* Sticky header */}
+      <div className="sticky top-0 z-20 bg-[var(--warm-cream)]/95 backdrop-blur-sm border-b border-[var(--oat-border)] shadow-sm">
+        <div className="px-6 md:px-12 lg:px-16 max-w-4xl mx-auto pt-4 pb-4">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 text-xs text-[var(--warm-charcoal)] mb-3">
+            <Link to="/bank" className="hover:text-[var(--clay-black)] transition-colors">Bank Soal</Link>
+            <MaterialIcon name="chevron_right" className="text-[10px]" />
+            <span className="text-[var(--clay-black)] font-medium truncate max-w-[240px]">{pkg.title}</span>
           </div>
-          <div className="flex gap-2">
-            <span className="px-3 py-1.5 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-sm font-semibold">
-              {pkg.examTypeName}
-            </span>
-            {pkg.isPublic ? (
-              <span className="px-3 py-1.5 rounded-full bg-[var(--slushie-500)]/20 text-[var(--slushie-800)] text-sm font-semibold">
-                Publik
-              </span>
-            ) : (
-              <span className="px-3 py-1.5 rounded-full bg-[var(--oat-light)] text-[var(--warm-charcoal)] text-sm font-semibold">
-                Privat
-              </span>
-            )}
-          </div>
-        </div>
 
-        <div className="flex flex-wrap gap-4 text-sm text-[var(--warm-charcoal)]">
-          <Link
-            to="/profile/$userId"
-            params={{ userId: pkg.creatorUserId }}
-            className="flex items-center gap-1 hover:text-[var(--clay-black)] transition-colors"
-          >
-            <MaterialIcon name="person" className="text-sm" />
-            {pkg.creatorName ?? "Anonim"}
-          </Link>
-          <span className="flex items-center gap-1">
-            <MaterialIcon name="quiz" className="text-sm" />
-            {totalQuestions} soal
-          </span>
-          <span className="flex items-center gap-1">
-            <MaterialIcon name="folder" className="text-sm" />
-            {pkg.totalSections} section
-          </span>
-          {pkg.estimatedDurationMin && (
+          {/* Title row + actions */}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="px-2.5 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-xs font-semibold">
+                  {pkg.examTypeName}
+                </span>
+                {pkg.isPublic ? (
+                  <span className="px-2.5 py-1 rounded-full bg-[var(--slushie-500)]/20 text-[var(--slushie-800)] text-xs font-semibold">
+                    Publik
+                  </span>
+                ) : (
+                  <span className="px-2.5 py-1 rounded-full bg-[var(--oat-light)] text-[var(--warm-charcoal)] text-xs font-semibold">
+                    Privat
+                  </span>
+                )}
+              </div>
+              <h1 className="text-2xl font-headline font-extrabold text-[var(--clay-black)] tracking-tight leading-tight">
+                {pkg.title}
+              </h1>
+              {pkg.description && (
+                <p className="text-sm text-[var(--warm-charcoal)] mt-1 line-clamp-1">{pkg.description}</p>
+              )}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 shrink-0">
+              <Link to="/package/$id/take" params={{ id }}>
+                <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)]">
+                  <MaterialIcon name="play_arrow" />
+                  <span className="ml-1.5">Mulai Latihan</span>
+                </Button>
+              </Link>
+              {pkg.isPublic && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    const url = `${window.location.origin}/package/${id}`;
+                    navigator.clipboard.writeText(url);
+                    toast.success("Link paket disalin ke clipboard!");
+                  }}
+                  className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
+                >
+                  <MaterialIcon name="share" />
+                  <span className="ml-1.5 hidden sm:inline">Bagikan</span>
+                </Button>
+              )}
+              {isOwner && (
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditOpen(true)}
+                  className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
+                >
+                  <MaterialIcon name="edit" />
+                  <span className="ml-1.5 hidden sm:inline">Edit Paket</span>
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex flex-wrap gap-4 text-xs text-[var(--warm-charcoal)] mt-3">
+            <Link
+              to="/profile/$userId"
+              params={{ userId: pkg.creatorUserId }}
+              className="flex items-center gap-1 hover:text-[var(--clay-black)] transition-colors"
+            >
+              <MaterialIcon name="person" className="text-xs" />
+              {pkg.creatorName ?? "Anonim"}
+            </Link>
             <span className="flex items-center gap-1">
-              <MaterialIcon name="timer" className="text-sm" />
-              {pkg.estimatedDurationMin} menit
+              <MaterialIcon name="quiz" className="text-xs" />
+              {totalQuestions} soal
             </span>
-          )}
-          <span className="flex items-center gap-1">
-            <MaterialIcon name="trending_up" className="text-sm" />
-            {pkg.usageCount}x digunakan
-          </span>
+            <span className="flex items-center gap-1">
+              <MaterialIcon name="folder" className="text-xs" />
+              {pkg.totalSections} section
+            </span>
+            {pkg.estimatedDurationMin && (
+              <span className="flex items-center gap-1">
+                <MaterialIcon name="timer" className="text-xs" />
+                {pkg.estimatedDurationMin} menit
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <MaterialIcon name="trending_up" className="text-xs" />
+              {pkg.usageCount}x digunakan
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Sections */}
-      <div className="space-y-6">
+      <div className="px-6 md:px-12 lg:px-16 max-w-4xl mx-auto pt-8 space-y-6">
         {pkg.sections.map((section) => (
           <Card key={section.id} className="clay-shadow bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)]">
             <CardContent className="p-6">
@@ -179,40 +217,6 @@ function PackageDetailComponent() {
             </CardContent>
           </Card>
         ))}
-      </div>
-
-      {/* Actions */}
-      <div className="flex gap-3 mt-8">
-        <Link to="/package/$id/take" params={{ id }}>
-          <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)]">
-            <MaterialIcon name="play_arrow" />
-            <span className="ml-2">Mulai Latihan</span>
-          </Button>
-        </Link>
-        {pkg.isPublic && (
-          <Button
-            variant="outline"
-            onClick={() => {
-              const url = `${window.location.origin}/package/${id}`;
-              navigator.clipboard.writeText(url);
-              toast.success("Link paket disalin ke clipboard!");
-            }}
-            className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
-          >
-            <MaterialIcon name="share" />
-            <span className="ml-2">Bagikan</span>
-          </Button>
-        )}
-        {isOwner && (
-          <Button
-            variant="outline"
-            onClick={() => setIsEditOpen(true)}
-            className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
-          >
-            <MaterialIcon name="edit" />
-            <span className="ml-2">Edit Paket</span>
-          </Button>
-        )}
       </div>
 
       {isEditOpen && pkg && (

@@ -14,6 +14,7 @@
   <a href="#features">Features</a> ·
   <a href="#supported-exams">Exams</a> ·
   <a href="#project-structure">Structure</a> ·
+  <a href="#support">Support</a> ·
   <a href="#license">License</a>
 </p>
 
@@ -276,6 +277,13 @@ Contributions are welcome! Before opening a PR:
 3. Keep changes focused and match existing code style.
 
 For AI-related changes, see the **AI Generation Context** section in `AGENTS.md` — adding a new question format touches schemas, prompts, attempt normalization, and frontend constants.
+
+## Support
+
+If you find Labas helpful and want to support its ongoing development, consider buying the creator a coffee! Your support helps cover API and hosting costs. ☕
+
+- **[Saweria](https://saweria.co/rogasper)** (Indonesian supporters)
+- **[Ko-fi](https://ko-fi.com/rogasper)** (International)
 
 ## License
 

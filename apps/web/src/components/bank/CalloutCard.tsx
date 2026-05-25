@@ -3,11 +3,12 @@ import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
 interface CalloutCardProps {
   privateCount: number;
+  label?: string;
   onPublishAll: () => void;
   onDismiss: () => void;
 }
 
-export function CalloutCard({ privateCount, onPublishAll, onDismiss }: CalloutCardProps) {
+export function CalloutCard({ privateCount, label = "soal", onPublishAll, onDismiss }: CalloutCardProps) {
   if (privateCount <= 0) return null;
 
   return (
@@ -20,7 +21,7 @@ export function CalloutCard({ privateCount, onPublishAll, onDismiss }: CalloutCa
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-[var(--clay-black)]">
-            Kamu punya <span className="text-[var(--slushie-800)]">{privateCount} soal privat</span>
+            Kamu punya <span className="text-[var(--slushie-800)]">{privateCount} {label} privat</span>
           </p>
           <p className="text-xs text-[var(--warm-charcoal)] mt-1 leading-relaxed">
             Soal privat hanya bisa kamu lihat. Jadikan publik agar soal bisa muncul di daftar paket soal dan diakses pengguna lain.

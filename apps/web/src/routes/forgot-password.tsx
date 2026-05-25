@@ -8,8 +8,10 @@ import { Label } from "@labas/ui/components/label";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error-utils";
 import { trpc } from "@/utils/trpc";
+import { routeShell } from "@/lib/route-shell";
 
 export const Route = createFileRoute("/forgot-password")({
+  staticData: routeShell.public,
   component: RouteComponent,
 });
 

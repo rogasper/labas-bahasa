@@ -25,7 +25,7 @@ export function ErrorFallback({ error, reset }: { error: Error; reset?: () => vo
             </Button>
           )}
           <Button
-            onClick={() => window.location.href = "/"}
+            onClick={() => { window.location.href = "/dashboard"; }}
             className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] rounded-[var(--radius-lg)]"
           >
             Ke Dashboard

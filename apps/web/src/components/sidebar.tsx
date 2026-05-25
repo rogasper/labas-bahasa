@@ -19,7 +19,7 @@ interface NavGroup {
 
 const navGroups: NavGroup[] = [
   {
-    items: [{ to: "/", label: "Dashboard", icon: "dashboard" }],
+    items: [{ to: "/dashboard", label: "Dashboard", icon: "dashboard" }],
   },
   {
     label: "Generate",
@@ -54,7 +54,7 @@ const bottomItems: NavItem[] = [
 ];
 
 const mobileNavItems: NavItem[] = [
-  { to: "/", label: "Dashboard", icon: "dashboard" },
+  { to: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { to: "/generate", label: "AI Lab", icon: "auto_awesome" },
   { to: "/jobs", label: "Jobs", icon: "schedule" },
   { to: "/bank", label: "Buat", icon: "database" },
@@ -66,7 +66,7 @@ function NavIcon({ name }: { name: string }) {
 }
 
 function NavLink({ item, isActive, collapsed }: { item: NavItem; isActive: boolean; collapsed: boolean }) {
-  const tourAttr = item.to !== "/" ? { "data-tour": `nav-${item.to.replace("/", "")}` } : {};
+  const tourAttr = item.to !== "/dashboard" ? { "data-tour": `nav-${item.to.replace("/", "")}` } : {};
   return (
     <Link
       to={item.to}
@@ -99,7 +99,7 @@ export function Sidebar() {
 
   async function handleSignOut() {
     await authClient.signOut();
-    navigate({ to: "/landing" });
+    navigate({ to: "/" });
   }
 
   return (

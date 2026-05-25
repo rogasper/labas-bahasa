@@ -117,15 +117,31 @@ export function QuestionCard({
             <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
               <button
                 onClick={onTogglePublic}
-                title={q.isPublic ? "Klik untuk jadikan privat" : "Klik untuk jadikan publik"}
-                className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors cursor-pointer flex items-center gap-1 ${
+                aria-label={q.isPublic ? "Jadikan privat" : "Jadikan publik"}
+                className={`group text-xs font-semibold px-3 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1 ${
                   q.isPublic
-                    ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
-                    : "bg-[var(--slushie-500)]/15 text-[var(--slushie-800)]"
+                    ? "bg-[var(--matcha-300)] text-[var(--matcha-800)] hover:bg-[var(--pomegranate-400)]/15 hover:text-[var(--pomegranate-600)]"
+                    : "bg-[var(--slushie-500)]/15 text-[var(--slushie-800)] hover:bg-[var(--matcha-300)] hover:text-[var(--matcha-800)]"
                 }`}
               >
-                {!q.isPublic && <MaterialIcon name="lock" className="text-xs" />}
-                {q.isPublic ? "Publik" : "Privat"}
+                {/* Default state icon */}
+                <MaterialIcon
+                  name={q.isPublic ? "public" : "lock"}
+                  className="text-xs group-hover:hidden"
+                />
+                {/* Hover state icon (shows intent) */}
+                <MaterialIcon
+                  name={q.isPublic ? "lock" : "public"}
+                  className="text-xs hidden group-hover:inline"
+                />
+                {/* Default label */}
+                <span className="group-hover:hidden">
+                  {q.isPublic ? "Publik" : "Privat"}
+                </span>
+                {/* Hover label (shows what will happen) */}
+                <span className="hidden group-hover:inline">
+                  {q.isPublic ? "Jadikan Privat" : "Jadikan Publik"}
+                </span>
               </button>
               <button
                 onClick={onDelete}

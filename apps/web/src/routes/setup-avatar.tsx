@@ -19,12 +19,14 @@ import {
   HAIR_COLORS,
   type DiceBearLoreleiOptions,
 } from "@/lib/avatar-url";
+import { routeShell } from "@/lib/route-shell";
 
 function generateRandomSeeds(count: number): string[] {
   return Array.from({ length: count }, () => randomSeed());
 }
 
 export const Route = createFileRoute("/setup-avatar")({
+  staticData: routeShell.public,
   component: SetupAvatarComponent,
   validateSearch: (
     search: Record<string, unknown>,
@@ -38,7 +40,7 @@ export const Route = createFileRoute("/setup-avatar")({
       throw redirect({ to: "/login" });
     }
     if (!search.redirectTo && session.data.user.image) {
-      throw redirect({ to: "/" });
+      throw redirect({ to: "/dashboard" });
     }
     return { session };
   },
@@ -86,7 +88,7 @@ function SetupAvatarComponent() {
 
   const handleSave = useCallback(async () => {
     await updateMutation.mutateAsync({ image: avatarUrl });
-    navigate({ to: redirectTo || "/" });
+    navigate({ to: redirectTo || "/dashboard" });
   }, [avatarUrl, updateMutation, navigate, redirectTo]);
 
   const quickPickUrls = useMemo(

@@ -73,7 +73,7 @@ function LeaderboardPage() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-2 text-sm text-[var(--warm-charcoal)] mb-4">
-          <Link to="/" className="hover:text-[var(--clay-black)] transition-colors">
+          <Link to="/dashboard" className="hover:text-[var(--clay-black)] transition-colors">
             Beranda
           </Link>
           <MaterialIcon name="chevron_right" className="text-xs" />

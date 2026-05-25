@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { routeShell } from "@/lib/route-shell";
 
 export const Route = createFileRoute("/admin")({
+  staticData: routeShell.fullscreen,
   component: AdminLayout,
   beforeLoad: async () => {
     const session = await authClient.getSession();
@@ -45,7 +47,7 @@ function AdminLayout() {
         <MaterialIcon name="gpp_bad" className="text-6xl text-[var(--clay-red)]" />
         <h1 className="text-2xl font-headline font-bold text-[var(--clay-black)]">Access Denied</h1>
         <p className="text-[var(--warm-charcoal)]">Only admins can access this page.</p>
-        <Link to="/" className="text-[var(--matcha-700)] underline">Back to Dashboard</Link>
+        <Link to="/dashboard" className="text-[var(--matcha-700)] underline">Back to Dashboard</Link>
       </div>
     );
   }
@@ -55,7 +57,7 @@ function AdminLayout() {
       <div className="flex">
         <aside className="w-56 shrink-0 min-h-screen border-r border-[var(--oat-border)] bg-[var(--pure-white)] px-4 py-6 flex flex-col">
           <div className="mb-6 px-2">
-            <Link to="/" className="flex items-center gap-2">
+            <Link to="/dashboard" className="flex items-center gap-2">
               <span className="material-symbols-outlined text-[var(--clay-black)]">arrow_back</span>
               <span className="text-sm text-[var(--warm-charcoal)]">Back to App</span>
             </Link>

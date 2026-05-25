@@ -92,6 +92,7 @@ export function useGenerationJobs() {
 
     if (status === "completed_partial" && data.resultJson) {
       setResult(baseResult);
+      localStorage.setItem("pendingDonationPrompt", "generate");
       if (data.errorMessage) {
         setError(data.errorMessage as string);
       }
@@ -99,6 +100,7 @@ export function useGenerationJobs() {
 
     if (status === "completed" && data.resultJson) {
       setResult(baseResult);
+      localStorage.setItem("pendingDonationPrompt", "generate");
     }
 
     if (status === "failed") {

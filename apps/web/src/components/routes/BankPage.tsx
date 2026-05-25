@@ -89,6 +89,14 @@ export function BankComponent() {
     ? { isPublic: visibilityFilter === "public" }
     : {};
 
+  const privateCountQuery = useQuery(
+    trpc.question.list.queryOptions(
+      { creatorUserId: userId ?? "", isPublic: false, limit: 1 },
+      { enabled: !!userId && mode === "soal" },
+    ),
+  );
+  const totalPrivateCount = privateCountQuery.data?.total ?? 0;
+
   const questionQuery = useQuery(
     trpc.question.list.queryOptions(
       {
@@ -163,7 +171,14 @@ export function BankComponent() {
   const bulkPublish = useMutation(
     trpc.question.bulkPublish.mutationOptions({
       onSuccess: (data) => {
-        questionQuery.refetch();
+        // Reset accumulated infinite-scroll state so refetch shows fresh data
+        setAllQuestions([]);
+        if (offset !== 0) {
+          setOffset(0);
+        } else {
+          questionQuery.refetch();
+        }
+        privateCountQuery.refetch();
         if (data.skipped > 0) {
           toast.success(
             `${data.updated} soal dipublikasikan, ${data.skipped} dilewati`,
@@ -178,6 +193,20 @@ export function BankComponent() {
       },
     }),
   );
+
+  const handlePublishAllPrivate = async () => {
+    if (!userId || totalPrivateCount === 0) return;
+    const allPrivate = await queryClient.fetchQuery(
+      trpc.question.list.queryOptions({
+        creatorUserId: userId,
+        isPublic: false,
+        limit: totalPrivateCount,
+        offset: 0,
+      }),
+    );
+    const ids = (allPrivate.questions ?? []).map((q) => q.id);
+    if (ids.length > 0) bulkPublish.mutate({ ids });
+  };
 
   // ── Navigation helpers ──
   const setMode = (newMode: Mode) => {
@@ -480,7 +509,8 @@ export function BankComponent() {
                 }}
                 onClearFilters={clearFilters}
                 onBulkPublish={(ids) => bulkPublish.mutate({ ids })}
-                onPublishAllPrivate={(ids) => bulkPublish.mutate({ ids })}
+                onPublishAllPrivate={handlePublishAllPrivate}
+                totalPrivateCount={totalPrivateCount}
               />
             ) : (
               <SectionBrowser

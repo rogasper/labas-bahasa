@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { authClient } from "@/lib/auth-client";
-import { trpc } from "@/utils/trpc";
+import { trpc, queryClient } from "@/utils/trpc";
 import { Input } from "@labas/ui/components/input";
 import { Button } from "@labas/ui/components/button";
-import { Card, CardContent } from "@labas/ui/components/card";
+import { Card } from "@labas/ui/components/card";
 import {
   Tabs,
   TabsList,
@@ -23,6 +23,7 @@ import {
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { GettingStartedCard } from "@/components/GettingStartedCard";
 import { CalloutCard } from "@/components/bank/CalloutCard";
+import { PackageCard } from "@/components/packages/PackageCard";
 import { PageTour, TourHelpButton } from "@/components/TourGuide";
 import type { Step } from "react-joyride";
 import { toast } from "sonner";
@@ -49,7 +50,6 @@ export const Route = createFileRoute("/packages")({
 type Tab = "all" | "mine";
 
 export function PackagesComponent() {
-  const routerNavigate = useNavigate();
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const { data: session } = authClient.useSession();
@@ -92,6 +92,14 @@ export function PackagesComponent() {
     ),
   );
 
+  const privateCountQuery = useQuery(
+    trpc.package.myPackages.queryOptions(
+      { isPublic: false, limit: 1 },
+      { enabled: !!userId && tab === "mine" },
+    ),
+  );
+  const totalPrivateCount = privateCountQuery.data?.total ?? 0;
+
   const query = tab === "all" ? allQuery : mineQuery;
   const packages = query.data?.packages ?? [];
   const total = query.data?.total ?? 0;
@@ -113,6 +121,7 @@ export function PackagesComponent() {
     trpc.package.bulkPublish.mutationOptions({
       onSuccess: (data) => {
         query.refetch();
+        privateCountQuery.refetch();
         setBulkMode(false);
         setSelectedIds(new Set());
         if (data.skipped > 0) {
@@ -159,17 +168,22 @@ export function PackagesComponent() {
   const [calloutDismissed, setCalloutDismissed] = useState(
     typeof window !== "undefined" && localStorage.getItem("labas-packages-private-callout-dismissed") === "true",
   );
-  const privatePackages = packages.filter(
-    (p) => !p.isPublic && p.creatorUserId === userId,
-  );
 
   const handleDismissCallout = () => {
     localStorage.setItem("labas-packages-private-callout-dismissed", "true");
     setCalloutDismissed(true);
   };
 
-  const handlePublishAllPrivate = () => {
-    const ids = privatePackages.map((p) => p.id);
+  const handlePublishAllPrivate = async () => {
+    if (!userId || totalPrivateCount === 0) return;
+    const allPrivate = await queryClient.fetchQuery(
+      trpc.package.myPackages.queryOptions({
+        isPublic: false,
+        limit: totalPrivateCount,
+        offset: 0,
+      }),
+    );
+    const ids = (allPrivate.packages ?? []).map((p) => p.id);
     if (ids.length > 0) bulkPublish.mutate({ ids });
   };
 
@@ -317,25 +331,23 @@ export function PackagesComponent() {
               </div>
             </>
           ) : (
-            <>
-              <span className="text-sm text-[var(--warm-charcoal)]">{packages.length} paket</span>
-              <button
-                onClick={() => setBulkMode(true)}
-                className="text-xs font-semibold text-[var(--matcha-600)] hover:text-[var(--matcha-800)] transition-colors flex items-center gap-1"
-              >
-                <MaterialIcon name="select_all" className="text-sm" />
-                Pilih Banyak
-              </button>
-            </>
+            <button
+              onClick={() => setBulkMode(true)}
+              className="text-xs font-semibold text-[var(--matcha-600)] hover:text-[var(--matcha-800)] transition-colors flex items-center gap-1 ml-auto"
+            >
+              <MaterialIcon name="select_all" className="text-sm" />
+              Pilih Banyak
+            </button>
           )}
         </div>
       )}
 
       {/* Private package callout */}
-      {tab === "mine" && privatePackages.length > 0 && !calloutDismissed && (
+      {tab === "mine" && totalPrivateCount > 0 && !calloutDismissed && (
         <div className="mb-6">
           <CalloutCard
-            privateCount={privatePackages.length}
+            privateCount={totalPrivateCount}
+            label="paket"
             onPublishAll={handlePublishAllPrivate}
             onDismiss={handleDismissCallout}
           />
@@ -378,144 +390,17 @@ export function PackagesComponent() {
           <div data-tour="packages-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {packages.map((pkg) => {
               const isOwner = pkg.creatorUserId === userId;
-              const isSelected = selectedIds.has(pkg.id);
               return (
-                <Card
+                <PackageCard
                   key={pkg.id}
-                  className={`clay-shadow clay-hover bg-[var(--pure-white)] border-2 rounded-[var(--radius-xl)] h-full flex flex-col ${
-                    bulkMode && isSelected
-                      ? "border-[var(--matcha-600)] ring-2 ring-[var(--matcha-400)]"
-                      : isOwner && !pkg.isPublic && !bulkMode
-                        ? "border-[var(--oat-border)] border-l-[var(--warm-charcoal)] border-l-4"
-                        : "border-[var(--oat-border)]"
-                  }`}
-                >
-                  <CardContent className="p-5 flex flex-col h-full">
-                    <div
-                      className="block flex-1 cursor-pointer"
-                      onClick={bulkMode ? () => toggleSelect(pkg.id) : undefined}
-                    >
-                      <Link
-                        to="/package/$id"
-                        params={{ id: pkg.id }}
-                        className={bulkMode ? "pointer-events-none" : ""}
-                      >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex gap-2 flex-wrap">
-                          {bulkMode && (
-                            <span className={`px-2 py-1 rounded-full text-[10px] font-semibold flex items-center gap-1 ${
-                              isSelected
-                                ? "bg-[var(--matcha-600)] text-[var(--pure-white)]"
-                                : "bg-[var(--oat-light)] text-[var(--warm-charcoal)]"
-                            }`}>
-                              <MaterialIcon name={isSelected ? "check_circle" : "radio_button_unchecked"} className="text-xs" />
-                              {isSelected ? "Terpilih" : "Pilih"}
-                            </span>
-                          )}
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[var(--matcha-300)] text-[var(--matcha-800)] text-xs font-semibold leading-none whitespace-nowrap">
-                            {pkg.examTypeName}
-                          </span>
-                          {isOwner && !bulkMode && (
-                            <span
-                              className={`px-2 py-1 rounded-full text-[10px] font-semibold flex items-center gap-1 ${
-                                pkg.isPublic
-                                  ? "bg-[var(--slushie-500)]/20 text-[var(--slushie-800)]"
-                                  : "bg-[var(--slushie-500)]/15 text-[var(--slushie-800)]"
-                              }`}
-                            >
-                              {!pkg.isPublic && <MaterialIcon name="lock" className="text-[10px]" />}
-                              {pkg.isPublic ? "Publik" : "Privat"}
-                            </span>
-                          )}
-                        </div>
-                        {pkg.avgRating && (
-                          <div className="flex items-center gap-1 text-[var(--lemon-700)]">
-                            <MaterialIcon name="star" className="text-sm" />
-                            <span className="text-xs font-bold">{pkg.avgRating}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <h3 className="font-headline text-lg font-bold text-[var(--clay-black)] mb-2 line-clamp-2">
-                        {pkg.title}
-                      </h3>
-
-                      {pkg.description && (
-                        <p className="text-sm text-[var(--warm-charcoal)] line-clamp-2 mb-4">
-                          {pkg.description}
-                        </p>
-                      )}
-                      </Link>
-
-                      <div className="flex items-center justify-between mt-auto pt-3 border-t border-[var(--oat-border)]">
-                        <div className="flex gap-3 text-xs text-[var(--warm-charcoal)]">
-                          <span className="flex items-center gap-1">
-                            <MaterialIcon name="quiz" className="text-xs" />
-                            {pkg.totalQuestions}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MaterialIcon name="folder" className="text-xs" />
-                            {pkg.totalSections}
-                          </span>
-                          {pkg.estimatedDurationMin && (
-                            <span className="flex items-center gap-1">
-                              <MaterialIcon name="timer" className="text-xs" />
-                              {pkg.estimatedDurationMin}m
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-[var(--warm-silver)]">
-                          {pkg.usageCount}x digunakan
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Owner actions */}
-                    {isOwner && !bulkMode && (
-                      <div className="mt-3 pt-3 border-t border-[var(--oat-border)] flex items-center justify-between">
-                        <button
-                          onClick={() => togglePublic(pkg.id, pkg.isPublic)}
-                          disabled={updateMutation.isPending}
-                          title={pkg.isPublic ? "Klik untuk jadikan privat" : "Klik untuk jadikan publik"}
-                          className={`text-xs font-semibold px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 cursor-pointer ${
-                            pkg.isPublic
-                              ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
-                              : "bg-[var(--slushie-500)]/15 text-[var(--slushie-800)]"
-                          }`}
-                        >
-                          {!pkg.isPublic && <MaterialIcon name="lock" className="text-xs" />}
-                          {pkg.isPublic ? "Publik" : "Privat"}
-                        </button>
-                        {pkg.isPublic && (
-                          <button
-                            onClick={() => {
-                              const url = `${window.location.origin}/package/${pkg.id}`;
-                            navigator.clipboard.writeText(url);
-                            toast.success("Link paket disalin!");
-                            }}
-                            className="text-xs text-[var(--matcha-600)] hover:bg-[var(--matcha-300)]/20 px-3 py-1.5 rounded-full transition-colors flex items-center gap-1"
-                          >
-                            <MaterialIcon name="share" className="text-xs" />
-                            Bagikan
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {!bulkMode && (
-                      <div className="mt-3 pt-3 border-t border-[var(--oat-border)]">
-                        <Button
-                          className="w-full bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-800)] clay-hover rounded-[var(--radius-lg)]"
-                          onClick={() => routerNavigate({ to: '/package/$id/take', params: { id: pkg.id } })}
-                          size="xl"
-                        >
-                          <MaterialIcon name="play_arrow" className="mr-2" />
-                          Mulai Latihan
-                        </Button>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                  pkg={pkg}
+                  isOwner={isOwner}
+                  bulkMode={bulkMode}
+                  isSelected={selectedIds.has(pkg.id)}
+                  isTogglePending={updateMutation.isPending}
+                  onToggleSelect={() => toggleSelect(pkg.id)}
+                  onTogglePublic={() => togglePublic(pkg.id, pkg.isPublic)}
+                />
               );
             })}
           </div>

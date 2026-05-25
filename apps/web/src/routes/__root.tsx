@@ -9,6 +9,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { GlobalGenerationProgress } from "@/components/generate/GlobalGenerationProgress";
 import { ErrorFallback } from "@/components/ErrorFallback";
+import type { RouteShell } from "@/lib/route-shell";
 import type { trpc } from "@/utils/trpc";
 
 function SkipLink() {
@@ -27,6 +28,14 @@ import "../index.css";
 export interface RouterAppContext {
   trpc: typeof trpc;
   queryClient: QueryClient;
+}
+
+function resolveShell(matches: { staticData?: unknown }[]): RouteShell {
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const shell = (matches[i]?.staticData as { shell?: RouteShell } | undefined)?.shell;
+    if (shell) return shell;
+  }
+  return "app";
 }
 
 export const Route = createRootRouteWithContext<RouterAppContext>()({
@@ -82,18 +91,7 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
 
 function RootComponent() {
   const { collapsed } = useSidebar();
-  const matches = useRouterState({ select: (s) => s.matches });
-  const isFullScreen = matches.some(
-    (m) =>
-      m.routeId === "/package/$id/take" ||
-      m.routeId === "/package/$id/attempt/$attemptId" ||
-      m.routeId === "/login" ||
-      m.routeId === "/setup-avatar" ||
-      m.routeId === "/verify-email" ||
-      m.routeId === "/forgot-password" ||
-      m.routeId.startsWith("/admin"),
-  );
-  const isLanding = matches.some((m) => m.routeId === "/landing");
+  const shell = useRouterState({ select: (s) => resolveShell(s.matches) });
 
   return (
     <>
@@ -105,11 +103,11 @@ function RootComponent() {
         disableTransitionOnChange
         storageKey="labas-theme"
       >
-        {isFullScreen ? (
+        {shell === "fullscreen" ? (
           <div className="h-screen bg-background text-on-surface flex flex-col overflow-y-auto relative">
             <Outlet />
           </div>
-        ) : isLanding ? (
+        ) : shell === "public" ? (
           <div className="min-h-screen bg-background text-on-surface relative">
             <Outlet />
           </div>

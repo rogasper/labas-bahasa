@@ -8,8 +8,10 @@ import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { AttemptTestView } from "@/components/test/AttemptTestView";
+import { routeShell } from "@/lib/route-shell";
 
 export const Route = createFileRoute("/package/$id/take")({
+  staticData: routeShell.fullscreen,
   component: TakeTestComponent,
   beforeLoad: async () => {
     const session = await authClient.getSession();

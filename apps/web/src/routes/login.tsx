@@ -3,8 +3,10 @@ import { useState } from "react";
 
 import SignInForm from "@/components/sign-in-form";
 import SignUpForm from "@/components/sign-up-form";
+import { routeShell } from "@/lib/route-shell";
 
 export const Route = createFileRoute("/login")({
+  staticData: routeShell.public,
   component: RouteComponent,
 });
 

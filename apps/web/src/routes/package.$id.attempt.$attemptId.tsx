@@ -6,8 +6,10 @@ import { useTestSession } from "@/hooks/use-test-session";
 import { Button } from "@labas/ui/components/button";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { AttemptTestView } from "@/components/test/AttemptTestView";
+import { routeShell } from "@/lib/route-shell";
 
 export const Route = createFileRoute("/package/$id/attempt/$attemptId")({
+  staticData: routeShell.fullscreen,
   component: ContinueAttemptComponent,
   beforeLoad: async () => {
     const session = await authClient.getSession();

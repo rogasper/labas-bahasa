@@ -24,7 +24,8 @@ interface SoalBrowserProps {
   onLoadMore: () => void;
   onClearFilters: () => void;
   onBulkPublish?: (ids: string[]) => void;
-  onPublishAllPrivate?: (ids: string[]) => void;
+  onPublishAllPrivate?: () => void;
+  totalPrivateCount?: number;
 }
 
 export function SoalBrowser({
@@ -46,6 +47,7 @@ export function SoalBrowser({
   onClearFilters,
   onBulkPublish,
   onPublishAllPrivate,
+  totalPrivateCount,
 }: SoalBrowserProps) {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const isLocked = (q: Question) => !!lockedExamType && q.examTypeId !== lockedExamType;
@@ -64,19 +66,16 @@ export function SoalBrowser({
     ? localStorage.getItem("labas-bank-private-callout-dismissed") === "true"
     : false;
 
-  const privateQuestions = questions.filter(
-    (q) => !q.isPublic && q.creatorUserId === userId,
-  );
+  const privateCount = totalPrivateCount ?? 0;
 
   const handleDismissCallout = () => {
     localStorage.setItem("labas-bank-private-callout-dismissed", "true");
-    // Force re-render by toggling a state
     setBulkMode((prev) => prev);
   };
 
   const handlePublishAllPrivate = () => {
-    if (onPublishAllPrivate && privateQuestions.length > 0) {
-      onPublishAllPrivate(privateQuestions.map((q) => q.id));
+    if (onPublishAllPrivate && privateCount > 0) {
+      onPublishAllPrivate();
     }
   };
 
@@ -148,74 +147,69 @@ export function SoalBrowser({
   // ── Bulk mode toolbar ──
   const renderBulkToolbar = () => {
     if (!onBulkPublish || tab !== "mine") return null;
+    if (!bulkMode) {
+      return (
+        <button
+          onClick={() => setBulkMode(true)}
+          className="text-xs font-semibold text-[var(--matcha-600)] hover:text-[var(--matcha-800)] transition-colors cursor-pointer flex items-center gap-1 mb-2"
+        >
+          <MaterialIcon name="select_all" className="text-sm" />
+          Pilih Banyak
+        </button>
+      );
+    }
     return (
       <div className="flex items-center justify-between mb-4 p-3 rounded-[var(--radius-lg)] bg-[var(--oat-light)] border-2 border-[var(--oat-border)]">
-        {bulkMode ? (
-          <>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={clearSelection}
-                className="text-xs font-semibold text-[var(--warm-charcoal)] hover:text-[var(--clay-black)] transition-colors cursor-pointer"
-              >
-                Batalkan ({selectedIds.size})
-              </button>
-              <button
-                onClick={selectAll}
-                className="text-xs font-semibold text-[var(--matcha-600)] hover:text-[var(--matcha-800)] transition-colors cursor-pointer"
-              >
-                Pilih Semua
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                disabled={selectedIds.size === 0}
-                onClick={handleBulkPublish}
-                className="rounded-[var(--radius-lg)] bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] text-xs cursor-pointer"
-              >
-                <MaterialIcon name="public" className="text-xs mr-1" />
-                Jadikan Publik ({selectedIds.size})
-              </Button>
-              <button
-                onClick={() => { setBulkMode(false); setSelectedIds(new Set()); }}
-                className="text-xs text-[var(--warm-charcoal)] hover:text-[var(--clay-black)] transition-colors cursor-pointer font-semibold ml-2"
-              >
-                Selesai
-              </button>
-            </div>
-          </>
-        ) : (
-          <>
-            <span className="text-xs font-semibold text-[var(--warm-charcoal)]">
-              {questions.length} soal
-            </span>
-            <button
-              onClick={() => setBulkMode(true)}
-              className="text-xs font-semibold text-[var(--matcha-600)] hover:text-[var(--matcha-800)] transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <MaterialIcon name="select_all" className="text-sm" />
-              Pilih Banyak
-            </button>
-          </>
-        )}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={clearSelection}
+            className="text-xs font-semibold text-[var(--warm-charcoal)] hover:text-[var(--clay-black)] transition-colors cursor-pointer"
+          >
+            Batalkan ({selectedIds.size})
+          </button>
+          <button
+            onClick={selectAll}
+            className="text-xs font-semibold text-[var(--matcha-600)] hover:text-[var(--matcha-800)] transition-colors cursor-pointer"
+          >
+            Pilih Semua
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            disabled={selectedIds.size === 0}
+            onClick={handleBulkPublish}
+            className="rounded-[var(--radius-lg)] bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] text-xs cursor-pointer"
+          >
+            <MaterialIcon name="public" className="text-xs mr-1" />
+            Jadikan Publik ({selectedIds.size})
+          </Button>
+          <button
+            onClick={() => { setBulkMode(false); setSelectedIds(new Set()); }}
+            className="text-xs text-[var(--warm-charcoal)] hover:text-[var(--clay-black)] transition-colors cursor-pointer font-semibold ml-2"
+          >
+            Selesai
+          </button>
+        </div>
       </div>
     );
   };
 
   return (
     <>
+      {(onBulkPublish && tab === "mine") || (tab === "mine" && privateCount > 0 && !calloutDismissed) ? (
+        <div className="flex flex-col gap-3 mb-2">
+          {renderBulkToolbar()}
+          {tab === "mine" && privateCount > 0 && !calloutDismissed && (
+            <CalloutCard
+              privateCount={privateCount}
+              onPublishAll={handlePublishAllPrivate}
+              onDismiss={handleDismissCallout}
+            />
+          )}
+        </div>
+      ) : null}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {renderBulkToolbar()}
-        <div className="md:col-span-2" />
-
-        {tab === "mine" && privateQuestions.length > 0 && !calloutDismissed && (
-          <CalloutCard
-            privateCount={privateQuestions.length}
-            onPublishAll={handlePublishAllPrivate}
-            onDismiss={handleDismissCallout}
-          />
-        )}
-
         {questions[0] && (
           <div className="md:col-span-2">
             <QuestionCard

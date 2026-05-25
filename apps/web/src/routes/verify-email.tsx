@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error-utils";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
+import { routeShell } from "@/lib/route-shell";
 import { z } from "zod";
 
 const searchSchema = z.object({
@@ -15,6 +16,7 @@ const searchSchema = z.object({
 });
 
 export const Route = createFileRoute("/verify-email")({
+  staticData: routeShell.public,
   component: RouteComponent,
   validateSearch: searchSchema,
   beforeLoad: async ({ search }) => {
@@ -102,7 +104,7 @@ function RouteComponent() {
       toast.success("Email berhasil diverifikasi!");
       const session = await authClient.getSession();
       if (session.data) {
-        navigate({ to: "/" });
+        navigate({ to: "/dashboard" });
       } else {
         navigate({ to: "/login" });
       }
