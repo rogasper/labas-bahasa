@@ -1,7 +1,14 @@
 export const SITE_URL = "https://labas.rogasper.com";
+export const SITE_NAME = "Labas";
 
-export const OG_IMAGE_PATH = "/og_image.png";
+/** Match rogasper.com: separate OG (PNG) + Twitter (JPEG) assets for crawler compatibility. */
+export const OG_IMAGE_PATH = "/opengraph-image.png";
+export const TWITTER_IMAGE_PATH = "/twitter-image.jpg";
+/** @deprecated Use OG_IMAGE_PATH — kept for old links */
+export const LEGACY_OG_IMAGE_PATH = "/og_image.png";
+
 export const OG_IMAGE_URL = `${SITE_URL}${OG_IMAGE_PATH}`;
+export const TWITTER_IMAGE_URL = `${SITE_URL}${TWITTER_IMAGE_PATH}`;
 export const OG_IMAGE_WIDTH = 1200;
 export const OG_IMAGE_HEIGHT = 630;
 export const OG_IMAGE_ALT =
@@ -28,6 +35,8 @@ export function buildSocialMeta(input: SiteHeadInput = {}) {
     { property: "og:title", content: title },
     { property: "og:description", content: description },
     { property: "og:url", content: url },
+    { property: "og:site_name", content: SITE_NAME },
+    { property: "og:locale", content: "id_ID" },
     { property: "og:type", content: "website" },
     { property: "og:image", content: OG_IMAGE_URL },
     { property: "og:image:secure_url", content: OG_IMAGE_URL },
@@ -38,7 +47,10 @@ export function buildSocialMeta(input: SiteHeadInput = {}) {
     { name: "twitter:card", content: "summary_large_image" },
     { name: "twitter:title", content: title },
     { name: "twitter:description", content: description },
-    { name: "twitter:image", content: OG_IMAGE_URL },
+    { name: "twitter:image", content: TWITTER_IMAGE_URL },
     { name: "twitter:image:alt", content: OG_IMAGE_ALT },
+    { name: "twitter:image:type", content: "image/jpeg" },
+    { name: "twitter:image:width", content: String(OG_IMAGE_WIDTH) },
+    { name: "twitter:image:height", content: String(OG_IMAGE_HEIGHT) },
   ];
 }
