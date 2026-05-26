@@ -10,8 +10,8 @@ import type { GenerationResult } from "@labas/ai";
 export type { ActiveJob, CompletedResult } from "./use-job-shared";
 
 export function useGenerationJobs() {
-  const { data: session } = authClient.useSession();
-  const isAuthenticated = !!session;
+  const { data: session, isPending: isSessionPending } = authClient.useSession();
+  const isAuthenticated = Boolean(session?.user?.id) && !isSessionPending;
 
   const {
     jobIds,

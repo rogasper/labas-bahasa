@@ -10,6 +10,12 @@ import { useSidebar } from "@/hooks/use-sidebar";
 import { GlobalGenerationProgress } from "@/components/generate/GlobalGenerationProgress";
 import { ErrorFallback } from "@/components/ErrorFallback";
 import type { RouteShell } from "@/lib/route-shell";
+import {
+  buildSocialMeta,
+  DEFAULT_SITE_DESCRIPTION,
+  DEFAULT_SITE_TITLE,
+  SITE_URL,
+} from "@/lib/site-seo";
 import type { trpc } from "@/utils/trpc";
 
 function SkipLink() {
@@ -42,25 +48,16 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
   component: RootComponent,
   errorComponent: ({ error, reset }) => <ErrorFallback error={error} reset={reset} />,
   head: () => {
-    const siteUrl = "https://labas.rogasper.com";
     return {
       meta: [
-        { title: "Labas — AI Exam Practice" },
-        { name: "description", content: "AI-powered multi-language test practice platform" },
-        { property: "og:title", content: "Labas — AI Exam Practice" },
-        { property: "og:description", content: "AI-powered multi-language test practice platform" },
-        { property: "og:url", content: siteUrl },
-        { property: "og:image", content: `${siteUrl}/og_image.png` },
-        { property: "og:type", content: "website" },
-        { name: "twitter:card", content: "summary_large_image" },
-        { name: "twitter:title", content: "Labas — AI Exam Practice" },
-        { name: "twitter:description", content: "AI-powered multi-language test practice platform" },
-        { name: "twitter:image", content: `${siteUrl}/og_image.png` },
+        { title: DEFAULT_SITE_TITLE },
+        { name: "description", content: DEFAULT_SITE_DESCRIPTION },
+        ...buildSocialMeta(),
         { name: "robots", content: "index, follow" },
       ],
       links: [
         { rel: "icon", href: "/labas_icon.png" },
-        { rel: "canonical", href: siteUrl },
+        { rel: "canonical", href: `${SITE_URL}/` },
         { rel: "preconnect", href: "https://fonts.googleapis.com" },
         { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" as const },
         { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&family=Inter:wght@400;500;600&family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&display=swap" },
@@ -75,11 +72,11 @@ export const Route = createRootRouteWithContext<RouterAppContext>()({
             "@context": "https://schema.org",
             "@type": "WebSite",
             name: "Labas",
-            url: siteUrl,
-            description: "AI-powered multi-language test practice platform",
+            url: SITE_URL,
+            description: DEFAULT_SITE_DESCRIPTION,
             potentialAction: {
               "@type": "SearchAction",
-              target: `${siteUrl}/bank?search={search_term_string}`,
+              target: `${SITE_URL}/bank?search={search_term_string}`,
               "query-input": "required name=search_term_string",
             },
           }),
@@ -123,7 +120,7 @@ function RootComponent() {
             </main>
           </div>
         )}
-        <GlobalGenerationProgress />
+        {shell !== "public" && <GlobalGenerationProgress />}
         <Toaster richColors />
       </ThemeProvider>
       {import.meta.env.DEV && (

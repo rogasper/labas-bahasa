@@ -1,13 +1,20 @@
 import type { AppRouter } from "@labas/api/routers/index";
 import { env } from "@labas/env/web";
 import { QueryCache, QueryClient } from "@tanstack/react-query";
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import { createTRPCClient, httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { toast } from "sonner";
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
     onError: (error, query) => {
+      if (
+        error instanceof TRPCClientError &&
+        (error.data?.code === "UNAUTHORIZED" ||
+          error.message.toLowerCase().includes("authentication required"))
+      ) {
+        return;
+      }
       toast.error(error.message, {
         action: {
           label: "retry",

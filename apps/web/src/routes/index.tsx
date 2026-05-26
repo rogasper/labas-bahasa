@@ -1,29 +1,26 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, isRedirect, redirect } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { routeShell } from "@/lib/route-shell";
+import { buildSocialMeta, DEFAULT_SITE_TITLE, SITE_URL } from "@/lib/site-seo";
 
 export const Route = createFileRoute("/")({
   staticData: routeShell.public,
   head: () => ({
     meta: [
-      { title: "Labas — AI-Powered Exam Practice Platform" },
-      { name: "description", content: "Generate AI-powered practice questions for JLPT, TOPIK, TOAFL, and more. Practice smarter with adaptive test preparation." },
-      { property: "og:title", content: "Labas — AI-Powered Exam Practice Platform" },
-      { property: "og:description", content: "Generate AI-powered practice questions for JLPT, TOPIK, TOAFL, and more. Practice smarter with adaptive test preparation." },
-      { property: "og:url", content: "https://labas.rogasper.com/" },
+      { title: DEFAULT_SITE_TITLE },
+      ...buildSocialMeta({ url: `${SITE_URL}/` }),
     ],
-    links: [
-      { rel: "canonical", href: "https://labas.rogasper.com/" },
-    ],
+    links: [{ rel: "canonical", href: `${SITE_URL}/` }],
   }),
   beforeLoad: async () => {
     try {
       const session = await authClient.getSession();
-      if (session?.data) {
+      if (session.data?.user) {
         throw redirect({ to: "/dashboard", replace: true });
       }
     } catch (e) {
-      if (e instanceof Response) throw e;
+      if (isRedirect(e)) throw e;
+      // Offline / auth endpoint unavailable — still show public landing.
     }
   },
 });
