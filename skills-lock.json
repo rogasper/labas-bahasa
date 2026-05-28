@@ -6,6 +6,30 @@
       "sourceType": "github",
       "computedHash": "a4c830509e85557b59339d8d93a4e243e9e59c686e7678854d39230e12c2a6dc"
     },
+    "blog-analyze": {
+      "source": "agricidaniel/claude-blog",
+      "sourceType": "github",
+      "skillPath": "skills/blog-analyze/SKILL.md",
+      "computedHash": "990d6edfdc46defee5e4a40b934ab4f496552c411e261714ac37efc28550eb22"
+    },
+    "blog-factcheck": {
+      "source": "agricidaniel/claude-blog",
+      "sourceType": "github",
+      "skillPath": "skills/blog-factcheck/SKILL.md",
+      "computedHash": "14d617eb4e52e365dc4fb6d67ee8d432630364423c2659445605ef1c286c3a5c"
+    },
+    "blog-seo-check": {
+      "source": "agricidaniel/claude-blog",
+      "sourceType": "github",
+      "skillPath": "skills/blog-seo-check/SKILL.md",
+      "computedHash": "58c364816b818f6eaf78d409a935a24f4f4c32f548b4ef3d0da7e3e50f04077f"
+    },
+    "blog-write": {
+      "source": "agricidaniel/claude-blog",
+      "sourceType": "github",
+      "skillPath": "skills/blog-write/SKILL.md",
+      "computedHash": "92d07a5f5178fd2fc327a4ee834b1a6fb87ab88e92bf3e02717912b3511bc909"
+    },
     "caveman-compress": {
       "source": "juliusbrussee/caveman",
       "sourceType": "github",

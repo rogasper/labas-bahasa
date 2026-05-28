@@ -166,7 +166,7 @@ function RouteComponent() {
 
           <Button
             type="button"
-            className="w-full"
+            className="w-full bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)] h-11"
             onClick={handleVerify}
             disabled={isMutating || otp.join("").length !== 6}
           >

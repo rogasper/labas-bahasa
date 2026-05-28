@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback, memo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@labas/ui/components/button";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { formatTime } from "@/lib/time";
 import { trpc } from "@/utils/trpc";
 import { QuestionInput } from "./QuestionInput";
 import { AccentKeyboard } from "./AccentKeyboard";
+import { AudioPlayer } from "./AudioPlayer";
 import { parseFurigana } from "@/lib/furigana";
 import type { Question, Package, PackageSection } from "@/lib/types";
 import { AttemptHeader } from "./attempt/AttemptHeader";
@@ -151,7 +152,12 @@ export function AttemptTestView({
 }: AttemptTestViewProps) {
   const [showFinishDialog, setShowFinishDialog] = useState(false);
   const [showAbandonDialog, setShowAbandonDialog] = useState(false);
-  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
+
+  // Restore active question from localStorage (survives refresh)
+  const activeQKey = attemptId ? `labas_attempt_question_${attemptId}` : null;
+  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(
+    () => activeQKey ? localStorage.getItem(activeQKey) : null,
+  );
   const questionPanelRef = useRef<HTMLDivElement>(null);
   const navSliderRef = useRef<HTMLDivElement>(null);
   const hasInitRef = useRef(false);
@@ -219,6 +225,28 @@ export function AttemptTestView({
     (q: Question) => q.id === activeQuestionId,
   );
   const activeQuestionWithMeta = activeQuestion ? addQuestionMeta(activeQuestion) : null;
+  const audioUrl = activeQuestion?.audioConfig?.passageAudioUrl ?? null;
+  const isListeningQuestion = activeQuestion?.format === "listening_multiple_choice";
+
+  // Check if audio was already played (server-enforced)
+  // Only reliable after attempt query resolves — guard AudioPlayer below
+  const sectionAnswers = sectionData?.answers ?? [];
+  const currentAnswer = activeQuestionId
+    ? sectionAnswers.find((a: any) => a.questionId === activeQuestionId)
+    : null;
+  const alreadyPlayed = !!currentAnswer?.audioPlayedAt;
+  const attemptDataReady = !attemptQuery.isLoading && !!attempt;
+
+  // Record audio play server-side
+  const recordPlayMutation = useMutation(trpc.attempt.recordAudioPlayed.mutationOptions());
+  const handleRecordPlay = useCallback(() => {
+    if (!attemptId || !sectionResultId || !activeQuestionId) return;
+    recordPlayMutation.mutate({
+      attemptId,
+      sectionResultId,
+      questionId: activeQuestionId,
+    });
+  }, [attemptId, sectionResultId, activeQuestionId, recordPlayMutation]);
   const passageToShow =
     activeQuestion?.passageText ??
     currentSection?.questions?.[0]?.passageText ??
@@ -239,6 +267,8 @@ export function AttemptTestView({
       if (!target) return;
       setCurrentSectionIdx(target.sectionIdx);
       setActiveQuestionId(qId);
+      // Sync write to localStorage — no useEffect race
+      if (activeQKey) localStorage.setItem(activeQKey, qId);
       // Scroll question panel to top when changing question
       setTimeout(() => {
         questionPanelRef.current?.scrollTo({ top: 0, behavior: "smooth" });
@@ -249,7 +279,7 @@ export function AttemptTestView({
         btn?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
       }, 100);
     },
-    [allQuestions, setCurrentSectionIdx],
+    [allQuestions, setCurrentSectionIdx, activeQKey],
   );
 
   const goToPrevQuestion = useCallback(() => {
@@ -291,28 +321,30 @@ export function AttemptTestView({
         />
 
         {/* Main Exam Workspace */}
-        <main className="flex-1 flex overflow-hidden flex-col lg:flex-row">
-          {/* Left Column: Reading Passage */}
-          <section className="w-full lg:w-1/2 bg-[var(--pure-white)] overflow-y-auto custom-scrollbar p-6 md:p-12 border-b lg:border-b-0 lg:border-r border-[var(--oat-border)] h-1/2 lg:h-full">
-            <article className="max-w-2xl mx-auto">
-              <header className="mb-8">
-                <h1 className="text-3xl font-extrabold text-[var(--clay-black)] mb-4 leading-tight">
-                  {currentSection.title}
-                </h1>
-                <div className="flex gap-4 text-sm text-[var(--warm-silver)] italic">
-                  <span>Section {currentSectionIdx + 1} dari {pkg.sections.length}</span>
+        <main className="flex-1 flex overflow-hidden flex-col lg:flex-row transition-all duration-300 ease-in-out">
+          {/* Left Column: Reading Passage (hidden for listening questions — transcript shown on review) */}
+          {!isListeningQuestion && (
+            <section className="w-full lg:w-1/2 bg-[var(--pure-white)] overflow-y-auto custom-scrollbar p-6 md:p-12 border-b lg:border-b-0 lg:border-r border-[var(--oat-border)] h-1/2 lg:h-full transition-all duration-300 ease-in-out">
+              <article className="max-w-2xl mx-auto">
+                <header className="mb-8">
+                  <h1 className="text-3xl font-extrabold text-[var(--clay-black)] mb-4 leading-tight">
+                    {currentSection.title}
+                  </h1>
+                  <div className="flex gap-4 text-sm text-[var(--warm-silver)] italic">
+                    <span>Section {currentSectionIdx + 1} dari {pkg.sections.length}</span>
+                  </div>
+                </header>
+                <div className="space-y-6 text-lg leading-relaxed text-[var(--warm-charcoal)] font-body whitespace-pre-wrap" dir={isRtl ? "rtl" : undefined}>
+                  {useFurigana ? parseFurigana(passageToShow) : passageToShow}
                 </div>
-              </header>
-              <div className="space-y-6 text-lg leading-relaxed text-[var(--warm-charcoal)] font-body whitespace-pre-wrap" dir={isRtl ? "rtl" : undefined}>
-                {useFurigana ? parseFurigana(passageToShow) : passageToShow}
-              </div>
-            </article>
-          </section>
+              </article>
+            </section>
+          )}
 
           {/* Right Column: Question Panel */}
-          <section ref={questionPanelRef} className="w-full lg:w-1/2 bg-[var(--warm-cream)] overflow-y-auto custom-scrollbar p-6 md:p-10 relative h-1/2 lg:h-full">
+          <section ref={questionPanelRef} className={`transition-all duration-300 ease-in-out bg-[var(--warm-cream)] overflow-y-auto custom-scrollbar p-6 md:p-10 relative h-1/2 lg:h-full ${isListeningQuestion ? "w-full" : "w-full lg:w-1/2"}`}>
             <div className="max-w-2xl mx-auto pb-32">
-              {/* Top bar: question counter + Selesai button */}
+              {/* Top bar: question counter */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <span className="text-sm font-bold text-[var(--warm-charcoal)] bg-[var(--oat-light)] px-3 py-1.5 rounded-lg">
@@ -325,15 +357,31 @@ export function AttemptTestView({
                     </span>
                   )}
                 </div>
-                <Button
-                  onClick={() => setShowFinishDialog(true)}
-                  disabled={isFinished}
-                  className="flex items-center gap-2 bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-700)] px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all"
-                >
-                  Selesai
-                  <MaterialIcon name="check_circle" className="text-sm" />
-                </Button>
               </div>
+
+              {/* Audio Player for Listening Sections — blocked until attempt data is ready */}
+              {isListeningQuestion && !attemptDataReady && (
+                <div className="mb-4 bg-[var(--oat-light)] rounded-xl p-4 flex items-center gap-3 text-sm text-[var(--warm-silver)]">
+                  <MaterialIcon name="sync" className="animate-spin text-lg" />
+                  Memuat audio...
+                </div>
+              )}
+              {isListeningQuestion && attemptDataReady && (
+                <div className="mb-4">
+                  <p className="text-xs text-[var(--warm-charcoal)] mb-3 flex items-center gap-1.5">
+                    <MaterialIcon name="headphones" className="text-sm text-[var(--matcha-600)]" />
+                    Dengarkan audio, lalu jawab pertanyaan. Audio hanya dapat diputar <strong className="text-[var(--pomegranate-400)]">satu kali</strong>.
+                  </p>
+                  <AudioPlayer
+                    key={activeQuestionId ?? "no-q"}
+                    audioUrl={audioUrl}
+                    autoPlay={true}
+                    onePlay={true}
+                    alreadyPlayed={alreadyPlayed}
+                    onPlayRecord={handleRecordPlay}
+                  />
+                </div>
+              )}
 
               {/* Active question only */}
               {activeQuestionWithMeta ? (

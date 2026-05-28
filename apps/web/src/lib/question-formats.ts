@@ -1,6 +1,7 @@
 /** Question formats that render as multiple-choice options (MCQ). */
 export const MCQ_FORMATS = [
   "multiple_choice",
+  "listening_multiple_choice",
   "synonym",
   "grammar_in_context",
   "sentence_completion",

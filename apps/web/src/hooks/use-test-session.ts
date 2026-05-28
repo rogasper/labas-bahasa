@@ -72,19 +72,35 @@ function clearSectionIdx(attemptId: string | null) {
   if (key) localStorage.removeItem(key);
 }
 
+function clearActiveQuestion(attemptId: string | null) {
+  const key = attemptId ? `labas_attempt_question_${attemptId}` : null;
+  if (key) localStorage.removeItem(key);
+}
+
+function getAttemptKey(packageId: string): string {
+  return `labas_active_attempt_${packageId}`;
+}
+
+function clearAttemptKey(packageId: string): void {
+  localStorage.removeItem(getAttemptKey(packageId));
+}
+
 export function useTestSession(packageId: string, existingAttemptId?: string) {
   const navigate = useNavigate();
   const restoredRef = useRef(false);
 
-  const [attemptId, setAttemptId] = useState<string | null>(existingAttemptId ?? null);
-  const [currentSectionIdx, setCurrentSectionIdx] = useState(loadSectionIdx(existingAttemptId ?? null));
+  // Read persisted attemptId from localStorage (survives refresh)
+  const savedAttemptId = existingAttemptId ?? localStorage.getItem(getAttemptKey(packageId));
+
+  const [attemptId, setAttemptId] = useState<string | null>(savedAttemptId);
+  const [currentSectionIdx, setCurrentSectionIdx] = useState(loadSectionIdx(savedAttemptId));
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeElapsed, setTimeElapsed] = useState(0);
-  const [isStarted, setIsStarted] = useState(!!existingAttemptId);
+  const [isStarted, setIsStarted] = useState(!!savedAttemptId);
   const [isFinished, setIsFinished] = useState(false);
   const [submittingQId, setSubmittingQId] = useState<string | null>(null);
   const [markedQuestions, setMarkedQuestions] = useState<Set<string>>(
-    () => loadMarkedQuestions(existingAttemptId ?? null),
+    () => loadMarkedQuestions(savedAttemptId),
   );
   const [startError, setStartError] = useState<string | null>(null);
 
@@ -99,13 +115,13 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
   // Restore attempt data when continuing an existing attempt
   const attemptQuery = useQuery(
     trpc.attempt.getById.queryOptions(
-      { id: existingAttemptId! },
-      { enabled: !!existingAttemptId && !restoredRef.current },
+      { id: savedAttemptId! },
+      { enabled: !!savedAttemptId && !restoredRef.current },
     ),
   );
 
   useEffect(() => {
-    if (!existingAttemptId || restoredRef.current) return;
+    if (!savedAttemptId || restoredRef.current) return;
     const data = attemptQuery.data;
     if (!data) return;
 
@@ -127,15 +143,15 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
     if (data.startedAt) {
       elapsed = Math.round((Date.now() - new Date(data.startedAt).getTime()) / 1000);
     }
-    const savedTimer = loadElapsedTime(existingAttemptId);
+    const savedTimer = loadElapsedTime(savedAttemptId);
     const finalElapsed = Math.max(elapsed, savedTimer);
     setTimeElapsed(finalElapsed);
-    if (finalElapsed > 0) saveElapsedTime(existingAttemptId, finalElapsed);
+    if (finalElapsed > 0) saveElapsedTime(savedAttemptId, finalElapsed);
 
     // Restore section index from localStorage
-    const savedSection = loadSectionIdx(existingAttemptId);
+    const savedSection = loadSectionIdx(savedAttemptId);
     setCurrentSectionIdx(savedSection);
-  }, [existingAttemptId, attemptQuery.data]);
+  }, [savedAttemptId, attemptQuery.data]);
 
   // Persist currentSectionIdx to localStorage
   useEffect(() => {
@@ -157,15 +173,15 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
 
   const handleStart = useCallback(async () => {
     setStartError(null);
-    console.log("[useTestSession] handleStart called, packageId:", packageId);
     try {
       const res = await startMutation.mutateAsync({ packageId });
-      console.log("[useTestSession] start mutation result:", res);
       if (!res?.attemptId) {
         throw new Error("Server tidak mengembalikan attempt ID.");
       }
       setAttemptId(res.attemptId);
       setIsStarted(true);
+      // Persist attemptId so it survives refresh
+      localStorage.setItem(getAttemptKey(packageId), res.attemptId);
       // Load any saved timer (in case of refresh during attempt)
       const saved = loadElapsedTime(res.attemptId);
       if (saved > 0) setTimeElapsed(saved);
@@ -216,6 +232,8 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
     clearElapsedTime(attemptId);
     clearMarkedQuestions(attemptId);
     clearSectionIdx(attemptId);
+    clearActiveQuestion(attemptId);
+    clearAttemptKey(packageId);
     navigate({ to: "/attempt/$id", params: { id: attemptId } });
     return result;
   }, [attemptId, finishMutation, navigate]);
@@ -226,6 +244,8 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
     clearElapsedTime(attemptId);
     clearMarkedQuestions(attemptId);
     clearSectionIdx(attemptId);
+    clearActiveQuestion(attemptId);
+    clearAttemptKey(packageId);
     navigate({ to: "/packages" });
   }, [attemptId, abandonMutation, navigate]);
 

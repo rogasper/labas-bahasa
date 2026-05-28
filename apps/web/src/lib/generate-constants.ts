@@ -12,7 +12,31 @@ export const EXAM_TYPES = [
 export const SECTIONS = [
   { id: "READING", name: "Reading", icon: "menu_book" },
   { id: "WRITING", name: "Writing", icon: "edit_note" },
+  { id: "LISTENING", name: "Listening", icon: "headphones" },
 ];
+
+export const EXAM_LANG_MAP: Record<string, string> = {
+  IELTS: "en",
+  TOEFL: "en",
+  JLPT: "ja",
+  HSK: "zh",
+  DELE: "es",
+  GOETHE: "de",
+  TOPIK: "ko",
+  TOAFL: "ar",
+};
+
+export const KOKORO_SUPPORTED_LANGS = new Set(["en", "es", "fr", "hi", "it", "pt", "ja", "zh"]);
+
+export function isListeningSupported(examTypeId: string): boolean {
+  const lang = EXAM_LANG_MAP[examTypeId];
+  return lang ? KOKORO_SUPPORTED_LANGS.has(lang) : false;
+}
+
+export function getSectionsForExam(examTypeId: string): typeof SECTIONS {
+  if (isListeningSupported(examTypeId)) return SECTIONS;
+  return SECTIONS.filter((s) => s.id !== "LISTENING");
+}
 
 export const FORMATS = [
   { id: "multiple_choice", name: "Multiple Choice", allowedExams: ["IELTS", "TOEFL", "JLPT", "HSK", "GOETHE", "TOPIK", "TOAFL", "DELE"] },
@@ -35,6 +59,7 @@ export const FORMATS = [
   { id: "article_case", name: "Article / Gender / Agreement", allowedExams: ["GOETHE", "TOAFL", "DELE"] },
   { id: "character_reading", name: "Character Reading", allowedExams: ["HSK", "TOPIK"] },
   { id: "sentence_arrangement", name: "Sentence Arrangement", allowedExams: ["HSK", "TOPIK", "DELE", "TOAFL"] },
+  { id: "listening_multiple_choice", name: "Listening Multiple Choice", allowedExams: ["IELTS", "TOEFL", "JLPT", "HSK", "DELE"] },
 ];
 
 export const TOPICS = [

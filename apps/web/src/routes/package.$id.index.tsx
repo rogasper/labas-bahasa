@@ -36,7 +36,34 @@ function PackageDetailComponent() {
     },
   });
 
+  const generateAudioMutation = useMutation({
+    ...trpc.audio.generateForPackage.mutationOptions(),
+    onSuccess: (data) => {
+      packageQuery.refetch();
+      if (data.alreadyRunning) {
+        toast.info("Audio sedang diproses, tunggu hingga selesai");
+      } else if (data.generationJobId) {
+        toast.success(`${data.generated} audio sedang digenerate`);
+      }
+    },
+    onError: (err) => {
+      toast.error(err?.message ?? "Gagal membuat audio");
+    },
+  });
+
   const pkg = packageQuery.data;
+
+  const hasListeningQuestions = pkg?.sections.some(
+    (sec) => sec.questions?.some((q) => q.format === "listening_multiple_choice"),
+  ) ?? false;
+  const allListeningQuestions = pkg?.sections.flatMap((sec) =>
+    sec.questions?.filter((q) => q.format === "listening_multiple_choice") ?? [],
+  ) ?? [];
+  const totalAudio = allListeningQuestions.length;
+  const readyAudio = allListeningQuestions.filter(
+    (q) => q.audioConfig?.passageAudioUrl,
+  ).length;
+  const allAudioReady = totalAudio > 0 && readyAudio === totalAudio;
 
   if (packageQuery.isLoading) {
     return (
@@ -103,12 +130,50 @@ function PackageDetailComponent() {
 
             {/* Action buttons */}
             <div className="flex items-center gap-2 shrink-0">
-              <Link to="/package/$id/take" params={{ id }}>
-                <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)]">
+              {hasListeningQuestions && generateAudioMutation.isPending ? (
+                <Button
+                  disabled
+                  className="bg-[var(--oat-light)] text-[var(--warm-silver)] cursor-not-allowed rounded-[var(--radius-lg)]"
+                >
+                  <MaterialIcon name="sync" className="animate-spin" />
+                  <span className="ml-1.5">Menyiapkan audio...</span>
+                </Button>
+              ) : hasListeningQuestions && !allAudioReady ? (
+                <Button
+                  disabled
+                  title="Generate audio dulu sebelum mulai latihan"
+                  className="bg-[var(--oat-light)] text-[var(--warm-silver)] cursor-not-allowed rounded-[var(--radius-lg)]"
+                >
                   <MaterialIcon name="play_arrow" />
                   <span className="ml-1.5">Mulai Latihan</span>
                 </Button>
-              </Link>
+              ) : (
+                <Link to="/package/$id/take" params={{ id }}>
+                  <Button className="bg-[var(--clay-black)] text-[var(--pure-white)] hover:bg-[var(--warm-charcoal)] clay-hover rounded-[var(--radius-lg)]">
+                    <MaterialIcon name="play_arrow" />
+                    <span className="ml-1.5">Mulai Latihan</span>
+                  </Button>
+                </Link>
+              )}
+              {isOwner && hasListeningQuestions && (
+                <Button
+                  onClick={() => generateAudioMutation.mutate({ packageId: id })}
+                  disabled={generateAudioMutation.isPending || allAudioReady}
+                  className="bg-[var(--slushie-500)] text-[var(--pure-white)] hover:bg-[var(--slushie-600)] clay-hover rounded-[var(--radius-lg)]"
+                >
+                  <MaterialIcon
+                    name={generateAudioMutation.isPending ? "sync" : allAudioReady ? "check_circle" : "headphones"}
+                    className={`mr-1 ${generateAudioMutation.isPending ? "animate-spin" : ""}`}
+                  />
+                  <span className="ml-1 hidden sm:inline">
+                    {generateAudioMutation.isPending
+                      ? "Menyiapkan..."
+                      : allAudioReady
+                        ? "Audio Siap"
+                        : `Generate Audio${totalAudio > 0 ? ` (${readyAudio}/${totalAudio})` : ""}`}
+                  </span>
+                </Button>
+              )}
               {pkg.isPublic && (
                 <Button
                   variant="outline"
@@ -207,6 +272,16 @@ function PackageDetailComponent() {
                             <span className="px-2 py-0.5 rounded bg-[var(--pure-white)] text-[var(--warm-charcoal)] text-xs">
                               Lv.{q.difficulty}
                             </span>
+                            {q.format === "listening_multiple_choice" && (
+                              <span className={`px-2 py-0.5 rounded text-xs font-medium flex items-center gap-1 ${
+                                q.audioConfig?.passageAudioUrl
+                                  ? "bg-[var(--matcha-300)]/30 text-[var(--matcha-800)]"
+                                  : "bg-[var(--oat-light)] text-[var(--warm-silver)]"
+                              }`}>
+                                <MaterialIcon name={q.audioConfig?.passageAudioUrl ? "check_circle" : "headphones"} className="text-[10px]" />
+                                {q.audioConfig?.passageAudioUrl ? "Audio siap" : "Belum ada audio"}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

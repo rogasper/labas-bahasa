@@ -28,8 +28,8 @@ describe("EXAM_TYPES", () => {
 });
 
 describe("SECTIONS", () => {
-  it("has 2 sections with id, name, and icon", () => {
-    expect(SECTIONS).toHaveLength(2);
+  it("has 3 sections with id, name, and icon", () => {
+    expect(SECTIONS).toHaveLength(3);
     for (const s of SECTIONS) {
       expect(s).toHaveProperty("id");
       expect(s).toHaveProperty("name");
@@ -39,8 +39,8 @@ describe("SECTIONS", () => {
 });
 
 describe("FORMATS", () => {
-  it("has 20 question formats", () => {
-    expect(FORMATS).toHaveLength(20);
+  it("has 21 question formats", () => {
+    expect(FORMATS).toHaveLength(21);
   });
 
   it("each format has id, name, and allowedExams", () => {

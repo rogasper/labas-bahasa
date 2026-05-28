@@ -25,6 +25,8 @@ import {
   TOPICS,
   DIFFICULTIES,
   QUESTION_COUNT_PRESETS,
+  isListeningSupported,
+  getSectionsForExam,
 } from "@/lib/generate-constants";
 import { getDifficultyLabel } from "@/lib/difficulty-mapping";
 import "flag-icons/css/flag-icons.min.css";
@@ -97,7 +99,7 @@ export function RouteComponent() {
   }, [completedResults.length]);
 
   const [examType, setExamType] = useState("IELTS");
-  const [selectedSections, setSelectedSections] = useState<string[]>(["READING"]);
+  const [selectedSections, setSelectedSections] = useState<string[]>([]);
   const [selectedFormats, setSelectedFormats] = useState<string[]>(["multiple_choice"]);
   const [difficulty, setDifficulty] = useState(2);
   const [selectedTopics, setSelectedTopics] = useState<string[]>(["Science & Tech"]);
@@ -105,7 +107,7 @@ export function RouteComponent() {
   const [weaknessAlign, setWeaknessAlign] = useState(75);
   const [mode, setMode] = useState<"quick" | "agentic">("quick");
 
-  const isReadingAndWriting = selectedSections.includes("READING") && selectedSections.includes("WRITING");
+  const isMultiSection = selectedSections.length >= 2;
 
   useEffect(() => {
     setSelectedFormats((prev) => {
@@ -120,11 +122,21 @@ export function RouteComponent() {
   }, [examType]);
 
   useEffect(() => {
-    if (isReadingAndWriting) {
-      if (questionCount < 20) setQuestionCount(20);
+    if (isMultiSection) {
+      if (questionCount < 10) setQuestionCount(10);
       if (mode === "quick") setMode("agentic");
     }
-  }, [isReadingAndWriting]);
+  }, [isMultiSection]);
+
+  const availableSections = getSectionsForExam(examType);
+  const availableSectionIds = availableSections.map((s) => s.id);
+
+  useEffect(() => {
+    setSelectedSections((prev) => {
+      const filtered = prev.filter((s) => availableSectionIds.includes(s));
+      return filtered;
+    });
+  }, [examType]);
 
   const generate = useMutation({
     ...trpc.ai.generate.mutationOptions(),
@@ -209,7 +221,7 @@ export function RouteComponent() {
   };
 
   const sectionSplits = (() => {
-    if (mode !== "agentic" || questionCount < 20 || selectedSections.length <= 1) return null;
+    if (mode !== "agentic" || questionCount < 10 || selectedSections.length <= 1) return null;
     const base = Math.floor(questionCount / selectedSections.length);
     const rem = questionCount % selectedSections.length;
     return selectedSections.map((s, i) => ({ section: s, count: base + (i < rem ? 1 : 0) }));
@@ -426,7 +438,7 @@ export function RouteComponent() {
               </span>
             </div>
             <div className="flex flex-wrap gap-3">
-              {SECTIONS.map((s) => {
+              {availableSections.map((s) => {
                 const isSelected = selectedSections.includes(s.id);
                 return (
                   <button
@@ -463,7 +475,7 @@ export function RouteComponent() {
             </label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {QUESTION_COUNT_PRESETS.map((p) => {
-                const isDisabled = isReadingAndWriting && (p.value === 5 || p.value === 10);
+                const isDisabled = isMultiSection && p.value < 10;
                 return (
                 <button
                   key={p.value}
@@ -487,7 +499,7 @@ export function RouteComponent() {
               <span className="text-xs font-medium text-[var(--warm-charcoal)] whitespace-nowrap">Custom:</span>
               <input
                 type="range"
-                min={isReadingAndWriting ? 20 : 1}
+                min={isMultiSection ? 10 : 1}
                 max={40}
                 value={questionCount}
                 onChange={(e) => setQuestionCount(Number(e.target.value))}
@@ -508,7 +520,7 @@ export function RouteComponent() {
                 </p>
                 <div className="flex flex-wrap gap-2">
                   {sectionSplits.map((s) => {
-                    const sec = SECTIONS.find((sec) => sec.id === s.section);
+                    const sec = availableSections.find((sec) => sec.id === s.section);
                     return (
                       <span
                         key={s.section}
@@ -645,7 +657,7 @@ export function RouteComponent() {
             error={error}
             onGenerate={handleGenerate}
             onDismissError={() => setError(null)}
-            disableQuick={isReadingAndWriting}
+            disableQuick={isMultiSection}
           />
         </div>
       </div>

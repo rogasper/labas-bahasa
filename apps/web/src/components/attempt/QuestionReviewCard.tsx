@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { trpc } from "@/utils/trpc";
+import { trpc, trpcClient, queryClient } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
 import { Input } from "@labas/ui/components/input";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { formatTime } from "@/lib/time";
+import { toast } from "sonner";
 import type { Question } from "@/lib/types";
 import { OptionDisplay } from "./OptionDisplay";
+import { AudioPlayer } from "@/components/test/AudioPlayer";
 
 interface QuestionReviewCardProps {
   q: Question;
@@ -56,6 +58,76 @@ export function QuestionReviewCard({
       window.location.reload();
     },
   });
+
+  const regenerateAudioMutation = useMutation({
+    ...trpc.audio.generateForQuestions.mutationOptions(),
+    onSuccess: () => {
+      setRegenerating(true);
+      toast.success("Regenerasi audio dimulai");
+    },
+    onError: (err) => {
+      toast.error(err?.message ?? "Gagal generate audio");
+    },
+  });
+
+  // ── Regenerate audio state & polling ──────────────────────
+  const [regenerating, setRegenerating] = useState(false);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimeRef = useRef(0);
+  const REGENERATE_TIMEOUT_MS = 30_000;
+
+  const pollAudioReady = useCallback(async () => {
+    try {
+      const result = await trpcClient.audio.getAudioStatus.query({ questionIds: [q.id] });
+      if (result[0]?.hasAudio) {
+        return true;
+      }
+    } catch {
+      // ignore polling errors
+    }
+    return false;
+  }, [q.id]);
+
+  useEffect(() => {
+    if (!regenerating) {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+      return;
+    }
+
+    startTimeRef.current = Date.now();
+
+    pollTimerRef.current = setInterval(async () => {
+      const elapsed = Date.now() - startTimeRef.current;
+
+      // Timeout guard
+      if (elapsed >= REGENERATE_TIMEOUT_MS) {
+        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+        setRegenerating(false);
+        toast.error("Regenerasi audio timeout — coba lagi");
+        return;
+      }
+
+      const ready = await pollAudioReady();
+      if (ready) {
+        if (pollTimerRef.current) clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+        setRegenerating(false);
+        queryClient.invalidateQueries({ queryKey: trpc.attempt.getById.queryKey() });
+        toast.success("Audio regenerasi selesai");
+      }
+    }, 2000);
+
+    return () => {
+      if (pollTimerRef.current) {
+        clearInterval(pollTimerRef.current);
+        pollTimerRef.current = null;
+      }
+    };
+  }, [regenerating, pollAudioReady]);
 
   const handleSaveEdit = () => {
     updateQuestionMutation.mutate({
@@ -125,10 +197,24 @@ export function QuestionReviewCard({
       {/* Expanded content */}
       {isExpanded && (
         <div className="px-4 pb-4 pl-11 space-y-3">
-          {/* Passage Text */}
+          {/* Audio Player for Listening Questions */}
+          {q.format === "listening_multiple_choice" && q.audioConfig?.passageAudioUrl && (
+            <div className="mb-3">
+              <AudioPlayer
+                key={q.audioConfig.passageAudioUrl}
+                audioUrl={q.audioConfig.passageAudioUrl}
+                autoPlay={false}
+                onePlay={false}
+              />
+            </div>
+          )}
+
+          {/* Passage Text (transcript for listening questions) */}
           {q.passageText && (
             <div className="bg-[var(--oat-light)] rounded-[var(--radius-lg)] p-3 text-sm text-[var(--warm-charcoal)] whitespace-pre-wrap leading-relaxed">
-              <span className="font-semibold text-[var(--clay-black)] block mb-1">Teks Bacaan:</span>
+              <span className="font-semibold text-[var(--clay-black)] block mb-1">
+                {q.format === "listening_multiple_choice" ? "Transkrip Audio:" : "Teks Bacaan:"}
+              </span>
               {q.passageText}
             </div>
           )}
@@ -274,6 +360,24 @@ export function QuestionReviewCard({
                 <MaterialIcon name="edit" className="text-sm" />
                 Koreksi
               </button>
+            )}
+            {q.format === "listening_multiple_choice" && isOwner && q.id && (
+              <div className="ml-auto flex items-center gap-2">
+                {regenerating && (
+                  <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium bg-[var(--matcha-300)]/30 text-[var(--matcha-800)] animate-pulse">
+                    <MaterialIcon name="sync" className="animate-spin text-[10px]" />
+                    Regenerating...
+                  </span>
+                )}
+                <button
+                  onClick={() => regenerateAudioMutation.mutate({ questionIds: [q.id] })}
+                  disabled={regenerateAudioMutation.isPending || regenerating}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium bg-[var(--oat-light)] text-[var(--warm-charcoal)] hover:bg-[var(--slushie-500)]/20 hover:text-[var(--slushie-800)] transition-all disabled:opacity-50"
+                >
+                  <MaterialIcon name={regenerateAudioMutation.isPending || regenerating ? "sync" : "headphones"} className={`text-sm ${regenerateAudioMutation.isPending || regenerating ? "animate-spin" : ""}`} />
+                  {regenerateAudioMutation.isPending ? "Mengirim..." : regenerating ? "Regenerating..." : "Regenerate Audio"}
+                </button>
+              </div>
             )}
           </div>
         </div>

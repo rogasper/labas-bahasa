@@ -2,6 +2,17 @@
  *  These are lightweight type aliases for data shapes used across components.
  *  For strict typing, prefer tRPC inferred types: RouterOutputs['router']['procedure'] */
 
+export interface AudioConfig {
+  voice?: string;
+  speed?: number;
+  langCode?: string | null;
+  passageAudioUrl?: string | null;
+  questionAudioUrl?: string | null;
+  durationSeconds?: number | null;
+  generatedAt?: string;
+  expiresAt?: string | null;
+}
+
 export interface Question {
   id: string;
   examTypeId?: string;
@@ -22,6 +33,7 @@ export interface Question {
   avgRating?: number | null;
   creatorName?: string | null;
   source?: string | null;
+  audioConfig?: AudioConfig | null;
   _examType?: string;
   _isRtl?: boolean;
   _useFurigana?: boolean;
@@ -66,6 +78,7 @@ export interface AttemptSection {
     isCorrect?: boolean | null;
     partialScore?: number | null;
     timeSpentSec?: number;
+    audioPlayedAt?: string | null;
   }>;
 }
 

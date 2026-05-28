@@ -134,33 +134,37 @@ function SingleJobCard({
   const message = job.progressMessage ?? "Sedang berjalan...";
   const logs = (job.logs ?? []) as LogEntry[];
   const isAgentic = job.mode === "agentic";
+  const isAudio = job.mode === "batch" && job.sectionTypeId === "LISTENING";
 
   if (minimized) {
     return (
       <button
         onClick={() => setMinimized(false)}
-        className="flex items-center gap-2 py-1.5 px-3 bg-[var(--clay-black)]/90 rounded-lg text-white text-xs font-semibold border border-[var(--matcha-400)]/30 hover:border-[var(--matcha-400)]/60 transition-all w-full"
+        className="flex items-center gap-2 py-1.5 px-3 bg-[var(--clay-black)]/90 rounded-lg text-white text-xs font-semibold border border-[var(--slushie-500)]/30 hover:border-[var(--slushie-500)]/60 transition-all w-full"
       >
         <MaterialIcon
-          name="psychology"
-          className="text-[var(--matcha-400)] animate-pulse text-xs"
+          name={isAudio ? "headphones" : "psychology"}
+          className={isAudio ? "text-[var(--slushie-500)] text-xs" : "text-[var(--matcha-400)] animate-pulse text-xs"}
         />
         <span className="truncate flex-1 text-left">{message}</span>
-        <span className="tabular-nums text-[var(--matcha-400)]">{progress}%</span>
+        <span className="tabular-nums text-[var(--slushie-500)]">{progress}%</span>
       </button>
     );
   }
 
   return (
-    <div className="rounded-xl bg-[var(--clay-black)] border border-white/10 p-3 transition-all">
+    <div className={`rounded-xl bg-[var(--clay-black)] border p-3 transition-all ${isAudio ? "border-[var(--slushie-500)]/20" : "border-white/10"}`}>
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
           <MaterialIcon
-            name="psychology"
-            className="text-[var(--matcha-400)] animate-pulse text-sm shrink-0"
+            name={isAudio ? "headphones" : "psychology"}
+            className={`${isAudio ? "text-[var(--slushie-500)]" : "text-[var(--matcha-400)] animate-pulse"} text-sm shrink-0`}
           />
           <div className="min-w-0">
             <span className="text-xs font-semibold block truncate">{message}</span>
+            {isAudio && (
+              <span className="text-[10px] text-[var(--slushie-500)]">Audio</span>
+            )}
             {isAgentic && (
               <span className="text-[10px] text-[var(--matcha-400)]">Agentic</span>
             )}
@@ -173,25 +177,31 @@ function SingleJobCard({
           >
             <MaterialIcon name="expand_less" className="text-xs" />
           </button>
-          <button
-            onClick={() => onCancel(job.id)}
-            disabled={cancelPending}
-            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-[var(--pomegranate-400)]/20 text-white/50 hover:text-[var(--pomegranate-400)] transition-colors disabled:opacity-30"
-          >
-            <MaterialIcon name="close" className="text-xs" />
-          </button>
+          {!isAudio && (
+            <button
+              onClick={() => onCancel(job.id)}
+              disabled={cancelPending}
+              className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-[var(--pomegranate-400)]/20 text-white/50 hover:text-[var(--pomegranate-400)] transition-colors disabled:opacity-30"
+            >
+              <MaterialIcon name="close" className="text-xs" />
+            </button>
+          )}
         </div>
       </div>
 
       <div className="mb-2">
         <div className="flex justify-between items-center mb-1">
-          <span className="tabular-nums text-xs font-bold text-[var(--matcha-400)]">
+          <span className={`tabular-nums text-xs font-bold ${isAudio ? "text-[var(--slushie-500)]" : "text-[var(--matcha-400)]"}`}>
             {progress}%
           </span>
         </div>
         <div className="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-[var(--matcha-600)] to-[var(--matcha-400)] transition-all duration-500 rounded-full"
+            className={`h-full transition-all duration-500 rounded-full ${
+              isAudio
+                ? "bg-gradient-to-r from-[var(--slushie-600)] to-[var(--slushie-500)]"
+                : "bg-gradient-to-r from-[var(--matcha-600)] to-[var(--matcha-400)]"
+            }`}
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -210,6 +220,9 @@ export function GlobalGenerationProgress() {
   const isGeneratePage = matches.some((m) => m.routeId === "/generate");
   const isTakePage = matches.some((m) => m.routeId === "/package/$id/take");
 
+  const hasAudioJobs = activeJobs.some((j) => j.mode === "batch" && j.sectionTypeId === "LISTENING");
+  const hasAiJobs = activeJobs.some((j) => j.mode !== "batch");
+
   const cancelMutation = useMutation({
     ...trpc.ai.cancelJob.mutationOptions(),
     onSuccess: async (_data, variables) => {
@@ -227,16 +240,16 @@ export function GlobalGenerationProgress() {
     cancelMutation.mutate({ jobId });
   };
 
-  // Collapsed floating pill showing count
+  // Collapsed floating pill showing count (audio or ai)
   if (collapsed) {
     return (
       <button
         onClick={() => setCollapsed(false)}
-        className="fixed bottom-8 right-6 z-50 h-11 pl-4 pr-5 bg-[var(--clay-black)] rounded-full flex items-center gap-2.5 text-white text-sm font-semibold shadow-2xl border border-[var(--matcha-400)]/30 hover:border-[var(--matcha-400)]/60 transition-all"
+        className="fixed bottom-8 right-6 z-50 h-11 pl-4 pr-5 bg-[var(--clay-black)] rounded-full flex items-center gap-2.5 text-white text-sm font-semibold shadow-2xl border border-[var(--slushie-500)]/30 hover:border-[var(--slushie-500)]/60 transition-all"
       >
         <MaterialIcon
-          name="psychology"
-          className="text-[var(--matcha-400)] animate-pulse text-sm"
+          name={hasAudioJobs ? "headphones" : "psychology"}
+          className={hasAudioJobs ? "text-[var(--slushie-500)] text-sm" : "text-[var(--matcha-400)] animate-pulse text-sm"}
         />
         <span>{activeJobs.length} active</span>
       </button>
@@ -253,12 +266,17 @@ export function GlobalGenerationProgress() {
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <MaterialIcon
-            name="psychology"
-            className="text-[var(--matcha-400)] animate-pulse text-base"
-          />
+          {hasAiJobs && (
+            <MaterialIcon name="psychology" className="text-[var(--matcha-400)] animate-pulse text-base" />
+          )}
+          {hasAudioJobs && (
+            <MaterialIcon name="headphones" className="text-[var(--slushie-500)] text-base" />
+          )}
           <span className="text-sm font-semibold">
-            AI Generation{activeJobs.length > 1 ? ` (${activeJobs.length})` : ""}
+            {hasAiJobs && hasAudioJobs ? "AI & Audio"
+              : hasAudioJobs ? "Audio"
+              : "AI Generation"}
+            {activeJobs.length > 1 ? ` (${activeJobs.length})` : ""}
           </span>
         </div>
         <div className="flex items-center gap-1">

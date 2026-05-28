@@ -34,20 +34,21 @@ describe("EXAM_TYPES", () => {
 });
 
 describe("SECTIONS", () => {
-  it("has 2 sections", () => {
-    expect(SECTIONS).toHaveLength(2);
+  it("has 3 sections", () => {
+    expect(SECTIONS).toHaveLength(3);
   });
 
-  it("includes READING and WRITING", () => {
+  it("includes READING, WRITING, and LISTENING", () => {
     const ids = SECTIONS.map((s) => s.id);
     expect(ids).toContain("READING");
     expect(ids).toContain("WRITING");
+    expect(ids).toContain("LISTENING");
   });
 });
 
 describe("FORMATS", () => {
-  it("has 20 question formats", () => {
-    expect(FORMATS).toHaveLength(20);
+  it("has 21 question formats", () => {
+    expect(FORMATS).toHaveLength(21);
   });
 
   it("has no duplicates", () => {
