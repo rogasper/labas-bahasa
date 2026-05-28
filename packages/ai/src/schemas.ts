@@ -26,6 +26,7 @@ export const questionFormatSchema = z.enum([
   "article_case",
   "character_reading",
   "sentence_arrangement",
+  "listening_multiple_choice",
 ]);
 
 export const difficultySchema = z.number().int().min(1).max(5);
@@ -181,6 +182,26 @@ export const sentenceArrangementQuestionSchema = baseQuestionSchema.extend({
   correctAnswer: z.string(),
 });
 
+export const audioConfigSchema = z.object({
+  voice: z.string().default("af_heart"),
+  speed: z.number().min(0.25).max(4).default(1.0),
+  langCode: z.string().optional(),
+  passageAudioUrl: z.string().nullable().optional(),
+  questionAudioUrl: z.string().nullable().optional(),
+  durationSeconds: z.number().nullable().optional(),
+  generatedAt: z.string().optional(),
+  expiresAt: z.string().nullable().optional(),
+});
+
+export type AudioConfig = z.infer<typeof audioConfigSchema>;
+
+export const listeningMultipleChoiceQuestionSchema = baseQuestionSchema.extend({
+  format: z.literal("listening_multiple_choice"),
+  options: z.array(multipleChoiceOptionSchema).min(2).max(6),
+  correctAnswer: z.string(),
+  audioConfig: audioConfigSchema.optional(),
+});
+
 // ── Unified Question Schema ────────────────────────────────
 
 export const questionSchema = z.discriminatedUnion("format", [
@@ -204,6 +225,7 @@ export const questionSchema = z.discriminatedUnion("format", [
   articleCaseQuestionSchema,
   characterReadingQuestionSchema,
   sentenceArrangementQuestionSchema,
+  listeningMultipleChoiceQuestionSchema,
 ]);
 
 export type Question = z.infer<typeof questionSchema>;

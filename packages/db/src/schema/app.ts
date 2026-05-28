@@ -47,6 +47,8 @@ export const question = pgTable(
     options: jsonb("options"),
     // correct answer — could be an option key, text, or array for multiple correct
     correctAnswer: text("correct_answer").notNull(),
+    // audio generation configuration for listening questions
+    audioConfig: jsonb("audio_config"),
     // explanation shown after submission
     explanation: text("explanation"),
     // difficulty 1-5
@@ -257,6 +259,7 @@ export const answer = pgTable(
     isCorrect: boolean("is_correct"),
     partialScore: integer("partial_score"), // 0-100 for partial credit formats (ordering, matching)
     timeSpentSec: integer("time_spent_sec"),
+    audioPlayedAt: timestamp("audio_played_at"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [
@@ -508,7 +511,8 @@ export const generationJob = pgTable(
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
     status: text("status").notNull().default("pending"), // "pending" | "running_*" | "partial_ready" | "completed" | "completed_partial" | "failed" | "cancelled"
-    mode: text("mode").notNull().default("quick"), // "quick" | "agentic"
+    jobType: text("job_type").default("generation"), // "generation" | "audio"
+    mode: text("mode").notNull().default("quick"), // "quick" | "agentic" | "batch"
     examTypeId: text("exam_type_id").notNull(),
     sectionTypeId: text("section_type_id").notNull(),
     questionCount: integer("question_count").notNull(),

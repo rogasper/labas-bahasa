@@ -19,6 +19,7 @@ export const env = createEnv({
     PLATFORM_AI_API_KEY: z.string().optional(),
     PLATFORM_AI_BASE_URL: z.string().optional(),
     PLATFORM_AI_MODEL: z.string().optional(),
+    KOKORO_API_URL: z.string().url().default("http://localhost:8880"),
     FREE_CREDITS_ENABLED: z.coerce.boolean().default(false),
     FREE_CREDITS_MAX_POOL: z.coerce.number().positive().default(1_000_000),
     DEFAULT_SIGNUP_CREDIT_TOKENS: z.coerce.number().positive().default(50_000),

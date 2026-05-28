@@ -44,6 +44,7 @@ ${OPTION_QUALITY_RULES}
 - For text_insertion: options are position markers (A, B, C, D) within the passage where a sentence could be inserted. correctAnswer is the best position key.
 - For sentence_arrangement: Provide options as shuffled fragments in random order. correctAnswer is the correct order as comma-separated keys (e.g. "D,A,C,B").
 - For matching_information: options are information items with key and text. correctAnswer is the correct match as serialized mapping.
+- For listening_multiple_choice: This is a listening comprehension question. The "passageText" field should contain the conversation/lecture script that will be read aloud via TTS (text-to-speech). Write the script in natural spoken language — short sentences, conversational flow, pauses. The "questionText" is the actual question displayed to the student. Options are standard A/B/C/D multiple choice exactly like regular multiple_choice.
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON object with this exact structure (no markdown code blocks, no extra text):

@@ -193,6 +193,7 @@ ${buildExplanationLanguageRule(input.examType)}
 - For matching_pairs: options are {key, text} pairs. correctAnswer is serialized mapping like "A:1,B:2".
 - For error_recognition: options are error segments. correctAnswer is key of segment with error.
 - For text_insertion: options are position markers. correctAnswer is best position key.
+- For listening_multiple_choice: This is a listening comprehension question. The "passageText" is the audio script (read by TTS), NOT shown to students during exam. Write in natural spoken language — conversational flow, short sentences. The "questionText" is the visible question prompt. Options are A/B/C/D standard multiple choice.
 
 Question schema:
 ${schema}
