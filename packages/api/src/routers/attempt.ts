@@ -13,6 +13,7 @@ import {
   examType,
 } from "@labas/db";
 import { paginationSchema, paginateDefaults } from "../lib/pagination";
+import { stripAnswer } from "../lib/strip-answer";
 import { assertOwnership } from "../lib/ownership";
 import { throwNotFound, throwForbidden, throwBadRequest } from "../lib/errors";
 
@@ -31,6 +32,7 @@ function normalizeAnswer(format: string, userAnswer: string, correctAnswer: stri
     case "fill_blank":
       return ua.toLowerCase() === ca.toLowerCase();
     case "multiple_choice":
+    case "listening_multiple_choice":
     case "synonym":
     case "grammar_in_context":
     case "sentence_completion":
@@ -258,6 +260,7 @@ export const attemptRouter = router({
             isCorrect: answer.isCorrect,
             partialScore: answer.partialScore,
             timeSpentSec: answer.timeSpentSec,
+            audioPlayedAt: answer.audioPlayedAt,
             createdAt: answer.createdAt,
             question: {
               id: question.id,
@@ -316,10 +319,9 @@ export const attemptRouter = router({
 
       // Strip sensitive fields during active attempt (anti-cheat)
       if (isInProgress) {
-        const sanitizeQuestion = (q: any) => {
+        const sanitizeQuestion = (q: Record<string, unknown> | null) => {
           if (!q) return q;
-          const { correctAnswer, explanation, ...rest } = q;
-          return rest;
+          return stripAnswer(q);
         };
 
         const sanitizeAnswer = (a: any) => {
@@ -424,6 +426,62 @@ export const attemptRouter = router({
           userAnswer: input.userAnswer,
           // isCorrect & partialScore NOT stored here — recomputed in finish()
           timeSpentSec: input.timeSpentSec,
+        });
+      }
+
+      return { success: true };
+    }),
+
+  recordAudioPlayed: protectedProcedure
+    .input(
+      z.object({
+        attemptId: z.string().uuid(),
+        sectionResultId: z.string().uuid(),
+        questionId: z.string().uuid(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+
+      const [attempt] = await db
+        .select({ id: testAttempt.id, userId: testAttempt.userId, status: testAttempt.status })
+        .from(testAttempt)
+        .where(and(eq(testAttempt.id, input.attemptId), eq(testAttempt.userId, userId)))
+        .limit(1);
+
+      if (!attempt) throwNotFound("Attempt");
+      if (attempt.status !== "in_progress") throwBadRequest("Attempt is not active");
+
+      const now = new Date();
+
+      // Check if answer row already exists
+      const [existing] = await db
+        .select({ id: answer.id })
+        .from(answer)
+        .where(
+          and(
+            eq(answer.sectionResultId, input.sectionResultId),
+            eq(answer.questionId, input.questionId),
+          ),
+        )
+        .limit(1);
+
+      if (existing) {
+        // Only update if audioPlayedAt not already set (prevent double-counting)
+        await db
+          .update(answer)
+          .set({ audioPlayedAt: now })
+          .where(
+            and(
+              eq(answer.id, existing.id),
+              eq(answer.audioPlayedAt, null as any),
+            ),
+          );
+      } else {
+        await db.insert(answer).values({
+          sectionResultId: input.sectionResultId,
+          questionId: input.questionId,
+          audioPlayedAt: now,
         });
       }
 

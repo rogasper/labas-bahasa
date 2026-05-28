@@ -13,6 +13,7 @@ import {
 } from "@labas/db";
 import { paginationSchema, paginateDefaults } from "../lib/pagination";
 import { assertOwnership } from "../lib/ownership";
+import { stripAnswer } from "../lib/strip-answer";
 import { buildVisibilityCondition } from "../lib/visibility";
 import { throwNotFound } from "../lib/errors";
 
@@ -232,8 +233,7 @@ export const packageRouter = router({
           .sort((a, b) => a.orderIndex - b.orderIndex)
           .map((sq) => {
             if (isOwner) return sq.question;
-            const { correctAnswer, explanation, ...rest } = sq.question;
-            return rest;
+            return stripAnswer(sq.question);
           }),
       }));
 

@@ -2,6 +2,7 @@ import { protectedProcedure, publicProcedure, router } from "../index";
 import { adminRouter } from "./admin";
 import { aiRouter } from "./ai";
 import { attemptRouter } from "./attempt";
+import { audioRouter } from "./audio";
 import { comboRouter } from "./combo";
 import { feedbackRouter } from "./feedback";
 import { questionRouter } from "./question";
@@ -26,6 +27,7 @@ export const appRouter = router({
   admin: adminRouter,
   ai: aiRouter,
   attempt: attemptRouter,
+  audio: audioRouter,
   combo: comboRouter,
   feedback: feedbackRouter,
   question: questionRouter,

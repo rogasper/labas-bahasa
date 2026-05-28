@@ -7,6 +7,7 @@ import { paginationSchema, paginateDefaults } from "../lib/pagination";
 import { buildVisibilityCondition } from "../lib/visibility";
 import { assertOwnership } from "../lib/ownership";
 import { throwNotFound } from "../lib/errors";
+import { stripAnswer } from "../lib/strip-answer";
 
 const questionListSelect = {
   id: question.id,
@@ -44,11 +45,6 @@ function buildSearchCondition(term: string) {
     like(question.questionText, pattern),
     like(question.explanation, pattern),
   );
-}
-
-function stripAnswer<T extends { correctAnswer?: string; explanation?: string | null }>(row: T) {
-  const { correctAnswer, explanation, ...rest } = row;
-  return rest as Omit<T, "correctAnswer" | "explanation">;
 }
 
 export const questionRouter = router({

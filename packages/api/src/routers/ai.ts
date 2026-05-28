@@ -9,6 +9,7 @@ import { paginationSchema, paginateDefaults } from "../lib/pagination";
 import { throwNotFound, throwForbidden, throwBadRequest } from "../lib/errors";
 import { checkDailyBudget } from "../lib/rate-limit";
 import { decryptApiKey } from "../lib/encryption";
+import { stripAnswer } from "../lib/strip-answer";
 import { isUserSuspended, getUserCredit, autoRefillIfEligible } from "../lib/credit";
 import { env } from "@labas/env/server";
 
@@ -21,6 +22,16 @@ const generateInputSchema = generationInputSchema.extend({
 function sanitizeJobForResponse(row: typeof generationJob.$inferSelect) {
   const { inputJson, ...safe } = row;
   return safe;
+}
+
+function stripCorrectAnswerFromResultJson(
+  resultJson: unknown,
+): unknown {
+  if (!resultJson || typeof resultJson !== "object") return resultJson;
+  const rj = resultJson as Record<string, unknown>;
+  if (!Array.isArray(rj.questions)) return rj;
+  const sanitizedQuestions = (rj.questions as Array<Record<string, unknown>>).map((q) => stripAnswer(q));
+  return { ...rj, questions: sanitizedQuestions };
 }
 
 export const aiRouter = router({
@@ -91,21 +102,12 @@ export const aiRouter = router({
 
       const safe = sanitizeJobForResponse(job);
 
-      // Strip correctAnswer & explanation from resultJson to prevent network inspection
-      if (rj && Array.isArray(rj.questions)) {
-        const sanitizedQuestions = (rj.questions as Array<Record<string, unknown>>).map((q) => {
-          const { correctAnswer, explanation, ...rest } = q;
-          return rest;
-        });
-        return {
-          ...safe,
-          resultJson: { ...rj, questions: sanitizedQuestions },
-          qualityPhase,
-          resultIsPartial,
-        };
-      }
-
-      return { ...safe, qualityPhase, resultIsPartial };
+      return {
+        ...safe,
+        resultJson: stripCorrectAnswerFromResultJson(rj),
+        qualityPhase,
+        resultIsPartial,
+      };
     }),
 
   cancelJob: protectedProcedure
@@ -153,7 +155,10 @@ export const aiRouter = router({
         .orderBy(desc(generationJob.createdAt))
         .limit(limit)
         .offset(offset);
-      return rows;
+      return rows.map((row) => ({
+        ...row,
+        resultJson: stripCorrectAnswerFromResultJson(row.resultJson),
+      }));
     }),
 
   tokenUsageToday: protectedProcedure.query(async ({ ctx }) => {

@@ -14,6 +14,7 @@ import {
   user,
 } from "@labas/db";
 import { paginationSchema, paginateDefaults } from "../lib/pagination";
+import { stripAnswer } from "../lib/strip-answer";
 import { assertOwnership } from "../lib/ownership";
 import { buildVisibilityCondition } from "../lib/visibility";
 import { throwBadRequest } from "../lib/errors";
@@ -195,8 +196,7 @@ export const comboRouter = router({
           .sort((a, b) => a.orderIndex - b.orderIndex)
           .map((sq) => {
             if (isOwner) return sq.question;
-            const { correctAnswer, explanation, ...rest } = sq.question;
-            return rest;
+            return stripAnswer(sq.question);
           }),
       }));
 

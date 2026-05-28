@@ -5,6 +5,7 @@ import * as schema from "@labas/db";
 import { db } from "@labas/db";
 import { paginationSchema, paginateDefaults } from "../lib/pagination";
 import { throwNotFound, throwForbidden, throwBadRequest } from "../lib/errors";
+import { stripAnswer } from "../lib/strip-answer";
 import { getUserCredit, getLastRefillAt, getPoolUsage, getConfig, setConfig, autoRefillIfEligible } from "../lib/credit";
 import { env } from "@labas/env/server";
 
@@ -288,7 +289,7 @@ export const adminRouter = router({
       .where(eq(schema.question.isFeatured, true))
       .orderBy(desc(schema.question.updatedAt));
 
-    return { packages, questions };
+    return { packages, questions: questions.map((q) => stripAnswer(q)) };
   }),
 
   searchContent: adminProcedure

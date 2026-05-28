@@ -166,7 +166,7 @@ export function computeSectionSplit(
   count: number,
 ): SectionSplit[] {
   const sections = selectedSections.length > 0 ? selectedSections : ["READING"];
-  if (count < 20 || sections.length <= 1) {
+  if (sections.length <= 1) {
     return [{ section: sections[0]!, count }];
   }
   const base = Math.floor(count / sections.length);
@@ -442,6 +442,40 @@ async function completeJobWithResult(params: {
     params.sectionSplits,
   );
 
+  const hasListeningQuestions = params.allQuestions.some((q) =>
+    q.format.startsWith("listening_"),
+  );
+  if (hasListeningQuestions && savedQuestionIds.length > 0) {
+    const listeningIds = savedQuestionIds.filter((_, idx) =>
+      params.allQuestions[idx]?.format.startsWith("listening_"),
+    );
+    if (listeningIds.length > 0) {
+      const [jobRow] = await db
+        .select({ userId: generationJob.userId })
+        .from(generationJob)
+        .where(eq(generationJob.id, params.jobId))
+        .limit(1);
+      if (jobRow) {
+        const langCode = (() => {
+          switch (params.input.examType) {
+            case "JLPT": return "ja";
+            case "HSK": return "zh";
+            case "DELE": return "es";
+            case "IELTS":
+            case "TOEFL":
+            default: return "en";
+          }
+        })();
+        enqueueAudioGeneration(listeningIds, jobRow.userId, { langCode }).catch((err) =>
+          log("warn", "[AUDIO] Failed to auto-enqueue audio generation", {
+            error: String(err),
+            questionIds: listeningIds,
+          }),
+        );
+      }
+    }
+  }
+
   const result: GenerationResult = {
     questions: params.allQuestions as any,
     meta: {
@@ -507,6 +541,147 @@ export const generationQualityQueue = new Queue<QualityJobData>(QUALITY_QUEUE_NA
   connection: new IORedis(env.REDIS_URL, connectionOptions),
 });
 
+// ── Audio Generation Queue ─────────────────────────────────
+
+const AUDIO_QUEUE_NAME = "audio-generation";
+
+export interface AudioJobData {
+  generationJobId: string;
+  questionIds: string[];
+  voice?: string;
+  speed?: number;
+  langCode?: string;
+}
+
+export const audioGenerationQueue = new Queue<AudioJobData>(AUDIO_QUEUE_NAME, {
+  connection: new IORedis(env.REDIS_URL, connectionOptions),
+});
+
+export async function enqueueAudioGeneration(
+  questionIds: string[],
+  userId: string,
+  options?: { voice?: string; speed?: number; langCode?: string },
+): Promise<string> {
+  const total = questionIds.length;
+  const [jobRecord] = await db
+    .insert(generationJob)
+    .values({
+      userId,
+      jobType: "audio",
+      mode: "batch",
+      examTypeId: "LISTENING",
+      sectionTypeId: "LISTENING",
+      questionCount: total,
+      status: "running",
+      progress: 0,
+      progressMessage: `Generating audio 0/${total}`,
+    })
+    .returning();
+
+  if (!jobRecord) throw new Error("Failed to create audio generation job");
+
+  await audioGenerationQueue.add(
+    "generate-audio-batch",
+    { generationJobId: jobRecord.id, questionIds, ...options },
+    {
+      removeOnComplete: { count: 100 },
+      removeOnFail: { count: 100 },
+      attempts: 2,
+    },
+  );
+
+  return jobRecord.id;
+}
+
+export const audioGenerationWorker = new Worker<AudioJobData>(
+  AUDIO_QUEUE_NAME,
+  async (job: Job<AudioJobData>) => {
+    const { generationJobId, questionIds, voice, speed, langCode } = job.data;
+    if (!generationJobId || !questionIds?.length) {
+      log("warn", "[AUDIO] Invalid job data", { generationJobId, qCount: questionIds?.length });
+      return;
+    }
+
+    const total = questionIds.length;
+    let completed = 0;
+    let failedCount = 0;
+
+    for (let i = 0; i < total; i++) {
+      const qId = questionIds[i]!;
+      try {
+        const [q] = await db
+          .select({ id: question.id, passageText: question.passageText })
+          .from(question)
+          .where(eq(question.id, qId))
+          .limit(1);
+
+        if (!q) {
+          failedCount++;
+          continue;
+        }
+
+        const { generateSpeech } = await import("./lib/tts");
+        const result = await generateSpeech(q.passageText, { voice, speed, langCode });
+
+        await db
+          .update(question)
+          .set({
+            audioConfig: {
+              voice: voice ?? "af_heart",
+              speed: speed ?? 1.0,
+              langCode: langCode ?? null,
+              passageAudioUrl: result.audioUrl,
+              durationSeconds: null,
+              generatedAt: new Date().toISOString(),
+            } as any,
+          })
+          .where(eq(question.id, qId));
+
+        completed++;
+      } catch (err: any) {
+        log("warn", "[AUDIO] Question failed", { qId, error: err?.message ?? String(err) });
+        failedCount++;
+      }
+
+      // Update progress after each question
+      const progress = Math.round((completed / total) * 100);
+      await db
+        .update(generationJob)
+        .set({
+          progress,
+          progressMessage: `Generating audio ${completed}/${total}`,
+        })
+        .where(eq(generationJob.id, generationJobId));
+    }
+
+    // Finalize
+    const finalStatus = failedCount === 0 ? "completed" : completed > 0 ? "completed_partial" : "failed";
+    await db
+      .update(generationJob)
+      .set({
+        status: finalStatus,
+        progress: 100,
+        progressMessage:
+          failedCount === 0
+            ? `Audio siap: ${total}`
+            : `${completed}/${total} audio siap, ${failedCount} gagal`,
+        completedAt: new Date(),
+      })
+      .where(eq(generationJob.id, generationJobId));
+
+    log("debug", "[AUDIO] Batch complete", {
+      generationJobId,
+      completed,
+      failed: failedCount,
+      total,
+    });
+  },
+  {
+    connection: new IORedis(env.REDIS_URL, connectionOptions),
+    concurrency: 2,
+  },
+);
+
 /**
  * Marks the job cancelled in Postgres, then removes queued jobs.
  * Active jobs are stopped cooperatively by the worker (cancellation poller).
@@ -540,7 +715,7 @@ export async function cancelGenerationJob(
     })
     .where(eq(generationJob.id, jobId));
 
-  for (const queue of [generationQueue, generationQualityQueue]) {
+  for (const queue of [generationQueue, generationQualityQueue, audioGenerationQueue]) {
     try {
       const bullJob = await queue.getJob(jobId);
       if (bullJob) {

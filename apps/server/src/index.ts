@@ -6,6 +6,8 @@ import { env } from "@labas/env/server";
 import { withRequestId } from "@labas/api/logger";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import path from "path";
+import fs from "fs";
 
 import "@labas/api/queue";
 
@@ -74,6 +76,38 @@ ${urls
   .join("\n")}
 </urlset>`;
   return c.text(sitemap, 200, { "Content-Type": "application/xml" });
+});
+
+const AUDIO_DIR = path.join(process.cwd(), "audio-cache");
+
+app.get("/api/audio/:filename", async (c) => {
+  const filename = c.req.param("filename");
+  if (!filename || filename.includes("..") || filename.includes("/")) {
+    return c.text("Invalid filename", 400);
+  }
+  const filePath = path.join(AUDIO_DIR, filename);
+  if (!fs.existsSync(filePath)) {
+    return c.text("Audio not found", 404);
+  }
+  const buffer = fs.readFileSync(filePath);
+  if (buffer.length === 0) {
+    return c.text("Audio file is empty", 500);
+  }
+  const ext = path.extname(filename).toLowerCase();
+  const contentTypeMap: Record<string, string> = {
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".ogg": "audio/ogg",
+    ".opus": "audio/opus",
+    ".flac": "audio/flac",
+  };
+  return new Response(buffer, {
+    headers: {
+      "Content-Type": contentTypeMap[ext] ?? "audio/mpeg",
+      "Content-Length": String(buffer.length),
+      "Accept-Ranges": "bytes",
+    },
+  });
 });
 
 app.get("/", (c) => {
