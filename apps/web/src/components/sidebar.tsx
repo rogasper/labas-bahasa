@@ -5,6 +5,7 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { triggerGlobalTour } from "@/components/TourGuide";
+import { CommunityModal } from "@/components/CommunityModal";
 
 interface NavItem {
   to: string;
@@ -91,6 +92,7 @@ export function Sidebar() {
   const { collapsed, toggle } = useSidebar();
   const { data: session } = authClient.useSession();
   const isLoggedIn = !!session;
+  const [communityModalOpen, setCommunityModalOpen] = useState(false);
 
   const { data: adminData } = useQuery(
     trpc.admin.isAdmin.queryOptions(undefined, { enabled: isLoggedIn }),
@@ -104,6 +106,7 @@ export function Sidebar() {
 
   return (
     <>
+      <CommunityModal isOpen={communityModalOpen} onOpenChange={setCommunityModalOpen} />
       {/* Desktop Sidebar */}
       <aside
         className={`fixed left-0 top-0 h-full flex flex-col z-40 bg-[var(--warm-cream)] border-r border-[var(--oat-border)] hidden md:flex transition-all duration-300 overflow-y-auto ${
@@ -181,6 +184,19 @@ export function Sidebar() {
               />
             );
           })}
+
+          <button
+            type="button"
+            onClick={() => setCommunityModalOpen(true)}
+            aria-label="Komunitas WhatsApp"
+            className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all clay-hover cursor-pointer text-[var(--warm-charcoal)] hover:bg-[var(--oat-light)] hover:text-[var(--clay-black)] w-full ${
+              collapsed ? "justify-center py-3 px-2" : "py-3 px-3 text-left"
+            }`}
+            title={collapsed ? "Komunitas" : undefined}
+          >
+            <NavIcon name="forum" />
+            {!collapsed && <span className="text-sm font-medium">Komunitas</span>}
+          </button>
 
           {/* Help Tour Button */}
           <button

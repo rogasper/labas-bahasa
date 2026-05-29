@@ -3,6 +3,7 @@ import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { useState } from "react";
+import { CommunityModal } from "@/components/CommunityModal";
 
 function FaqItem({ question, answer, isDark }: { question: string; answer: string; isDark?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,8 +38,11 @@ function FaqItem({ question, answer, isDark }: { question: string; answer: strin
 }
 
 export function LandingPage() {
+  const [communityModalOpen, setCommunityModalOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-[var(--warm-cream)] flex flex-col font-sans selection:bg-[var(--matcha-300)] selection:text-[var(--clay-black)]">
+      <CommunityModal isOpen={communityModalOpen} onOpenChange={setCommunityModalOpen} />
       {/* Navbar */}
       <nav className="w-full px-6 py-4 md:px-12 lg:px-16 flex items-center justify-between max-w-7xl mx-auto z-50 sticky top-0 bg-[var(--warm-cream)] border-b-2 border-[var(--oat-border)]">
         <div className="flex items-center gap-3">
@@ -46,6 +50,15 @@ export function LandingPage() {
           <span className="font-headline font-semibold text-2xl tracking-[-0.64px] text-[var(--clay-black)] hidden sm:block">Labas</span>
         </div>
         <div className="flex items-center gap-2 sm:gap-4">
+          <button
+            type="button"
+            onClick={() => setCommunityModalOpen(true)}
+            className="text-[var(--warm-charcoal)] hover:text-[var(--matcha-700)] transition-colors p-2 hidden md:flex items-center gap-2"
+            aria-label="Komunitas WhatsApp"
+          >
+            <MaterialIcon name="forum" className="text-xl" />
+            <span className="font-semibold text-base">Komunitas</span>
+          </button>
           <a href="https://saweria.co/rogasper" target="_blank" rel="noopener noreferrer" className="text-[var(--warm-charcoal)] hover:text-[var(--pomegranate-400)] transition-colors p-2 hidden md:flex items-center gap-2" aria-label="Support via Saweria">
             <MaterialIcon name="favorite" className="text-xl" />
             <span className="font-semibold text-base">Support</span>
@@ -495,6 +508,14 @@ export function LandingPage() {
               <MaterialIcon name="local_cafe" />
               <span className="font-semibold">Ko-fi</span>
             </a>
+            <button
+              type="button"
+              onClick={() => setCommunityModalOpen(true)}
+              className="flex items-center gap-2 hover:text-[#128C7E] transition-colors"
+            >
+              <MaterialIcon name="forum" />
+              <span className="font-semibold">Komunitas WhatsApp</span>
+            </button>
             <a href="https://rogasper.com" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-[var(--matcha-700)] transition-colors">
               <MaterialIcon name="language" />
               <span className="font-semibold">rogasper.com</span>

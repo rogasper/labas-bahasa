@@ -9,6 +9,8 @@ import { Card, CardContent } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { TourGuide } from "@/components/TourGuide";
 import { DonationModal } from "@/components/DonationModal";
+import { CommunityModal } from "@/components/CommunityModal";
+import { COMMUNITY_PROMPT_STORAGE_KEY } from "@/lib/community-links";
 
 export const Route = createFileRoute("/dashboard")({
   staticData: routeShell.app,
@@ -38,24 +40,35 @@ function HomeComponent() {
   const { session } = Route.useRouteContext();
   const [donationModalOpen, setDonationModalOpen] = useState(false);
   const [donationTrigger, setDonationTrigger] = useState<"exam" | "generate" | null>(null);
+  const [communityModalOpen, setCommunityModalOpen] = useState(false);
+
+  const handleCommunityModalChange = (open: boolean) => {
+    setCommunityModalOpen(open);
+    if (!open) {
+      localStorage.setItem(COMMUNITY_PROMPT_STORAGE_KEY, "1");
+    }
+  };
 
   useEffect(() => {
     const prompt = localStorage.getItem("pendingDonationPrompt") as "exam" | "generate" | null;
     const lastPromptStr = localStorage.getItem("lastDonationPromptTime");
     const lastPromptTime = lastPromptStr ? parseInt(lastPromptStr, 10) : 0;
-    
-    // 24 hours cooldown
     const COOLDOWN = 24 * 60 * 60 * 1000;
     const now = Date.now();
 
+    let showedDonation = false;
     if (prompt) {
       localStorage.removeItem("pendingDonationPrompt");
-      
       if (now - lastPromptTime > COOLDOWN) {
         setDonationTrigger(prompt);
         setDonationModalOpen(true);
         localStorage.setItem("lastDonationPromptTime", now.toString());
+        showedDonation = true;
       }
+    }
+
+    if (!showedDonation && !localStorage.getItem(COMMUNITY_PROMPT_STORAGE_KEY)) {
+      setCommunityModalOpen(true);
     }
   }, []);
 
@@ -82,6 +95,7 @@ function HomeComponent() {
         onOpenChange={setDonationModalOpen}
         triggerAction={donationTrigger}
       />
+      <CommunityModal isOpen={communityModalOpen} onOpenChange={handleCommunityModalChange} />
       {/* Header */}
       <section className="mb-8">
         <h1 className="text-4xl font-headline font-extrabold text-[var(--clay-black)] tracking-tight">
