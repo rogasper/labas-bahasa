@@ -150,8 +150,17 @@ function RouteComponent() {
       <Card className="mx-auto w-full max-w-md shadow-lg border-muted rounded-xl">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-3xl font-bold tracking-tight">Verifikasi Email</CardTitle>
-          <CardDescription>
-            Masukkan kode 6 digit yang dikirim ke <strong>{email}</strong>
+          <CardDescription className="space-y-2">
+            <span className="block">
+              Masukkan kode 6 digit yang dikirim ke <strong>{email}</strong>
+            </span>
+            <span className="block text-xs text-muted-foreground font-normal">
+              Sudah pernah mendaftar? Coba{" "}
+              <Link to="/login" search={{}} className="font-semibold text-primary hover:underline">
+                masuk
+              </Link>{" "}
+              dengan email dan password yang sama. Tidak ada kode? Gunakan kirim ulang di bawah.
+            </span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">

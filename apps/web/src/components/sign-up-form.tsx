@@ -15,6 +15,8 @@ import { trpc } from "@/utils/trpc";
 import { trackUmamiEvent, AnalyticsEvent } from "@/lib/umami";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { TurnstileField, TURNSTILE_SITE_KEY } from "@/components/TurnstileField";
+import { VERIFY_EMAIL_CONTINUE_TOAST, VERIFY_EMAIL_SUCCESS_TOAST } from "@/lib/auth-messages";
+import { isSignUpDuplicateError } from "@/lib/signup-errors";
 
 import Loader from "./loader";
 
@@ -46,6 +48,20 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
   const [turnstileToken, setTurnstileToken] = useState<string | undefined>(undefined);
   const turnstileRef = useRef<TurnstileInstance>(null);
 
+  const continueToVerification = async (email: string) => {
+    try {
+      await sendOtpMutation.mutateAsync({ email, turnstileToken });
+    } catch {
+      // sendVerificationOtp uses generic responses; still allow user to resend on verify page
+    }
+    turnstileRef.current?.reset();
+    setTurnstileToken(undefined);
+    navigate({
+      to: "/verify-email",
+      search: { email },
+    });
+  };
+
   const form = useForm({
     defaultValues: {
       email: "",
@@ -63,18 +79,15 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
         {
           onSuccess: async () => {
             trackUmamiEvent(AnalyticsEvent.SIGN_UP);
-            try {
-              await sendOtpMutation.mutateAsync({ email: value.email, turnstileToken });
-            } catch {}
-            turnstileRef.current?.reset();
-            setTurnstileToken(undefined);
-            navigate({
-              to: "/verify-email",
-              search: { email: value.email },
-            });
-            toast.success("Akun berhasil dibuat! Cek email Anda untuk kode verifikasi.");
+            await continueToVerification(value.email);
+            toast.success(VERIFY_EMAIL_SUCCESS_TOAST);
           },
-          onError: (error) => {
+          onError: async (error) => {
+            if (isSignUpDuplicateError(error)) {
+              await continueToVerification(value.email);
+              toast.message(VERIFY_EMAIL_CONTINUE_TOAST);
+              return;
+            }
             turnstileRef.current?.reset();
             setTurnstileToken(undefined);
             toast.error(error.error.message || error.error.statusText);
