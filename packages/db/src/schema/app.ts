@@ -528,8 +528,25 @@ export const generationJob = pgTable(
     completedAt: timestamp("completed_at"),
   },
   (table) => [
-    index("generationJob_userId_idx").on(table.userId),
+        index("generationJob_userId_idx").on(table.userId),
     index("generationJob_status_idx").on(table.status),
+  ],
+);
+
+// ── Email Bounce Tracking ──────────────────────────────────
+
+export const emailBounceLog = pgTable(
+  "email_bounce_log",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    email: text("email").notNull(),
+    reason: text("reason"),
+    bouncedAt: timestamp("bounced_at").defaultNow().notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [
+    index("emailBounceLog_email_idx").on(table.email),
+    index("emailBounceLog_bouncedAt_idx").on(table.bouncedAt),
   ],
 );
 

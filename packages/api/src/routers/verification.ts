@@ -9,8 +9,9 @@ import { z } from "zod";
 import { sendOtpEmail } from "../lib/email";
 import { autoRefillIfEligible } from "../lib/credit";
 import { publicProcedure, router } from "../index";
-import { checkRateLimit } from "../lib/rate-limit";
+import { checkRateLimit, checkOtpBudget } from "../lib/rate-limit";
 import { validateTurnstileToken } from "../lib/turnstile";
+import { isEmailBounceBlocked } from "../lib/bounce";
 
 const OTP_LENGTH = 6;
 const OTP_EXPIRY_MS = 5 * 60 * 1000;
@@ -29,18 +30,24 @@ export const verificationRouter = router({
     .mutation(async ({ input, ctx }) => {
       const ip = ctx.ip ?? "unknown";
       await checkRateLimit({ key: `otp-send:email:${input.email}`, limit: 3, windowMs: 300_000, strict: true });
-      await checkRateLimit({ key: `otp-send:ip:${ip}:email`, limit: 20, windowMs: 900_000, strict: true });
+      await checkRateLimit({ key: `otp-send:ip:${ip}:verify`, limit: 8, windowMs: 900_000, strict: true });
       await validateTurnstileToken(input.turnstileToken);
 
       const [existingUser] = await db
-        .select({ id: user.id, emailVerified: user.emailVerified })
+        .select({ id: user.id, emailVerified: user.emailVerified, suspended: user.suspended })
         .from(user)
         .where(eq(user.email, input.email))
         .limit(1);
 
-      if (!existingUser || existingUser.emailVerified) {
+      if (!existingUser || existingUser.emailVerified || existingUser.suspended) {
         return genericOtpResponse();
       }
+
+      if (await isEmailBounceBlocked(input.email)) {
+        return genericOtpResponse();
+      }
+
+      await checkOtpBudget(input.email);
 
       const otp = generateOtp();
       const identifier = `email-verification:${input.email}`;
@@ -108,18 +115,24 @@ export const verificationRouter = router({
     .mutation(async ({ input, ctx }) => {
       const ip = ctx.ip ?? "unknown";
       await checkRateLimit({ key: `otp-send:email:${input.email}`, limit: 3, windowMs: 300_000, strict: true });
-      await checkRateLimit({ key: `otp-send:ip:${ip}:reset`, limit: 20, windowMs: 900_000, strict: true });
+      await checkRateLimit({ key: `otp-send:ip:${ip}:reset`, limit: 8, windowMs: 900_000, strict: true });
       await validateTurnstileToken(input.turnstileToken);
 
       const [existingUser] = await db
-        .select({ id: user.id })
+        .select({ id: user.id, suspended: user.suspended })
         .from(user)
         .where(eq(user.email, input.email))
         .limit(1);
 
-      if (!existingUser) {
+      if (!existingUser || existingUser.suspended) {
         return genericOtpResponse();
       }
+
+      if (await isEmailBounceBlocked(input.email)) {
+        return genericOtpResponse();
+      }
+
+      await checkOtpBudget(input.email);
 
       const otp = generateOtp();
       const identifier = `forget-password:${input.email}`;

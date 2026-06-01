@@ -5,7 +5,7 @@ import { logger } from "@labas/api/logger";
 
 let redis: IORedis | null = null;
 
-function getRedis(): IORedis {
+export function getRedis(): IORedis {
   if (!redis) {
     redis = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: 3, enableOfflineQueue: false });
   }
@@ -107,5 +107,29 @@ export async function checkDailyBudget(key: string, limit: number): Promise<bool
   } catch {
     // Fail open
     return true;
+  }
+}
+
+const OTP_BUDGET_MAX = 10;
+const OTP_BUDGET_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+export async function checkOtpBudget(email: string): Promise<void> {
+  const r = getRedis();
+  const key = `otp:budget:${email}`;
+
+  try {
+    const count = await r.incr(key);
+    if (count === 1) {
+      await r.pexpire(key, OTP_BUDGET_TTL_MS);
+    }
+    if (count > OTP_BUDGET_MAX) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message: "Too many verification attempts. Try again later.",
+      });
+    }
+  } catch (err) {
+    if (err instanceof TRPCError) throw err;
+    logger.warn("[OTP_BUDGET] Redis unavailable, budget check skipped", { error: (err as Error).message });
   }
 }

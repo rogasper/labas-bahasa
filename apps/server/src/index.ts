@@ -2,6 +2,7 @@ import { trpcServer } from "@hono/trpc-server";
 import { createContext } from "@labas/api/context";
 import { appRouter } from "@labas/api/routers/index";
 import { checkRateLimitAllowed } from "@labas/api/lib/rate-limit";
+import { recordBounce } from "@labas/api/lib/bounce";
 import { auth } from "@labas/auth";
 import { env } from "@labas/env/server";
 import { withRequestId } from "@labas/api/logger";
@@ -71,6 +72,20 @@ app.use(
     },
   }),
 );
+
+// Webhook endpoint for email bounce notifications from ESPs (SendGrid, Mailgun, SES)
+app.post("/api/webhooks/email-bounce", async (c) => {
+  const body = await c.req.json<{ Email?: string; email?: string; Reason?: string; reason?: string }>();
+  const email = body.Email ?? body.email;
+  const reason = body.Reason ?? body.reason;
+
+  if (!email) {
+    return c.json({ error: "Missing email field" }, 400);
+  }
+
+  await recordBounce(email, reason);
+  return c.json({ success: true }, 200);
+});
 
 app.get("/sitemap.xml", (c) => {
   const baseUrl = "https://labas.rogasper.com";

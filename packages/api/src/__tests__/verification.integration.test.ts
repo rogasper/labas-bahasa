@@ -28,6 +28,14 @@ const mockCheckRateLimit = mock(async () => {});
 mock.module("../lib/rate-limit", () => ({
   checkRateLimit: mockCheckRateLimit,
   checkRateLimitAllowed: mock(async () => true),
+  checkOtpBudget: mock(async () => {}),
+  getRedis: mock(),
+}));
+
+const mockIsEmailBounceBlocked = mock(async () => false);
+mock.module("../lib/bounce", () => ({
+  isEmailBounceBlocked: mockIsEmailBounceBlocked,
+  recordBounce: mock(async () => {}),
 }));
 
 const mockSendOtpEmail = mock(async (_opts: unknown) => {});
@@ -120,7 +128,7 @@ describe("verification router", () => {
       await caller.sendVerificationOtp({ email: EMAIL_UNVERIFIED });
       const keys = mockCheckRateLimit.mock.calls.map((c: unknown[]) => (c[0] as { key: string }).key);
       expect(keys).toContain(`otp-send:email:${EMAIL_UNVERIFIED}`);
-      expect(keys).toContain(`otp-send:ip:${TEST_IP}:email`);
+      expect(keys).toContain(`otp-send:ip:${TEST_IP}:verify`);
     });
 
     it("passes strict:true to checkRateLimit", async () => {
