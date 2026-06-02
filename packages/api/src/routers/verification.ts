@@ -38,8 +38,9 @@ export const verificationRouter = router({
     .input(z.object({ email: z.string().email(), turnstileToken: z.string().optional() }))
     .mutation(async ({ input, ctx }) => {
       const ip = ctx.ip ?? "unknown";
-      await checkRateLimit({ key: `otp-send:email:${input.email}`, limit: 3, windowMs: 300_000, strict: true });
-      await checkRateLimit({ key: `otp-send:ip:${ip}:verify`, limit: 8, windowMs: 900_000, strict: true });
+      // Non-strict so Redis failures don't block legitimate users
+      await checkRateLimit({ key: `otp-send:email:${input.email}`, limit: 3, windowMs: 300_000 });
+      await checkRateLimit({ key: `otp-send:ip:${ip}:verify`, limit: 8, windowMs: 900_000 });
       await validateTurnstileToken(input.turnstileToken);
 
       if (await rejectInvalidEmail(input.email)) {
@@ -127,8 +128,9 @@ export const verificationRouter = router({
     .input(z.object({ email: z.string().email(), turnstileToken: z.string().optional() }))
     .mutation(async ({ input, ctx }) => {
       const ip = ctx.ip ?? "unknown";
-      await checkRateLimit({ key: `otp-send:email:${input.email}`, limit: 3, windowMs: 300_000, strict: true });
-      await checkRateLimit({ key: `otp-send:ip:${ip}:reset`, limit: 8, windowMs: 900_000, strict: true });
+      // Non-strict so Redis failures don't block legitimate users
+      await checkRateLimit({ key: `otp-send:email:${input.email}`, limit: 3, windowMs: 300_000 });
+      await checkRateLimit({ key: `otp-send:ip:${ip}:reset`, limit: 8, windowMs: 900_000 });
       await validateTurnstileToken(input.turnstileToken);
 
       if (await rejectInvalidEmail(input.email)) {

@@ -139,13 +139,13 @@ describe("verification router", () => {
       expect(keys).toContain(`otp-send:ip:${TEST_IP}:verify`);
     });
 
-    it("passes strict:true to checkRateLimit", async () => {
+    it("passes non-strict rate limits to allow fail-open when Redis is down", async () => {
       mockCheckRateLimit.mockClear();
       await caller.sendVerificationOtp({ email: EMAIL_UNVERIFIED });
-      const allStrict = mockCheckRateLimit.mock.calls.every(
-        (c: unknown[]) => (c[0] as { strict?: boolean }).strict === true,
+      const noneStrict = mockCheckRateLimit.mock.calls.every(
+        (c: unknown[]) => (c[0] as { strict?: boolean }).strict !== true,
       );
-      expect(allStrict).toBe(true);
+      expect(noneStrict).toBe(true);
     });
   });
 
