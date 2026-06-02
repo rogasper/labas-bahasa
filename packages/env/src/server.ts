@@ -23,6 +23,7 @@ export const env = createEnv({
     FREE_CREDITS_MAX_POOL: z.coerce.number().positive().default(1_000_000),
     DEFAULT_SIGNUP_CREDIT_TOKENS: z.coerce.number().positive().default(50_000),
     CLOUDFLARE_TURNSTILE_SECRET_KEY: z.string().optional(),
+    TURNSTILE_DISABLED: z.coerce.boolean().default(false),
   },
   runtimeEnv: process.env,
   emptyStringAsUndefined: true,

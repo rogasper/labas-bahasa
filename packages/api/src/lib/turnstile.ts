@@ -3,6 +3,8 @@ import { env } from "@labas/env/server";
 import { logger } from "@labas/api/logger";
 
 export async function validateTurnstileToken(token: string | undefined): Promise<void> {
+  if (env.TURNSTILE_DISABLED) return;
+
   const secretKey = env.CLOUDFLARE_TURNSTILE_SECRET_KEY;
   const isDev = env.NODE_ENV !== "production";
 
@@ -19,27 +21,41 @@ export async function validateTurnstileToken(token: string | undefined): Promise
     throw new TRPCError({ code: "BAD_REQUEST", message: "CAPTCHA verification is required." });
   }
 
+  let res: Response;
   try {
-    const res = await fetch("https://challenges.cloudflare.com/turnstile/v1/siteverify", {
+    res = await fetch("https://challenges.cloudflare.com/turnstile/v1/siteverify", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ secret: secretKey, response: token }),
     });
-    const data = (await res.json()) as { success: boolean; "error-codes"?: string[] };
-    if (!data.success) {
-      logger.warn("[TURNSTILE] Token verification failed", { errorCodes: data["error-codes"] });
-      throw new TRPCError({ code: "BAD_REQUEST", message: "CAPTCHA verification failed. Please try again." });
-    }
   } catch (err) {
-    if (err instanceof TRPCError) throw err;
-    if (isDev) {
-      logger.warn("[TURNSTILE] Siteverify request failed, allowing in dev", { error: (err as Error).message });
-      return;
-    }
-    logger.error("[TURNSTILE] Siteverify request failed, rejecting request", { error: (err as Error).message });
+    logger.error("[TURNSTILE] Network request to Cloudflare failed", { error: (err as Error).message });
+    if (isDev) return;
     throw new TRPCError({
       code: "INTERNAL_SERVER_ERROR",
       message: "CAPTCHA verification service temporarily unavailable.",
     });
+  }
+
+  const text = await res.text();
+
+  let data: { success: boolean; "error-codes"?: string[] };
+  try {
+    data = JSON.parse(text);
+  } catch {
+    logger.error("[TURNSTILE] Cloudflare returned invalid JSON", {
+      status: res.status,
+      body: text.slice(0, 500),
+    });
+    if (isDev) return;
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: "CAPTCHA verification failed. Please try again.",
+    });
+  }
+
+  if (!data.success) {
+    logger.warn("[TURNSTILE] Token verification failed", { errorCodes: data["error-codes"] });
+    throw new TRPCError({ code: "BAD_REQUEST", message: "CAPTCHA verification failed. Please try again." });
   }
 }
