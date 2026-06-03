@@ -285,6 +285,16 @@ If you find Labas helpful and want to support its ongoing development, consider 
 - **[Saweria](https://saweria.co/rogasper)** (Indonesian supporters)
 - **[Ko-fi](https://ko-fi.com/rogasper)** (International)
 
+## Star History
+
+<a href="https://www.star-history.com/?repos=rogasper%2Flabas-bahasa&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=rogasper/labas-bahasa&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=rogasper/labas-bahasa&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=rogasper/labas-bahasa&type=date&legend=top-left" />
+ </picture>
+</a>
+
 ## License
 
 This project is licensed under the **[GNU Affero General Public License v3.0 (AGPL-3.0)](./LICENSE)**.
