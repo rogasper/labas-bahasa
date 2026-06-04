@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc, and, gte, sql } from "drizzle-orm";
+import { eq, desc, and, gte, sql, count } from "drizzle-orm";
 import { router, protectedProcedure } from "../index";
 import { type GenerationInput, generationInputSchema } from "@labas/ai/schemas";
 import { cancelGenerationJob, enqueueGeneration } from "../queue";
@@ -128,6 +128,12 @@ export const aiRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const { limit, offset } = paginateDefaults(input);
+
+      const [total] = await db
+        .select({ count: count() })
+        .from(generationJob)
+        .where(eq(generationJob.userId, ctx.session.user.id));
+
       const rows = await db
         .select({
           id: generationJob.id,
@@ -153,7 +159,8 @@ export const aiRouter = router({
         .orderBy(desc(generationJob.createdAt))
         .limit(limit)
         .offset(offset);
-      return rows;
+
+      return { jobs: rows, total: Number(total?.count ?? 0) };
     }),
 
   tokenUsageToday: protectedProcedure.query(async ({ ctx }) => {

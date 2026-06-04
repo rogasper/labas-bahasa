@@ -6,8 +6,8 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { trackUmamiEvent, AnalyticsEvent } from "@/lib/umami";
 import { Button } from "@labas/ui/components/button";
-import { Card, CardContent } from "@labas/ui/components/card";
 import { Input } from "@labas/ui/components/input";
+import { Card, CardContent } from "@labas/ui/components/card";
 import {
   Select,
   SelectContent,
@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@labas/ui/components/select";
+import { Pagination } from "@/components/admin/Pagination";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { EXAM_TYPES } from "@/lib/exam-constants";
 
@@ -279,27 +280,7 @@ export function HistoryComponent() {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-10">
-              <Button
-                variant="outline"
-                onClick={() => navigate({ search: (prev) => ({ ...prev, page: Math.max(1, page - 1) }) })}
-                disabled={page <= 1}
-                className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
-              >
-                <MaterialIcon name="chevron_left" />
-              </Button>
-              <span className="text-sm text-[var(--warm-charcoal)] px-4">
-                Halaman {page} dari {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                onClick={() => navigate({ search: (prev) => ({ ...prev, page: Math.min(totalPages, page + 1) }) })}
-                disabled={page >= totalPages}
-                className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
-              >
-                <MaterialIcon name="chevron_right" />
-              </Button>
-            </div>
+            <Pagination page={page} totalPages={totalPages} onChange={(p) => navigate({ search: (prev) => ({ ...prev, page: p }) })} />
           )}
         </>
       )}

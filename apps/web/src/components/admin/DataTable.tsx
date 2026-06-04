@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { Pagination } from "@/components/admin/Pagination";
 
 interface ColumnDef<T> {
   id: string;
@@ -198,9 +197,6 @@ function DataTableInner<T>({
           )}
         </tbody>
       </table>
-      {page !== undefined && totalPages !== undefined && onPageChange && (
-        <Pagination page={page} totalPages={totalPages} onChange={onPageChange} />
-      )}
     </div>
   );
 }

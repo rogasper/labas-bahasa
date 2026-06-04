@@ -34,82 +34,94 @@ function getPeriodStart(period: z.infer<typeof periodSchema>): Date | null {
   }
 }
 
+interface RankedEntry {
+  userId: string;
+  name: string;
+  image: string | null;
+  totalScore: number;
+  avgScorePct: number;
+  attemptsCount: number;
+}
+
+async function fetchAllRankings(
+  period: string,
+  examTypeId?: string,
+): Promise<RankedEntry[]> {
+  const periodStart = getPeriodStart(period as any);
+  const conditions = [eq(testAttempt.status, "completed")];
+  if (periodStart) {
+    conditions.push(gte(testAttempt.finishedAt, periodStart));
+  }
+  let where: any = and(...conditions);
+
+  const q = db
+    .select({
+      userId: user.id,
+      name: user.name,
+      image: user.image,
+      totalScore: sql`coalesce(sum(${testAttempt.totalScore}), 0)`,
+      avgScorePct: sql`round(coalesce(avg(case when ${testAttempt.maxScore} > 0 then (${testAttempt.totalScore}::float / ${testAttempt.maxScore}) * 100 end), 0)::numeric, 1)`,
+      attemptsCount: sql`count(*)`,
+    })
+    .from(testAttempt)
+    .innerJoin(user, eq(testAttempt.userId, user.id))
+    .where(where) as any;
+
+  if (examTypeId) {
+    q.innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id));
+  }
+
+  const rows: any[] = await q
+    .groupBy(user.id, user.name, user.image)
+    .orderBy(desc(sql`sum(${testAttempt.totalScore})`));
+
+  return rows.map((r: any) => ({
+    userId: r.userId as string,
+    name: r.name as string,
+    image: r.image as string | null,
+    totalScore: Number(r.totalScore),
+    avgScorePct: Number(r.avgScorePct),
+    attemptsCount: Number(r.attemptsCount),
+  }));
+}
+
 export const leaderboardRouter = router({
   getRankings: publicProcedure
     .input(
       z.object({
         period: periodSchema.default("week"),
         examTypeId: z.string().optional(),
+        nearUserId: z.string().optional(),
         ...paginationSchema.shape,
       }),
     )
     .query(async ({ input }) => {
       const { limit, offset } = paginateDefaults(input);
-      const periodStart = getPeriodStart(input.period);
 
-      const conditions = [eq(testAttempt.status, "completed")];
-      if (periodStart) {
-        conditions.push(gte(testAttempt.finishedAt, periodStart));
+      // Contextual mode
+      if (input.nearUserId) {
+        const all = await fetchAllRankings(input.period, input.examTypeId);
+        const total = all.length;
+        const userIdx = all.findIndex((r) => r.userId === input.nearUserId);
+        const userRank = userIdx !== -1 ? userIdx + 1 : null;
+
+        const rankings = all.slice(0, 5);
+        let nearRankings: typeof rankings = [];
+        if (userRank && userRank > 5) {
+          const start = Math.max(5, userRank - 3);
+          const end = Math.min(total, userRank + 2);
+          nearRankings = all.slice(start, end);
+        }
+
+        return { rankings, nearRankings, total, userRank };
       }
 
-      const where = and(...conditions);
+      // Standard pagination mode — use server-side pagination for performance
+      const all = await fetchAllRankings(input.period, input.examTypeId);
+      const total = all.length;
+      const rankings = all.slice(offset, offset + limit);
 
-      const rankingsQuery = db
-        .select({
-          userId: user.id,
-          name: user.name,
-          image: user.image,
-          totalScore: sql<number>`coalesce(sum(${testAttempt.totalScore}), 0)`,
-          avgScorePct:
-            sql<number>`round(coalesce(avg(case when ${testAttempt.maxScore} > 0 then (${testAttempt.totalScore}::float / ${testAttempt.maxScore}) * 100 end), 0)::numeric, 1)`,
-          attemptsCount: sql<number>`count(*)`,
-        })
-        .from(testAttempt)
-        .innerJoin(user, eq(testAttempt.userId, user.id));
-
-      const countQuery = db
-        .select({ count: sql<number>`count(distinct ${user.id})` })
-        .from(testAttempt)
-        .innerJoin(user, eq(testAttempt.userId, user.id));
-
-      if (input.examTypeId) {
-        rankingsQuery.innerJoin(
-          testPackage,
-          eq(testAttempt.packageId, testPackage.id),
-        );
-        countQuery.innerJoin(
-          testPackage,
-          eq(testAttempt.packageId, testPackage.id),
-        );
-
-        const examWhere = and(where, eq(testPackage.examTypeId, input.examTypeId));
-        rankingsQuery.where(examWhere);
-        countQuery.where(examWhere);
-      } else {
-        rankingsQuery.where(where);
-        countQuery.where(where);
-      }
-
-      const rankings = await rankingsQuery
-        .groupBy(user.id, user.name, user.image)
-        .orderBy(desc(sql`sum(${testAttempt.totalScore})`))
-        .limit(limit)
-        .offset(offset);
-
-      const [countResult] = await countQuery;
-
-      return {
-        rankings: rankings.map((r, i) => ({
-          rank: offset + i + 1,
-          userId: r.userId,
-          name: r.name,
-          image: r.image,
-          totalScore: Number(r.totalScore),
-          avgScorePct: Number(r.avgScorePct),
-          attemptsCount: Number(r.attemptsCount),
-        })),
-        total: Number(countResult?.count ?? 0),
-      };
+      return { rankings, total };
     }),
 
   getMyRank: protectedProcedure
@@ -121,39 +133,9 @@ export const leaderboardRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
-      const periodStart = getPeriodStart(input.period);
-
-      const conditions = [eq(testAttempt.status, "completed")];
-      if (periodStart) {
-        conditions.push(gte(testAttempt.finishedAt, periodStart));
-      }
-
-      const baseWhere = and(...conditions);
-
-      const query = db
-        .select({
-          userId: user.id,
-          totalScore: sql<number>`coalesce(sum(${testAttempt.totalScore}), 0)`,
-          avgScorePct:
-            sql<number>`round(coalesce(avg(case when ${testAttempt.maxScore} > 0 then (${testAttempt.totalScore}::float / ${testAttempt.maxScore}) * 100 end), 0)::numeric, 1)`,
-          attemptsCount: sql<number>`count(*)`,
-        })
-        .from(testAttempt)
-        .innerJoin(user, eq(testAttempt.userId, user.id));
-
-      if (input.examTypeId) {
-        query.innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id));
-        query.where(and(baseWhere, eq(testPackage.examTypeId, input.examTypeId)));
-      } else {
-        query.where(baseWhere);
-      }
-
-      const allRankings = await query
-        .groupBy(user.id)
-        .orderBy(desc(sql`sum(${testAttempt.totalScore})`));
-
-      const totalParticipants = allRankings.length;
-      const myIndex = allRankings.findIndex((r) => r.userId === userId);
+      const all = await fetchAllRankings(input.period, input.examTypeId);
+      const totalParticipants = all.length;
+      const myIndex = all.findIndex((r) => r.userId === userId);
 
       if (myIndex === -1) {
         return {
@@ -165,13 +147,13 @@ export const leaderboardRouter = router({
         };
       }
 
-      const myData = allRankings[myIndex]!;
+      const myData = all[myIndex]!;
       return {
         rank: myIndex + 1,
         totalParticipants,
-        totalScore: Number(myData.totalScore),
-        avgScorePct: Number(myData.avgScorePct),
-        attemptsCount: Number(myData.attemptsCount),
+        totalScore: myData.totalScore,
+        avgScorePct: myData.avgScorePct,
+        attemptsCount: myData.attemptsCount,
       };
     }),
 });

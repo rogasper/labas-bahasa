@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/utils/trpc";
 import { Input } from "@labas/ui/components/input";
@@ -15,9 +15,19 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { DataTable } from "@/components/admin/DataTable";
+import { Pagination } from "@/components/admin/Pagination";
 import type { ColumnDef } from "@/components/admin/DataTable";
+import { z } from "zod";
+
+const searchSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  search: z.string().optional(),
+  sortBy: z.string().optional(),
+  sortDir: z.enum(["asc", "desc"]).optional().default("desc"),
+}).parse;
 
 export const Route = createFileRoute("/admin/credits")({
+  validateSearch: searchSchema,
   component: AdminCredits,
 });
 
@@ -40,13 +50,23 @@ type SortBy = "" | "balance" | "usage" | "recent";
 type SortDir = "asc" | "desc";
 
 function AdminCredits() {
-  const [page, setPage] = useState(1);
-  const [search, debouncedSearch, setSearch] = useDebouncedValue("", 300);
-  const [sortBy, setSortBy] = useState<SortBy>("usage");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const s = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const page = s.page;
+  const sortBy = (s.sortBy ?? "usage") as SortBy;
+  const sortDir = s.sortDir;
+  const [rawSearch, debouncedSearch, setRawSearch] = useDebouncedValue(s.search ?? "", 300);
+
+  useEffect(() => {
+    if (debouncedSearch !== (s.search ?? "")) {
+      navigate({ search: (prev) => ({ ...prev, search: debouncedSearch || undefined, page: 1 }), replace: true });
+    }
+  }, [debouncedSearch]);
+
   const [detailUser, setDetailUser] = useState<UserCreditRow | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [customNote, setCustomNote] = useState("");
+  const [txnPage, setTxnPage] = useState(1);
   const queryClient = useQueryClient();
 
   const usersQuery = useQuery(
@@ -88,19 +108,13 @@ function AdminCredits() {
     }),
   );
 
-  function handleSearch(val: string) {
-    setSearch(val);
-    setPage(1);
-  }
-
   function toggleSort(column: string) {
     if (sortBy === column) {
-      setSortDir((d) => (d === "desc" ? "asc" : "desc"));
+      const newDir = sortDir === "desc" ? "asc" : "desc";
+      navigate({ search: (prev) => ({ ...prev, sortDir: newDir }), replace: true });
     } else {
-      setSortBy(column as SortBy);
-      setSortDir("desc");
+      navigate({ search: (prev) => ({ ...prev, sortBy: column, sortDir: "desc", page: 1 }), replace: true });
     }
-    setPage(1);
   }
 
   // Compute refill-based usage %. A user may have multiple refills; use total credit ever received.
@@ -204,8 +218,8 @@ function AdminCredits() {
           <MaterialIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--warm-charcoal)] text-sm" />
           <Input
             placeholder="Search by name or email..."
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
+            value={rawSearch}
+            onChange={(e) => setRawSearch(e.target.value)}
             aria-label="Search users"
             className="pl-8 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] h-10 text-sm"
           />
@@ -240,11 +254,12 @@ function AdminCredits() {
         keyExtractor={(u) => u.id}
         page={page}
         totalPages={totalPages}
-        onPageChange={setPage}
+        onPageChange={(p) => navigate({ search: (prev) => ({ ...prev, page: p }), replace: true })}
         onRowClick={(u) => {
           setDetailUser(u);
           setCustomAmount("");
           setCustomNote("");
+          setTxnPage(1);
         }}
         onSort={toggleSort}
         sortColumn={sortBy || undefined}
@@ -274,6 +289,7 @@ function AdminCredits() {
           );
         }}
       />
+      <Pagination page={page} totalPages={totalPages} onChange={(p) => navigate({ search: (prev) => ({ ...prev, page: p }), replace: true })} />
 
       {/* Detail Dialog */}
       <Dialog open={!!detailUser} onOpenChange={(v) => { if (!v) setDetailUser(null); }}>
@@ -382,44 +398,51 @@ function AdminCredits() {
                 ) : (historyQuery.data?.transactions ?? []).length === 0 ? (
                   <div className="text-center py-8 text-sm text-[var(--warm-charcoal)]">No transactions yet.</div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="bg-[var(--oat-light)] text-[var(--warm-charcoal)]">
-                          <th className="text-left px-4 py-2.5 font-medium text-xs">Type</th>
-                          <th className="text-right px-4 py-2.5 font-medium text-xs">Amount</th>
-                          <th className="text-left px-4 py-2.5 font-medium text-xs">Description</th>
-                          <th className="text-right px-4 py-2.5 font-medium text-xs">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(historyQuery.data?.transactions ?? []).slice(0, 20).map((txn) => (
-                          <tr key={txn.id} className="border-t border-[var(--oat-border)]">
-                            <td className="px-4 py-2.5">
-                              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                                txn.type === "auto_refill" ? "bg-[var(--sunbeam-300)] text-[var(--sunbeam-800)]" :
-                                txn.type === "admin_adjust" ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]" :
-                                txn.type === "generation_spend" ? "bg-[var(--slushie-500)]/20 text-[var(--slushie-800)]" :
-                                "bg-[var(--oat-border)] text-[var(--warm-charcoal)]"
-                              }`}>
-                                {txn.type.replace(/_/g, " ")}
-                              </span>
-                            </td>
-                            <td className={`px-4 py-2.5 text-right font-mono text-xs font-medium ${
-                              txn.amount >= 0 ? "text-[var(--matcha-700)]" : "text-[var(--clay-red)]"
-                            }`}>
-                              {txn.amount >= 0 ? "+" : ""}{txn.amount.toLocaleString()}
-                            </td>
-                            <td className="px-4 py-2.5 text-xs text-[var(--warm-charcoal)]">{txn.description ?? "-"}</td>
-                            <td className="px-4 py-2.5 text-right text-xs text-[var(--warm-charcoal)]">
-                              {new Date(txn.createdAt).toLocaleDateString("id-ID", {
-                                day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
-                              })}
-                            </td>
+                  <div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-[var(--oat-light)] text-[var(--warm-charcoal)]">
+                            <th className="text-left px-4 py-2.5 font-medium text-xs">Type</th>
+                            <th className="text-right px-4 py-2.5 font-medium text-xs">Amount</th>
+                            <th className="text-left px-4 py-2.5 font-medium text-xs">Description</th>
+                            <th className="text-right px-4 py-2.5 font-medium text-xs">Date</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {(historyQuery.data?.transactions ?? [])
+                            .slice((txnPage - 1) * 15, txnPage * 15)
+                            .map((txn) => (
+                            <tr key={txn.id} className="border-t border-[var(--oat-border)]">
+                              <td className="px-4 py-2.5">
+                                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                                  txn.type === "auto_refill" ? "bg-[var(--sunbeam-300)] text-[var(--sunbeam-800)]" :
+                                  txn.type === "admin_adjust" ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]" :
+                                  txn.type === "generation_spend" ? "bg-[var(--slushie-500)]/20 text-[var(--slushie-800)]" :
+                                  "bg-[var(--oat-border)] text-[var(--warm-charcoal)]"
+                                }`}>
+                                  {txn.type.replace(/_/g, " ")}
+                                </span>
+                              </td>
+                              <td className={`px-4 py-2.5 text-right font-mono text-xs font-medium ${
+                                txn.amount >= 0 ? "text-[var(--matcha-700)]" : "text-[var(--clay-red)]"
+                              }`}>
+                                {txn.amount >= 0 ? "+" : ""}{txn.amount.toLocaleString()}
+                              </td>
+                              <td className="px-4 py-2.5 text-xs text-[var(--warm-charcoal)]">{txn.description ?? "-"}</td>
+                              <td className="px-4 py-2.5 text-right text-xs text-[var(--warm-charcoal)]">
+                                {new Date(txn.createdAt).toLocaleDateString("id-ID", {
+                                  day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+                                })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="pb-2">
+                      <Pagination page={txnPage} totalPages={Math.max(1, Math.ceil((historyQuery.data?.transactions ?? []).length / 15))} onChange={setTxnPage} />
+                    </div>
                   </div>
                 )}
               </div>

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@labas/ui/components/c
 import { Button } from "@labas/ui/components/button";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import type { GenerationResult } from "@labas/ai";
+import { Pagination } from "@/components/admin/Pagination";
 
 interface LogEntry {
   step: string;
@@ -193,13 +194,14 @@ function RouteComponent() {
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return false;
-      const hasRunning = data.some((j) => ACTIVE_STATUSES.has(j.status));
+      const hasRunning = data.jobs.some((j) => ACTIVE_STATUSES.has(j.status));
       return hasRunning ? 1000 : false;
     },
   });
 
-  const jobs = jobsQuery.data ?? [];
-  const hasNextPage = jobs.length === JOBS_PER_PAGE;
+  const jobs = jobsQuery.data?.jobs ?? [];
+  const total = jobsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / JOBS_PER_PAGE));
 
   const cancelJob = useMutation({
     ...trpc.ai.cancelJob.mutationOptions(),
@@ -468,27 +470,7 @@ function RouteComponent() {
           })}
 
           {/* Pagination */}
-          <div className="flex items-center justify-center gap-2 pt-6">
-            <Button
-              variant="outline"
-              onClick={() => setPage(page - 1)}
-              disabled={page <= 1}
-              className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover cursor-pointer"
-            >
-              <MaterialIcon name="chevron_left" />
-            </Button>
-            <span className="text-sm text-[var(--warm-charcoal)] px-4">
-              Halaman {page}
-            </span>
-            <Button
-              variant="outline"
-              onClick={() => setPage(page + 1)}
-              disabled={!hasNextPage}
-              className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover cursor-pointer"
-            >
-              <MaterialIcon name="chevron_right" />
-            </Button>
-          </div>
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         </div>
       )}
     </div>

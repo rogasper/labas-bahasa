@@ -1,0 +1,1 @@
+ALTER TABLE "question" ADD COLUMN "generation_key_source" text;

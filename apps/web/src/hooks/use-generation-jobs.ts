@@ -119,9 +119,9 @@ export function useGenerationJobs() {
 
   /* Merge discovered jobs from myJobs fallback */
   useEffect(() => {
-    if (!myJobsQuery.data) return;
+    if (!myJobsQuery.data?.jobs) return;
     const clearedIds = new Set<string>();
-    const discovered = myJobsQuery.data
+    const discovered = myJobsQuery.data.jobs
       .filter(
         (j) =>
           ACTIVE_STATUSES.has(j.status) &&

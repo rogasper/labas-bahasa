@@ -17,6 +17,7 @@ import { getErrorMessage } from "@/lib/error-utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { QuestionDetailModal } from "@/components/bank/QuestionDetailModal";
+import { Pagination } from "@/components/admin/Pagination";
 
 export const Route = createFileRoute("/admin/featured")({
   component: AdminFeatured,
@@ -578,11 +579,7 @@ function SearchResults({
       )}
 
       {total > limit && (
-        <div className="flex items-center justify-center gap-4 mt-6">
-          <Button variant="outline" size="sm" onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>Previous</Button>
-          <span className="text-sm text-[var(--warm-charcoal)]">Page {page} of {Math.ceil(total / limit)}</span>
-          <Button variant="outline" size="sm" onClick={() => setPage((p) => p + 1)} disabled={page * limit >= total}>Next</Button>
-        </div>
+        <Pagination page={page} totalPages={Math.ceil(total / limit)} onChange={(p) => setPage(() => p)} />
       )}
     </>
   );

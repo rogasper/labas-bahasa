@@ -26,11 +26,19 @@ const PERIODS = [
   { value: "all" as const, label: "Sepanjang Masa" },
 ] as const;
 
-const RANKINGS_PER_PAGE = 20;
-
 export const Route = createFileRoute("/leaderboard")({
   component: LeaderboardPage,
 });
+
+function GapRow({ count }: { count: number }) {
+  return (
+    <div className="flex items-center justify-center py-4 text-[var(--warm-charcoal)]">
+      <span className="text-xs font-medium tracking-widest">
+        · · · {count.toLocaleString()} lainnya · · ·
+      </span>
+    </div>
+  );
+}
 
 function LeaderboardPage() {
   const { data: session } = authClient.useSession();
@@ -38,14 +46,14 @@ function LeaderboardPage() {
 
   const [period, setPeriod] = useState<(typeof PERIODS)[number]["value"]>("week");
   const [examTypeId, setExamTypeId] = useState<string>("");
-  const [page, setPage] = useState(0);
 
   const rankingsQuery = useQuery(
     trpc.leaderboard.getRankings.queryOptions({
       period,
       examTypeId: examTypeId || undefined,
-      limit: RANKINGS_PER_PAGE,
-      offset: page * RANKINGS_PER_PAGE,
+      limit: 20,
+      offset: 0,
+      nearUserId: session?.user.id ?? undefined,
     }),
   );
 
@@ -57,16 +65,14 @@ function LeaderboardPage() {
     enabled: isLoggedIn,
   });
 
-  const rankings = rankingsQuery.data?.rankings ?? [];
-  const total = rankingsQuery.data?.total ?? 0;
-  const totalPages = Math.ceil(total / RANKINGS_PER_PAGE);
-
+  const rankingsData = rankingsQuery.data;
+  const rankings = rankingsData && "rankings" in rankingsData ? (rankingsData as { rankings: any[]; nearRankings: any[]; total: number; userRank: number | null }).rankings ?? [] : [];
+  const nearRankings = rankingsData && "nearRankings" in rankingsData ? (rankingsData as { rankings: any[]; nearRankings: any[]; total: number; userRank: number | null }).nearRankings ?? [] : [];
+  const total = rankingsData && "total" in rankingsData ? (rankingsData as any).total ?? 0 : 0;
+  const userRank = rankingsData && "userRank" in rankingsData ? (rankingsData as { rankings: any[]; nearRankings: any[]; total: number; userRank: number | null }).userRank ?? null : null;
   const isLoading = rankingsQuery.isLoading;
 
-  function handlePeriodChange(value: string) {
-    setPeriod(value as typeof period);
-    setPage(0);
-  }
+  const gap = userRank ? Math.max(0, userRank - 3 - 5) : 0;
 
   return (
     <div className="min-h-screen pt-8 pb-32 px-6 md:px-12 lg:px-16 max-w-3xl mx-auto bg-[var(--warm-cream)]">
@@ -98,7 +104,7 @@ function LeaderboardPage() {
           <Button
             key={p.value}
             variant={period === p.value ? "default" : "outline"}
-            onClick={() => handlePeriodChange(p.value)}
+            onClick={() => setPeriod(p.value)}
             className={`rounded-[var(--radius-lg)] clay-hover cursor-pointer ${
               period === p.value
                 ? "bg-[var(--clay-black)] text-[var(--pure-white)]"
@@ -112,7 +118,7 @@ function LeaderboardPage() {
 
       {/* Exam Filter */}
       <div className="mb-6">
-        <Select value={examTypeId} onValueChange={(v) => { setExamTypeId(v ?? ""); setPage(0); }}>
+        <Select value={examTypeId} onValueChange={(v) => setExamTypeId(v ?? "")}>
           <SelectTrigger className="w-[180px] rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)]">
             <SelectValue placeholder="Semua Ujian" />
           </SelectTrigger>
@@ -141,10 +147,7 @@ function LeaderboardPage() {
             ))}
           </div>
           {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-16 bg-[var(--oat-light)] animate-pulse rounded-[var(--radius-xl)]"
-            />
+            <div key={i} className="h-16 bg-[var(--oat-light)] animate-pulse rounded-[var(--radius-xl)]" />
           ))}
         </div>
       ) : rankings.length === 0 ? (
@@ -168,12 +171,25 @@ function LeaderboardPage() {
         </Card>
       ) : (
         <>
-          {/* Podium Top 3 (only on page 0) */}
-          {page === 0 && <RankingPodium top3={rankings.slice(0, 3)} />}
+          {/* Podium Top 3 */}
+          <RankingPodium top3={rankings.slice(0, 3)} />
 
           {/* Rankings List */}
           <div className="space-y-3 mt-4">
-            {(page === 0 ? rankings.slice(3) : rankings).map((entry) => (
+            {/* Ranks 4-5 */}
+            {rankings.slice(3).map((entry) => (
+              <RankingRow
+                key={entry.userId}
+                entry={entry}
+                isCurrentUser={isLoggedIn && entry.userId === session?.user.id}
+              />
+            ))}
+
+            {/* Gap if user is beyond top 5 */}
+            {gap > 0 && <GapRow count={gap} />}
+
+            {/* Near user's rank */}
+            {nearRankings.map((entry) => (
               <RankingRow
                 key={entry.userId}
                 entry={entry}
@@ -181,33 +197,6 @@ function LeaderboardPage() {
               />
             ))}
           </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-4 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] clay-hover cursor-pointer disabled:opacity-40"
-              >
-                <MaterialIcon name="chevron_left" className="text-sm" />
-                Sebelumnya
-              </Button>
-              <span className="text-sm text-[var(--warm-charcoal)]">
-                {page + 1} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={page >= totalPages - 1}
-                className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] clay-hover cursor-pointer disabled:opacity-40"
-              >
-                Selanjutnya
-                <MaterialIcon name="chevron_right" className="text-sm" />
-              </Button>
-            </div>
-          )}
         </>
       )}
 

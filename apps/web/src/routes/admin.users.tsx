@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/utils/trpc";
 import { Input } from "@labas/ui/components/input";
@@ -17,11 +17,22 @@ import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DataTable } from "@/components/admin/DataTable";
+import { Pagination } from "@/components/admin/Pagination";
 import type { ColumnDef } from "@/components/admin/DataTable";
+import { z } from "zod";
 
 const PAGE_SIZE = 20;
 
+const searchSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  search: z.string().optional(),
+  role: z.string().optional(),
+  status: z.string().optional(),
+  verified: z.string().optional(),
+}).parse;
+
 export const Route = createFileRoute("/admin/users")({
+  validateSearch: searchSchema,
   component: AdminUsers,
 });
 
@@ -35,21 +46,26 @@ type UserRow = {
 };
 
 function AdminUsers() {
-  const [search, debouncedSearch, setSearch] = useDebouncedValue("", 300);
-  const [page, setPage] = useState(1);
-  const [roleFilter, setRoleFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [verifFilter, setVerifFilter] = useState("");
+  const s = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
   const queryClient = useQueryClient();
 
-  function resetAndSearch(val: string) {
-    setSearch(val);
-    setPage(1);
-  }
+  const page = s.page;
+  const [rawSearch, debouncedSearch, setRawSearch] = useDebouncedValue(s.search ?? "", 300);
 
-  function handleFilterChange() {
-    setPage(1);
-  }
+  useEffect(() => {
+    if (debouncedSearch !== (s.search ?? "")) {
+      navigate({ search: (prev) => ({ ...prev, search: debouncedSearch || undefined, page: 1 }), replace: true });
+    }
+  }, [debouncedSearch]);
+
+  const roleFilter = s.role ?? "";
+  const statusFilter = s.status ?? "";
+  const verifFilter = s.verified ?? "";
+
+  const nav = (updates: Record<string, string | number | undefined>) => {
+    navigate({ search: (prev) => ({ ...prev, page: 1, ...updates }), replace: true });
+  };
 
   const usersQuery = useQuery(
     trpc.admin.listUsers.queryOptions({
@@ -115,11 +131,7 @@ function AdminUsers() {
       header: "Verified",
       size: "w-[12%]",
       cell: ({ row }) => (
-        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${
-          row.emailVerified
-            ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
-            : "bg-[var(--sunbeam-300)] text-[var(--sunbeam-800)]"
-        }`}>
+        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${row.emailVerified ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]" : "bg-[var(--sunbeam-300)] text-[var(--sunbeam-800)]"}`}>
           <MaterialIcon name={row.emailVerified ? "check_circle" : "cancel"} className="text-xs" />
           {row.emailVerified ? "Verified" : "Unverified"}
         </span>
@@ -140,9 +152,7 @@ function AdminUsers() {
       header: "Status",
       size: "w-[10%]",
       cell: ({ row }) => (
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-          row.suspended ? "bg-[var(--clay-red)]/10 text-[var(--clay-red)]" : "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
-        }`}>
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${row.suspended ? "bg-[var(--clay-red)]/10 text-[var(--clay-red)]" : "bg-[var(--matcha-300)] text-[var(--matcha-800)]"}`}>
           {row.suspended ? "Suspended" : "Active"}
         </span>
       ),
@@ -156,22 +166,18 @@ function AdminUsers() {
         <span className="text-sm text-[var(--warm-charcoal)]">{total.toLocaleString()} total</span>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <MaterialIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--warm-charcoal)] text-sm" />
           <Input
             placeholder="Search by name or email..."
-            value={search}
-            onChange={(e) => resetAndSearch(e.target.value)}
+            value={rawSearch}
+            onChange={(e) => { setRawSearch(e.target.value); }}
             aria-label="Search users"
             className="pl-8 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] h-10 text-sm"
           />
         </div>
-        <Select
-          value={roleFilter}
-          onValueChange={(v: string | null) => { setRoleFilter(v ?? ""); handleFilterChange(); }}
-        >
+        <Select value={roleFilter} onValueChange={(v: string | null) => nav({ role: v || undefined })}>
           <SelectTrigger className="w-[120px] h-10 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-sm cursor-pointer" aria-label="Filter by role">
             <SelectValue placeholder="All Roles" />
           </SelectTrigger>
@@ -183,10 +189,7 @@ function AdminUsers() {
             </SelectGroup>
           </SelectContent>
         </Select>
-        <Select
-          value={statusFilter}
-          onValueChange={(v: string | null) => { setStatusFilter(v ?? ""); handleFilterChange(); }}
-        >
+        <Select value={statusFilter} onValueChange={(v: string | null) => nav({ status: v || undefined })}>
           <SelectTrigger className="w-[130px] h-10 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-sm cursor-pointer" aria-label="Filter by status">
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
@@ -198,10 +201,7 @@ function AdminUsers() {
             </SelectGroup>
           </SelectContent>
         </Select>
-        <Select
-          value={verifFilter}
-          onValueChange={(v: string | null) => { setVerifFilter(v ?? ""); handleFilterChange(); }}
-        >
+        <Select value={verifFilter} onValueChange={(v: string | null) => nav({ verified: v || undefined })}>
           <SelectTrigger className="w-[140px] h-10 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-sm cursor-pointer" aria-label="Filter by verification">
             <SelectValue placeholder="All Verified" />
           </SelectTrigger>
@@ -224,29 +224,20 @@ function AdminUsers() {
         keyExtractor={(u) => u.id}
         page={page}
         totalPages={totalPages}
-        onPageChange={setPage}
+        onPageChange={(p) => navigate({ search: (prev) => ({ ...prev, page: p }), replace: true })}
         actionsHeader=""
         actions={(u) => (
           <div className="flex items-center justify-center gap-2" onClick={(e) => e.stopPropagation()}>
-            <Button
-              variant="outline"
-              onClick={() => handleSuspend(u)}
-              disabled={suspendMutation.isPending}
-              className="h-9 rounded-[var(--radius-lg)] text-xs"
-            >
+            <Button variant="outline" onClick={() => handleSuspend(u)} disabled={suspendMutation.isPending} className="h-9 rounded-[var(--radius-lg)] text-xs">
               {u.suspended ? "Unsuspend" : "Suspend"}
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => handleRoleChange(u)}
-              disabled={roleMutation.isPending}
-              className="h-9 rounded-[var(--radius-lg)] text-xs"
-            >
+            <Button variant="outline" onClick={() => handleRoleChange(u)} disabled={roleMutation.isPending} className="h-9 rounded-[var(--radius-lg)] text-xs">
               {u.role === "admin" ? "Demote" : "Promote"}
             </Button>
           </div>
         )}
       />
+      <Pagination page={page} totalPages={totalPages} onChange={(p) => navigate({ search: (prev) => ({ ...prev, page: p }), replace: true })} />
     </div>
   );
 }

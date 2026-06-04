@@ -311,6 +311,7 @@ async function saveGeneratedArtifacts(
         skillTags: q.skillTags,
         source: "ai" as const,
         aiModel: q.aiModel,
+        generationKeySource: (input as any)._isPlatformGeneration ? "free_credit" : "byok",
         creatorUserId: userId,
         isPublic: false,
       })) as any,
@@ -477,6 +478,7 @@ async function completeJobWithResult(params: {
         requestedQuestionCount: params.input.questionCount,
       } as any,
       tokensUsed: params.totalTokens,
+      generationKeySource: (params.input as any)._isPlatformGeneration ? "free_credit" : "byok",
       durationMs: params.durationMs,
       completedAt: new Date(),
     })

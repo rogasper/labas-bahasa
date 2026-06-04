@@ -57,6 +57,7 @@ export const question = pgTable(
     source: text("source").notNull().default("manual"), // "ai" | "manual"
     aiModel: text("ai_model"),
     aiPromptUsed: text("ai_prompt_used"),
+    generationKeySource: text("generation_key_source"), // "free_credit" | "byok" | null (for manual)
     creatorUserId: text("creator_user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),
@@ -519,6 +520,7 @@ export const generationJob = pgTable(
     inputJson: jsonb("input_json"), // GenerationInput (stored for retry)
     errorMessage: text("error_message"),
     tokensUsed: integer("tokens_used"),
+    generationKeySource: text("generation_key_source"), // "free_credit" | "byok" | null
     durationMs: integer("duration_ms"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at")

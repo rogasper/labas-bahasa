@@ -495,6 +495,7 @@ export const adminRouter = router({
           progress: schema.generationJob.progress,
           tokensUsed: schema.generationJob.tokensUsed,
           errorMessage: schema.generationJob.errorMessage,
+          generationKeySource: schema.generationJob.generationKeySource,
           createdAt: schema.generationJob.createdAt,
           completedAt: schema.generationJob.completedAt,
         })
@@ -629,6 +630,116 @@ export const adminRouter = router({
         questionId: input.questionId,
       });
       return updated;
+    }),
+
+  // ── Package Moderation ─────────────────────────────────────
+
+  listLatestPackages: adminProcedure
+    .input(
+      z
+        .object({
+          search: z.string().optional(),
+          examTypeId: z.string().optional(),
+          isPublic: z.boolean().optional(),
+          ...paginationSchema.shape,
+        })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const { limit, offset } = paginateDefaults(input);
+
+      const conditions: ReturnType<typeof eq>[] = [];
+      if (input?.search) {
+        conditions.push(
+          or(
+            ilike(schema.testPackage.title, `%${input.search}%`),
+            ilike(schema.testPackage.description ?? sql`''`, `%${input.search}%`),
+          ) as unknown as ReturnType<typeof eq>,
+        );
+      }
+      if (input?.examTypeId) {
+        conditions.push(eq(schema.testPackage.examTypeId, input.examTypeId));
+      }
+      if (input?.isPublic !== undefined) {
+        conditions.push(eq(schema.testPackage.isPublic, input.isPublic));
+      }
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const [total] = await db
+        .select({ count: count() })
+        .from(schema.testPackage)
+        .where(where);
+
+      const packages = await db
+        .select({
+          id: schema.testPackage.id,
+          title: schema.testPackage.title,
+          description: schema.testPackage.description,
+          examTypeId: schema.testPackage.examTypeId,
+          creatorUserId: schema.testPackage.creatorUserId,
+          creatorName: schema.user.name,
+          isPublic: schema.testPackage.isPublic,
+          totalQuestions: schema.testPackage.totalQuestions,
+          totalSections: schema.testPackage.totalSections,
+          createdAt: schema.testPackage.createdAt,
+        })
+        .from(schema.testPackage)
+        .leftJoin(schema.user, eq(schema.testPackage.creatorUserId, schema.user.id))
+        .where(where)
+        .orderBy(desc(schema.testPackage.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      return { packages, total: Number(total?.count ?? 0) };
+    }),
+
+  togglePublicAnyPackage: adminProcedure
+    .input(z.object({ packageId: z.string().uuid() }))
+    .mutation(async ({ ctx, input }) => {
+      const [p] = await db
+        .select({ id: schema.testPackage.id, isPublic: schema.testPackage.isPublic, creatorUserId: schema.testPackage.creatorUserId })
+        .from(schema.testPackage)
+        .where(eq(schema.testPackage.id, input.packageId))
+        .limit(1);
+      if (!p) throwNotFound("Package");
+
+      const newValue = !p.isPublic;
+      const [updated] = await db
+        .update(schema.testPackage)
+        .set({ isPublic: newValue })
+        .where(eq(schema.testPackage.id, input.packageId))
+        .returning();
+
+      await audit(ctx.session.user.id, newValue ? "publish_package" : "unpublish_package", p.creatorUserId, {
+        packageId: input.packageId,
+      });
+      return updated;
+    }),
+
+  bulkTogglePublicPackages: adminProcedure
+    .input(
+      z.object({
+        packageIds: z.array(z.string().uuid()),
+        isPublic: z.boolean(),
+      }),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const updated = await db
+        .update(schema.testPackage)
+        .set({ isPublic: input.isPublic })
+        .where(inArray(schema.testPackage.id, input.packageIds))
+        .returning();
+
+      for (const pkg of updated) {
+        await audit(
+          ctx.session.user.id,
+          input.isPublic ? "publish_package" : "unpublish_package",
+          pkg.creatorUserId,
+          { packageId: pkg.id },
+        );
+      }
+
+      return { updated: updated.length };
     }),
 
   // ── Dashboard Stats ──────────────────────────────────────

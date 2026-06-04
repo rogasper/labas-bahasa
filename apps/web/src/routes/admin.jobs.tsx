@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { trpc } from "@/utils/trpc";
 import { Input } from "@labas/ui/components/input";
@@ -15,11 +15,20 @@ import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error-utils";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { DataTable } from "@/components/admin/DataTable";
+import { Pagination } from "@/components/admin/Pagination";
 import type { ColumnDef } from "@/components/admin/DataTable";
+import { z } from "zod";
 
 const STATUSES = ["all", "pending", "running", "completed", "completed_partial", "failed", "cancelled"] as const;
 
+const searchSchema = z.object({
+  page: z.coerce.number().min(1).default(1),
+  search: z.string().optional(),
+  status: z.string().optional(),
+}).parse;
+
 export const Route = createFileRoute("/admin/jobs")({
+  validateSearch: searchSchema,
   component: AdminJobs,
 });
 
@@ -35,6 +44,7 @@ type JobRow = {
   tokensUsed: number | null;
   questionCount: number | null;
   errorMessage: string | null;
+  generationKeySource: string | null;
   status: string;
   createdAt: string | Date;
   completedAt: string | Date | null;
@@ -46,13 +56,21 @@ function formatDate(dateStr: string | Date | null) {
 }
 
 function AdminJobs() {
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<string>("all");
-  const [search, debouncedSearch, setSearch] = useDebouncedValue("", 300);
+  const s = Route.useSearch();
+  const navigate = useNavigate({ from: Route.fullPath });
+  const page = s.page;
+  const status = s.status ?? "all";
+  const [rawSearch, debouncedSearch, setRawSearch] = useDebouncedValue(s.search ?? "", 300);
   const [detailJob, setDetailJob] = useState<JobRow | null>(null);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const PAGE_SIZE = 30;
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (debouncedSearch !== (s.search ?? "")) {
+      navigate({ search: (prev) => ({ ...prev, search: debouncedSearch || undefined, page: 1 }), replace: true });
+    }
+  }, [debouncedSearch]);
 
   const jobsQuery = useQuery(
     trpc.admin.listAllJobs.queryOptions({
@@ -140,6 +158,17 @@ function AdminJobs() {
       ),
     },
     {
+      id: "source", header: "Source", size: "w-[10%]",
+      cell: ({ row }) => {
+        const key = row.generationKeySource;
+        let cls = "bg-[var(--oat-border)] text-[var(--warm-charcoal)]";
+        let label = key ?? "-";
+        if (key === "free_credit") { cls = "bg-[var(--slushie-500)]/20 text-[var(--slushie-800)]"; label = "Free Credit"; }
+        else if (key === "byok") { cls = "bg-[var(--ube-300)]/30 text-[var(--ube-800)]"; label = "BYOK"; }
+        return <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
+      },
+    },
+    {
       id: "completed",
       header: "Completed",
       size: "w-[12%]",
@@ -164,8 +193,8 @@ function AdminJobs() {
           <MaterialIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--warm-charcoal)] text-sm" />
           <Input
             placeholder="Search by user name or email..."
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            value={rawSearch}
+            onChange={(e) => { setRawSearch(e.target.value); }}
             aria-label="Search jobs by user"
             className="pl-8 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] h-10 text-sm"
           />
@@ -174,7 +203,7 @@ function AdminJobs() {
           {STATUSES.map((s) => (
             <button
               key={s}
-              onClick={() => { setStatus(s); setPage(1); }}
+              onClick={() => { navigate({ search: (prev) => ({ ...prev, status: s === "all" ? undefined : s, page: 1 }), replace: true }); }}
               className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
                 status === s
                   ? "bg-[var(--matcha-300)] text-[var(--matcha-800)]"
@@ -198,7 +227,7 @@ function AdminJobs() {
         keyExtractor={(j) => j.id}
         page={page}
         totalPages={totalPages}
-        onPageChange={setPage}
+        onPageChange={(p) => navigate({ search: (prev) => ({ ...prev, page: p }), replace: true })}
         onRowClick={(j) => setDetailJob(j)}
         actionsHeader=""
         actions={(j) => (
@@ -214,6 +243,7 @@ function AdminJobs() {
           ) : null
         )}
       />
+      <Pagination page={page} totalPages={totalPages} onChange={(p) => navigate({ search: (prev) => ({ ...prev, page: p }), replace: true })} />
 
       {/* Detail Dialog */}
       <Dialog open={!!detailJob} onOpenChange={(v) => { if (!v) setDetailJob(null); }}>
