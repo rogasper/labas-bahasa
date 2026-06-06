@@ -22,6 +22,7 @@ import {
 } from "@labas/ui/components/select";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { GettingStartedCard } from "@/components/GettingStartedCard";
+import { Pagination } from "@/components/admin/Pagination";
 import { CalloutCard } from "@/components/bank/CalloutCard";
 import { PackageCard } from "@/components/packages/PackageCard";
 import { PageTour, TourHelpButton } from "@/components/TourGuide";
@@ -406,27 +407,7 @@ export function PackagesComponent() {
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-10">
-              <Button
-                variant="outline"
-                onClick={() => setPage(Math.max(1, page - 1))}
-                disabled={page <= 1}
-                className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
-              >
-                <MaterialIcon name="chevron_left" />
-              </Button>
-              <span className="text-sm text-[var(--warm-charcoal)] px-4">
-                Halaman {page} dari {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                onClick={() => setPage(Math.min(totalPages, page + 1))}
-                disabled={page >= totalPages}
-                className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"
-              >
-                <MaterialIcon name="chevron_right" />
-              </Button>
-            </div>
+            <Pagination page={page} totalPages={totalPages} onChange={setPage} />
           )}
         </>
       )}
