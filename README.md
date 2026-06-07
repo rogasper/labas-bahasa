@@ -42,20 +42,11 @@ The project is a **Turborepo monorepo** managed with **Bun**. The web app talks 
 
 ## Demo
 
-### AI Question Generation
-<video src="./apps/web/public/generate%20soal.mp4" controls width="100%">
-  <a href="./apps/web/public/generate%20soal.mp4">▶ Play video</a>
-</video>
+▶ [AI Question Generation](./apps/web/public/generate%20soal.mp4) — Watch AI generate exam questions with quick and agentic modes.
 
-### Creating Practice Packages
-<video src="./apps/web/public/paket%20soal.mp4" controls width="100%">
-  <a href="./apps/web/public/paket%20soal.mp4">▶ Play video</a>
-</video>
+▶ [Creating Practice Packages](./apps/web/public/paket%20soal.mp4) — Browse, filter, and organize questions into packages.
 
-### Taking a Mock Test
-<video src="./apps/web/public/attempt%20exam.mp4" controls width="100%">
-  <a href="./apps/web/public/attempt%20exam.mp4">▶ Play video</a>
-</video>
+▶ [Taking a Mock Test](./apps/web/public/attempt%20exam.mp4) — Timed practice session with passage, questions, and navigation.
 
 ## Supported Exams
 
