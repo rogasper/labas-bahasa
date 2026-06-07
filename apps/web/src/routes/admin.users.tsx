@@ -77,7 +77,7 @@ function AdminUsers() {
       offset: (page - 1) * PAGE_SIZE,
     }),
   );
-
+  
   const users = usersQuery.data?.users ?? [];
   const total = usersQuery.data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));

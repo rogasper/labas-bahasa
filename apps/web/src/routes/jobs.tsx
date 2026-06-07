@@ -194,7 +194,7 @@ function RouteComponent() {
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return false;
-      const hasRunning = data.jobs.some((j) => ACTIVE_STATUSES.has(j.status));
+      const hasRunning = data.jobs?.some((j) => ACTIVE_STATUSES.has(j.status));
       return hasRunning ? 1000 : false;
     },
   });
