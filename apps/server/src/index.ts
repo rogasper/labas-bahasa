@@ -76,6 +76,11 @@ app.use("/api/auth/sign-up/email", async (c, next) => {
   return next();
 });
 
+// Block Better Auth's auto-exposed update-user endpoint (accepts any user field)
+app.on(["POST", "GET"], "/api/auth/update-user", (c) =>
+  c.json({ error: "Forbidden" }, 403),
+);
+
 app.on(["POST", "GET"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.use(

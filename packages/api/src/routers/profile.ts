@@ -89,17 +89,28 @@ export const profileRouter = router({
     .input(
       z.object({
         name: z.string().min(1).max(100).optional(),
-        image: z.string().url().optional().nullable(),
+        image: z
+          .string()
+          .url()
+          .max(500)
+          .refine(
+            (url) => url.startsWith("https://api.dicebear.com/") || url.startsWith("https://avatars.githubusercontent.com/"),
+            { message: "Only DiceBear or GitHub avatar URLs are allowed" },
+          )
+          .optional()
+          .nullable(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
       const userId = ctx.session.user.id;
+      // Only allow explicitly whitelisted fields
+      const updates: Record<string, string | null> = {};
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.image !== undefined) updates.image = input.image;
+
       const [updated] = await db
         .update(user)
-        .set({
-          ...(input.name ? { name: input.name } : {}),
-          ...(input.image !== undefined ? { image: input.image } : {}),
-        })
+        .set(updates)
         .where(eq(user.id, userId))
         .returning({
           id: user.id,
