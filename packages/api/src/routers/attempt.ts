@@ -389,6 +389,24 @@ export const attemptRouter = router({
       if (attempt.userId !== userId) throwForbidden();
       if (attempt.status !== "in_progress") throwBadRequest("Attempt already finished");
 
+      // Time limit validation — reject answers after deadline + grace period
+      if (attempt.startedAt && attempt.packageId) {
+        const [pkg] = await db
+          .select({ estimatedDurationMin: testPackage.estimatedDurationMin })
+          .from(testPackage)
+          .where(eq(testPackage.id, attempt.packageId))
+          .limit(1);
+
+        if (pkg?.estimatedDurationMin && pkg.estimatedDurationMin > 0) {
+          const elapsedSec = Math.round((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
+          const limitSec = pkg.estimatedDurationMin * 60;
+          const gracePeriod = 30;
+          if (elapsedSec > limitSec + gracePeriod) {
+            throwBadRequest("Waktu sudah habis. Tidak bisa submit jawaban lagi.");
+          }
+        }
+      }
+
       const [q] = await db
         .select()
         .from(question)
@@ -557,6 +575,21 @@ export const attemptRouter = router({
         totalQuestions += Number(count);
       }
 
+      // Check if overtime (time limit exceeded)
+      let isOvertime = false;
+      if (attempt.startedAt && attempt.packageId) {
+        const [pkg] = await db
+          .select({ estimatedDurationMin: testPackage.estimatedDurationMin })
+          .from(testPackage)
+          .where(eq(testPackage.id, attempt.packageId))
+          .limit(1);
+
+        if (pkg?.estimatedDurationMin && pkg.estimatedDurationMin > 0) {
+          const elapsedSec = Math.round((Date.now() - new Date(attempt.startedAt).getTime()) / 1000);
+          isOvertime = elapsedSec > pkg.estimatedDurationMin * 60;
+        }
+      }
+
       await db
         .update(testAttempt)
         .set({
@@ -564,6 +597,7 @@ export const attemptRouter = router({
           finishedAt: new Date(),
           totalScore,
           maxScore: totalQuestions,
+          isOvertime,
         })
         .where(eq(testAttempt.id, input.attemptId));
 

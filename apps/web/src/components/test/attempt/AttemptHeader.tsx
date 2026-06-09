@@ -6,9 +6,11 @@ interface AttemptHeaderProps {
   pkgTitle: string;
   currentSectionTitle: string;
   timeElapsed: number;
+  timeLimitSec: number | null;
   answeredCount: number;
   totalQuestions: number;
   isFinished: boolean;
+  isTimeUp: boolean;
   onAbandon: () => void;
   onFinish: () => void;
 }
@@ -17,12 +19,19 @@ export function AttemptHeader({
   pkgTitle,
   currentSectionTitle,
   timeElapsed,
+  timeLimitSec,
   answeredCount,
   totalQuestions,
   isFinished,
+  isTimeUp,
   onAbandon,
   onFinish,
 }: AttemptHeaderProps) {
+  const remaining = timeLimitSec !== null ? timeLimitSec - timeElapsed : null;
+  const displaySec = remaining !== null ? Math.max(0, remaining) : timeElapsed;
+  const isWarning = remaining !== null && remaining <= 300;
+  const isCritical = remaining !== null && remaining <= 60;
+
   return (
     <header className="bg-[var(--pure-white)] border-b border-[var(--oat-border)] flex justify-between items-center w-full px-3 sm:px-6 py-2.5 sm:py-3 shrink-0 z-50 gap-2">
       {/* Left: Close + Title + Section badge */}
@@ -43,13 +52,28 @@ export function AttemptHeader({
       </div>
 
       {/* Center: Timer — always visible, compact on mobile */}
-      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 bg-[var(--pure-white)]/70 backdrop-blur-md rounded-xl px-2.5 sm:px-4 py-1 sm:py-2 shadow-sm border border-[var(--oat-border)]">
-        <MaterialIcon name="timer" className="text-sm sm:text-base text-[var(--matcha-600)]" />
-        <span className="text-sm sm:text-base sm:text-xl font-bold font-headline tabular-nums text-[var(--clay-black)]">
-          {formatTime(timeElapsed)}
+      <div
+        className={`flex items-center gap-1.5 sm:gap-2 shrink-0 bg-[var(--pure-white)]/70 backdrop-blur-md rounded-xl px-2.5 sm:px-4 py-1 sm:py-2 shadow-sm border transition-all ${
+          isCritical
+            ? "border-[var(--clay-red)] animate-pulse"
+            : isWarning
+              ? "border-[var(--pomegranate-400)]"
+              : "border-[var(--oat-border)]"
+        }`}
+      >
+        <MaterialIcon
+          name="timer"
+          className={`text-sm sm:text-base ${isCritical ? "text-[var(--clay-red)]" : isWarning ? "text-[var(--pomegranate-400)]" : "text-[var(--matcha-600)]"}`}
+        />
+        <span
+          className={`text-sm sm:text-base sm:text-xl font-bold font-headline tabular-nums ${
+            isCritical ? "text-[var(--clay-red)]" : isWarning ? "text-[var(--pomegranate-400)]" : "text-[var(--clay-black)]"
+          }`}
+        >
+          {timeLimitSec !== null ? formatTime(displaySec) : formatTime(timeElapsed)}
         </span>
         <span className="hidden sm:inline text-[10px] leading-none uppercase font-bold text-[var(--warm-silver)] tracking-tighter ml-1">
-          Waktu
+          {timeLimitSec !== null ? "Sisa" : "Waktu"}
         </span>
       </div>
 
@@ -69,12 +93,12 @@ export function AttemptHeader({
       {/* Selesai button */}
       <Button
         onClick={onFinish}
-        disabled={isFinished}
+        disabled={isFinished || isTimeUp}
         size="sm"
-        className="bg-[var(--pomegranate-400)] text-[var(--pure-white)] hover:bg-[var(--pomegranate-600)] px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-opacity shrink-0"
+        className="bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-800)] px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-bold transition-opacity shrink-0"
       >
-        <span className="hidden sm:inline">Selesai Test</span>
-        <span className="sm:hidden">Selesai</span>
+        <span className="hidden sm:inline">{isTimeUp ? "Waktu Habis" : "Selesai Test"}</span>
+        <span className="sm:hidden">{isTimeUp ? "Habis" : "Selesai"}</span>
       </Button>
     </header>
   );

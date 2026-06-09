@@ -53,10 +53,14 @@ function TakeTestComponent() {
     setCurrentSectionIdx,
     answers,
     timeElapsed,
+    timeLimitSec,
     isStarted,
     isFinished,
+    isTimeUp,
     submittingQId,
     markedQuestions,
+    activeQuestionId,
+    setActiveQuestionId,
     startPending,
     startError,
     handleStart,
@@ -65,10 +69,11 @@ function TakeTestComponent() {
     handleAbandon,
     toggleMarkQuestion,
     startQuestionTimer,
-  } = useTestSession(packageId);
+  } = useTestSession(packageId, undefined, pkg?.estimatedDurationMin ?? undefined);
 
   const totalQuestions = pkg?.sections.reduce((sum: number, sec) => sum + sec.questions.length, 0) ?? 0;
   const answeredCount = Object.keys(answers).length;
+  const timeLimitMin = pkg?.estimatedDurationMin && pkg.estimatedDurationMin > 0 ? pkg.estimatedDurationMin : undefined;
 
   const handleStartWithTracking = useCallback(async () => {
     await handleStart();
@@ -144,7 +149,11 @@ function TakeTestComponent() {
             {pkg.title}
           </h1>
           <p className="text-[var(--warm-charcoal)] mb-8">
-            Persiapkan diri Anda. Setelah memulai, timer akan berjalan dan jawaban tersimpan otomatis.
+            Persiapkan diri Anda. Setelah memulai,
+            {timeLimitMin
+              ? ` timer ${timeLimitMin} menit akan berjalan dan`
+              : " timer akan berjalan dan"}
+            {" "}jawaban tersimpan otomatis.
           </p>
 
           <Card className="clay-shadow bg-[var(--pure-white)] border-2 border-[var(--oat-border)] rounded-[var(--radius-xl)] mb-8">
@@ -161,7 +170,7 @@ function TakeTestComponent() {
                 <div className="flex items-center gap-3">
                   <MaterialIcon name="timer" className="text-[var(--matcha-600)]" />
                   <span className="text-[var(--clay-black)] font-medium">
-                    Estimasi {pkg.estimatedDurationMin} menit
+                    {pkg.estimatedDurationMin} menit — jawaban akan dikumpulkan otomatis saat waktu habis
                   </span>
                 </div>
               )}
@@ -222,15 +231,19 @@ function TakeTestComponent() {
       answers={answers}
       onAnswerChange={handleAnswerChange}
       timeElapsed={timeElapsed}
+      timeLimitSec={timeLimitSec}
       answeredCount={answeredCount}
       totalQuestions={totalQuestions}
       onFinish={handleFinishWithTracking}
       onAbandon={handleAbandonWithTracking}
       isFinished={isFinished}
+      isTimeUp={isTimeUp}
       submittingQId={submittingQId}
       markedQuestions={markedQuestions}
       toggleMarkQuestion={toggleMarkQuestion}
       startQuestionTimer={startQuestionTimer}
+      activeQuestionId={activeQuestionId}
+      setActiveQuestionId={setActiveQuestionId}
     />
   );
 }

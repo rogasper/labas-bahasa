@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { eq, desc, sql, count, ilike, or, and, inArray, type SQL } from "drizzle-orm";
+import { eq, desc, sql, count, sum, ilike, or, and, inArray, gte, lte, type SQL } from "drizzle-orm";
 import { adminProcedure, protectedProcedure, router } from "../index";
 import * as schema from "@labas/db";
 import { db } from "@labas/db";
@@ -740,6 +740,387 @@ export const adminRouter = router({
       }
 
       return { updated: updated.length };
+    }),
+
+  // ── Activity Analytics ─────────────────────────────────────
+
+  activeAttempts: adminProcedure.query(async () => {
+    const now = new Date();
+    const sixHoursAgo = new Date(now.getTime() - 6 * 60 * 60 * 1000);
+    const inProgress = await db
+      .select({
+        attemptId: schema.testAttempt.id,
+        userId: schema.testAttempt.userId,
+        userName: schema.user.name,
+        userEmail: schema.user.email,
+        packageId: schema.testAttempt.packageId,
+        packageTitle: schema.testPackage.title,
+        startedAt: schema.testAttempt.startedAt,
+      })
+      .from(schema.testAttempt)
+      .innerJoin(schema.user, eq(schema.testAttempt.userId, schema.user.id))
+      .leftJoin(schema.testPackage, eq(schema.testAttempt.packageId, schema.testPackage.id))
+      .where(
+        and(
+          eq(schema.testAttempt.status, "in_progress"),
+          gte(schema.testAttempt.startedAt, sixHoursAgo),
+        ),
+      )
+      .orderBy(desc(schema.testAttempt.startedAt))
+      .limit(50);
+
+    return inProgress.map((a) => ({
+      attemptId: a.attemptId,
+      userId: a.userId,
+      userName: a.userName,
+      userEmail: a.userEmail,
+      packageTitle: a.packageTitle ?? "Unknown",
+      startedAt: a.startedAt,
+      elapsedMinutes: Math.floor((now.getTime() - new Date(a.startedAt).getTime()) / 60000),
+    }));
+  }),
+
+  listAttempts: adminProcedure
+    .input(
+      z
+        .object({
+          search: z.string().optional(),
+          status: z.enum(["in_progress", "completed", "abandoned"]).optional(),
+          from: z.string().optional(),
+          to: z.string().optional(),
+          ...paginationSchema.shape,
+        })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const { limit, offset } = paginateDefaults(input);
+
+      const conditions: ReturnType<typeof eq>[] = [];
+      if (input?.search) {
+        conditions.push(
+          or(
+            ilike(schema.user.name, `%${input.search}%`),
+            ilike(schema.user.email, `%${input.search}%`),
+            ilike(schema.testPackage.title, `%${input.search}%`),
+          ) as unknown as ReturnType<typeof eq>,
+        );
+      }
+      if (input?.status) {
+        conditions.push(eq(schema.testAttempt.status, input.status));
+      }
+      if (input?.from) {
+        conditions.push(gte(schema.testAttempt.startedAt, new Date(input.from)));
+      }
+      if (input?.to) {
+        conditions.push(lte(schema.testAttempt.startedAt, new Date(input.to)));
+      }
+      const where = conditions.length > 0 ? and(...conditions) : undefined;
+
+      const [total] = await db
+        .select({ count: count() })
+        .from(schema.testAttempt)
+        .leftJoin(schema.user, eq(schema.testAttempt.userId, schema.user.id))
+        .leftJoin(schema.testPackage, eq(schema.testAttempt.packageId, schema.testPackage.id))
+        .where(where);
+
+      const attempts = await db
+        .select({
+          id: schema.testAttempt.id,
+          userId: schema.testAttempt.userId,
+          userName: schema.user.name,
+          userEmail: schema.user.email,
+          packageId: schema.testAttempt.packageId,
+          packageTitle: schema.testPackage.title,
+          status: schema.testAttempt.status,
+          startedAt: schema.testAttempt.startedAt,
+          finishedAt: schema.testAttempt.finishedAt,
+          totalScore: schema.testAttempt.totalScore,
+          maxScore: schema.testAttempt.maxScore,
+          isOvertime: schema.testAttempt.isOvertime,
+        })
+        .from(schema.testAttempt)
+        .leftJoin(schema.user, eq(schema.testAttempt.userId, schema.user.id))
+        .leftJoin(schema.testPackage, eq(schema.testAttempt.packageId, schema.testPackage.id))
+        .where(where)
+        .orderBy(desc(schema.testAttempt.startedAt))
+        .limit(limit)
+        .offset(offset);
+
+      return { attempts, total: Number(total?.count ?? 0) };
+    }),
+
+  dashboardTrends: adminProcedure.query(async () => {
+    const now = new Date();
+
+    const twelveMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    const monthlyAttempts = await db
+      .select({
+        month: sql<string>`to_char(${schema.testAttempt.startedAt}, 'YYYY-MM')`,
+        count: count(),
+        avgScore: sql<number>`ROUND(AVG(CASE WHEN ${schema.testAttempt.maxScore} > 0 THEN (${schema.testAttempt.totalScore}::float / ${schema.testAttempt.maxScore} * 100) ELSE NULL END))`,
+      })
+      .from(schema.testAttempt)
+      .where(
+        and(
+          eq(schema.testAttempt.status, "completed"),
+          gte(schema.testAttempt.startedAt, twelveMonthsAgo),
+        ),
+      )
+      .groupBy(sql`to_char(${schema.testAttempt.startedAt}, 'YYYY-MM')`)
+      .orderBy(sql`to_char(${schema.testAttempt.startedAt}, 'YYYY-MM')`);
+
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const dailyGenerations = await db
+      .select({
+        day: sql<string>`to_char(${schema.generationJob.createdAt}, 'YYYY-MM-DD')`,
+        count: count(),
+        totalTokens: sql<number>`COALESCE(SUM(${schema.generationJob.tokensUsed}), 0)`,
+      })
+      .from(schema.generationJob)
+      .where(gte(schema.generationJob.createdAt, thirtyDaysAgo))
+      .groupBy(sql`to_char(${schema.generationJob.createdAt}, 'YYYY-MM-DD')`)
+      .orderBy(sql`to_char(${schema.generationJob.createdAt}, 'YYYY-MM-DD')`);
+
+    const dailySignups = await db
+      .select({
+        day: sql<string>`to_char(${schema.user.createdAt}, 'YYYY-MM-DD')`,
+        count: count(),
+      })
+      .from(schema.user)
+      .where(gte(schema.user.createdAt, thirtyDaysAgo))
+      .groupBy(sql`to_char(${schema.user.createdAt}, 'YYYY-MM-DD')`)
+      .orderBy(sql`to_char(${schema.user.createdAt}, 'YYYY-MM-DD')`);
+
+    const activeCounts = {
+      today: await db
+        .select({ count: count() })
+        .from(schema.testAttempt)
+        .where(
+          gte(schema.testAttempt.startedAt, new Date(now.getFullYear(), now.getMonth(), now.getDate())),
+        )
+        .then((r) => Number(r[0]?.count ?? 0)),
+
+      week: await db
+        .select({ count: count() })
+        .from(schema.testAttempt)
+        .where(
+          gte(schema.testAttempt.startedAt, new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)),
+        )
+        .then((r) => Number(r[0]?.count ?? 0)),
+
+      month: await db
+        .select({ count: count() })
+        .from(schema.testAttempt)
+        .where(
+          gte(schema.testAttempt.startedAt, new Date(now.getFullYear(), now.getMonth(), 1)),
+        )
+        .then((r) => Number(r[0]?.count ?? 0)),
+    };
+
+    const completionStats = await db
+      .select({
+        completed: count(),
+      })
+      .from(schema.testAttempt)
+      .where(eq(schema.testAttempt.status, "completed"))
+      .then((r) => Number(r[0]?.completed ?? 0));
+
+    const [abandonedStats] = await db
+      .select({ abandoned: count() })
+      .from(schema.testAttempt)
+      .where(eq(schema.testAttempt.status, "abandoned"));
+
+    const completedCount = Number(completionStats);
+    const abandonedCount = Number(abandonedStats?.abandoned ?? 0);
+    const completionRate =
+      completedCount + abandonedCount > 0
+        ? Math.round((completedCount / (completedCount + abandonedCount)) * 100)
+        : 0;
+
+    function fillMonthlyLabels(
+      data: { month: string; count: number; avgScore: number }[],
+    ) {
+      const map = new Map(data.map((d) => [d.month, { count: d.count, avgScore: d.avgScore }]));
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        if (!map.has(key)) map.set(key, { count: 0, avgScore: 0 });
+      }
+      return Array.from(map.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([month, vals]) => ({
+          month,
+          label: new Date(month + "-01").toLocaleDateString("id-ID", { month: "short", year: "2-digit" }),
+          count: vals.count,
+          avgScore: vals.avgScore,
+        }));
+    }
+
+    function fillDailyLabels(data: { day: string; count: number }[], extraKey?: string, extraVal?: number) {
+      const map = new Map(data.map((d) => [d.day, d]));
+      const result: { day: string; label: string; count: number; [key: string]: unknown }[] = [];
+      for (let i = 29; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        const existing = map.get(key);
+        const entry: { day: string; label: string; count: number; [key: string]: unknown } = {
+          day: key,
+          label: `${d.getDate()}/${d.getMonth() + 1}`,
+          count: existing?.count ?? 0,
+        };
+        if (extraKey && extraVal !== undefined) {
+          entry[extraKey] = existing ? extraVal ?? 0 : 0;
+        }
+        result.push(entry);
+      }
+      return result;
+    }
+
+    return {
+      monthlyAttempts: fillMonthlyLabels(
+        monthlyAttempts.map((r) => ({ month: r.month, count: Number(r.count), avgScore: Number(r.avgScore) })),
+      ),
+      dailyGenerations: fillDailyLabels(
+        dailyGenerations.map((r) => ({ day: r.day, count: Number(r.count) })),
+      ).map((d) => {
+        const genRow = dailyGenerations.find((g) => g.day === d.day);
+        return { ...d, totalTokens: genRow?.totalTokens ?? 0 };
+      }),
+      dailySignups: fillDailyLabels(
+        dailySignups.map((r) => ({ day: r.day, count: Number(r.count) })),
+      ),
+      activeCounts,
+      completionRate,
+    };
+  }),
+
+  mostActiveUsers: adminProcedure
+    .input(
+      z
+        .object({
+          days: z.number().min(1).max(365).default(30),
+          limit: z.number().min(1).max(50).default(10),
+        })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const days = input?.days ?? 30;
+      const limit = input?.limit ?? 10;
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+      const rows = await db
+        .select({
+          userId: schema.testAttempt.userId,
+          userName: schema.user.name,
+          userEmail: schema.user.email,
+          attemptCount: count(),
+          avgScore: sql<number>`ROUND(AVG(CASE WHEN ${schema.testAttempt.maxScore} > 0 THEN (${schema.testAttempt.totalScore}::float / ${schema.testAttempt.maxScore} * 100) ELSE NULL END))`,
+          lastActive: sql<Date>`MAX(${schema.testAttempt.startedAt})`,
+        })
+        .from(schema.testAttempt)
+        .innerJoin(schema.user, eq(schema.testAttempt.userId, schema.user.id))
+        .where(
+          and(
+            eq(schema.testAttempt.status, "completed"),
+            gte(schema.testAttempt.startedAt, since),
+          ),
+        )
+        .groupBy(schema.testAttempt.userId, schema.user.name, schema.user.email)
+        .orderBy(desc(count()))
+        .limit(limit);
+
+      return rows.map((r) => ({
+        userId: r.userId,
+        userName: r.userName,
+        userEmail: r.userEmail,
+        attemptCount: Number(r.attemptCount),
+        avgScore: Number(r.avgScore),
+        lastActive: r.lastActive,
+      }));
+    }),
+
+  topPackages: adminProcedure
+    .input(
+      z
+        .object({
+          days: z.number().min(1).max(365).default(30),
+          limit: z.number().min(1).max(50).default(10),
+        })
+        .optional(),
+    )
+    .query(async ({ input }) => {
+      const days = input?.days ?? 30;
+      const limit = input?.limit ?? 10;
+      const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+      const rows = await db
+        .select({
+          packageId: schema.testAttempt.packageId,
+          packageTitle: schema.testPackage.title,
+          examTypeId: schema.testPackage.examTypeId,
+          attemptCount: count(),
+          avgScore: sql<number>`ROUND(AVG(CASE WHEN ${schema.testAttempt.maxScore} > 0 THEN (${schema.testAttempt.totalScore}::float / ${schema.testAttempt.maxScore} * 100) ELSE NULL END))`,
+        })
+        .from(schema.testAttempt)
+        .innerJoin(schema.testPackage, eq(schema.testAttempt.packageId, schema.testPackage.id))
+        .where(
+          and(
+            eq(schema.testAttempt.status, "completed"),
+            gte(schema.testAttempt.startedAt, since),
+            sql`${schema.testAttempt.packageId} IS NOT NULL`,
+          ),
+        )
+        .groupBy(schema.testAttempt.packageId, schema.testPackage.title, schema.testPackage.examTypeId)
+        .orderBy(desc(count()))
+        .limit(limit);
+
+      return rows.map((r) => ({
+        packageId: r.packageId,
+        packageTitle: r.packageTitle,
+        examTypeId: r.examTypeId,
+        attemptCount: Number(r.attemptCount),
+        avgScore: Number(r.avgScore),
+      }));
+    }),
+
+  abandonStaleAttempts: adminProcedure
+    .input(
+      z
+        .object({
+          hours: z.number().min(1).max(8760).default(24),
+        })
+        .optional(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      const hours = input?.hours ?? 24;
+      const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+
+      const staleAttempts = await db
+        .select({ id: schema.testAttempt.id, userId: schema.testAttempt.userId })
+        .from(schema.testAttempt)
+        .where(
+          and(
+            eq(schema.testAttempt.status, "in_progress"),
+            lte(schema.testAttempt.startedAt, cutoff),
+          ),
+        );
+
+      if (staleAttempts.length === 0) {
+        return { abandoned: 0 };
+      }
+
+      const ids = staleAttempts.map((a) => a.id);
+
+      await db
+        .update(schema.testAttempt)
+        .set({ status: "abandoned" })
+        .where(inArray(schema.testAttempt.id, ids));
+
+      for (const a of staleAttempts) {
+        await audit(ctx.session.user.id, "abandon_stale_attempt", a.userId, { attemptId: a.id });
+      }
+
+      return { abandoned: staleAttempts.length };
     }),
 
   // ── Dashboard Stats ──────────────────────────────────────

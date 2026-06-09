@@ -12,6 +12,17 @@ interface ChartsBundleProps {
   timeTrend: TimeTrendItem[] | undefined;
 }
 
+function SectionHeading({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-6 mt-10 first:mt-0">
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-[var(--warm-charcoal)]">
+        {label}
+      </h2>
+      <div className="flex-1 h-px bg-[var(--oat-border)]" />
+    </div>
+  );
+}
+
 export default function ChartsBundle({
   trend,
   byExamType,
@@ -23,9 +34,12 @@ export default function ChartsBundle({
 }: ChartsBundleProps) {
   return (
     <>
+      <SectionHeading label="Tren Skor" />
       <div className="mb-8">
         <ScoreTrendChart data={trend} />
       </div>
+
+      <SectionHeading label="Performa" />
       <div className="mb-8">
         <BreakdownCharts
           byExamType={byExamType}
@@ -33,7 +47,9 @@ export default function ChartsBundle({
           byFormat={byFormat}
         />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+      <SectionHeading label="Waktu" />
+      <div className="mb-8">
         <TimeAnalyticsPanel
           sectionTime={sectionTime}
           formatTimeData={formatTimeData}

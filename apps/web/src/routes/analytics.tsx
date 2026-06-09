@@ -20,6 +20,17 @@ export const Route = createFileRoute("/analytics")({
   },
 });
 
+function SectionHeading({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-6 mt-10 first:mt-0">
+      <h2 className="text-xs font-semibold uppercase tracking-widest text-[var(--warm-charcoal)]">
+        {label}
+      </h2>
+      <div className="flex-1 h-px bg-[var(--oat-border)]" />
+    </div>
+  );
+}
+
 function ChartSkeleton() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -83,12 +94,13 @@ function AnalyticsComponent() {
         </div>
       </div>
 
-      {/* Overview */}
+      {/* Ringkasan */}
+      <SectionHeading label="Ringkasan" />
       <div className="mb-8">
         <OverviewCards data={overview.data} />
       </div>
 
-      {/* Charts — lazy loaded */}
+      {/* Charts — lazy loaded (includes: Tren Skor, Performa, Waktu) */}
       <Suspense fallback={<ChartSkeleton />}>
         <ChartsBundle
           trend={trend.data}
@@ -101,8 +113,9 @@ function AnalyticsComponent() {
         />
       </Suspense>
 
-      {/* Weaknesses */}
-      <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Area Lemah */}
+      <SectionHeading label="Area Lemah" />
+      <div className="mt-4">
         <WeaknessPanel
           weaknesses={weaknesses.data?.weaknesses}
           recommendations={weaknesses.data?.recommendations}

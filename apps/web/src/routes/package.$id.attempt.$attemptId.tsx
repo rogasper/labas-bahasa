@@ -33,15 +33,19 @@ function ContinueAttemptComponent() {
     setCurrentSectionIdx,
     answers,
     timeElapsed,
+    timeLimitSec,
     isFinished,
+    isTimeUp,
     submittingQId,
     markedQuestions,
+    activeQuestionId,
+    setActiveQuestionId,
     handleAnswerChange,
     handleFinish,
     handleAbandon,
     toggleMarkQuestion,
     startQuestionTimer,
-  } = useTestSession(packageId, attemptId);
+  } = useTestSession(packageId, attemptId, pkg?.estimatedDurationMin ?? undefined);
 
   const totalQuestions = pkg?.sections.reduce((sum: number, sec) => sum + sec.questions.length, 0) ?? 0;
   const answeredCount = Object.keys(answers).length;
@@ -115,15 +119,19 @@ function ContinueAttemptComponent() {
       answers={answers}
       onAnswerChange={handleAnswerChange}
       timeElapsed={timeElapsed}
+      timeLimitSec={timeLimitSec}
       answeredCount={answeredCount}
       totalQuestions={totalQuestions}
       onFinish={handleFinishWithTracking}
       onAbandon={handleAbandonWithTracking}
       isFinished={isFinished}
+      isTimeUp={isTimeUp}
       submittingQId={submittingQId}
       markedQuestions={markedQuestions}
       toggleMarkQuestion={toggleMarkQuestion}
       startQuestionTimer={startQuestionTimer}
+      activeQuestionId={activeQuestionId}
+      setActiveQuestionId={setActiveQuestionId}
     />
   );
 }

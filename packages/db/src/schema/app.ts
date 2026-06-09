@@ -215,6 +215,7 @@ export const testAttempt = pgTable(
     totalScore: integer("total_score"),
     maxScore: integer("max_score"),
     status: text("status").notNull().default("in_progress"), // "in_progress" | "completed" | "abandoned"
+    isOvertime: boolean("is_overtime").default(false).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => [

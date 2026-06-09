@@ -158,7 +158,7 @@ function AdminJobs() {
       ),
     },
     {
-      id: "source", header: "Source", size: "w-[10%]",
+      id: "source", header: "Source", size: "w-[14%]",
       cell: ({ row }) => {
         const key = row.generationKeySource;
         let cls = "bg-[var(--oat-border)] text-[var(--warm-charcoal)]";

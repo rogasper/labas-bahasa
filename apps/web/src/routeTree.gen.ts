@@ -36,6 +36,7 @@ import { Route as AdminModerationRouteImport } from './routes/admin.moderation'
 import { Route as AdminJobsRouteImport } from './routes/admin.jobs'
 import { Route as AdminFeaturedRouteImport } from './routes/admin.featured'
 import { Route as AdminCreditsRouteImport } from './routes/admin.credits'
+import { Route as AdminActivityRouteImport } from './routes/admin.activity'
 import { Route as PackageIdIndexRouteImport } from './routes/package.$id.index'
 import { Route as PackageIdTakeRouteImport } from './routes/package.$id.take'
 import { Route as PackageIdAttemptAttemptIdRouteImport } from './routes/package.$id.attempt.$attemptId'
@@ -175,6 +176,11 @@ const AdminCreditsRoute = AdminCreditsRouteImport.update({
   path: '/credits',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminActivityRoute = AdminActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => AdminRoute,
+} as any)
 const PackageIdIndexRoute = PackageIdIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/setup-avatar': typeof SetupAvatarRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/credits': typeof AdminCreditsRoute
   '/admin/featured': typeof AdminFeaturedRoute
   '/admin/jobs': typeof AdminJobsRoute
@@ -242,6 +249,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/setup-avatar': typeof SetupAvatarRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/credits': typeof AdminCreditsRoute
   '/admin/featured': typeof AdminFeaturedRoute
   '/admin/jobs': typeof AdminJobsRoute
@@ -274,6 +282,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/setup-avatar': typeof SetupAvatarRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/admin/activity': typeof AdminActivityRoute
   '/admin/credits': typeof AdminCreditsRoute
   '/admin/featured': typeof AdminFeaturedRoute
   '/admin/jobs': typeof AdminJobsRoute
@@ -308,6 +317,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup-avatar'
     | '/verify-email'
+    | '/admin/activity'
     | '/admin/credits'
     | '/admin/featured'
     | '/admin/jobs'
@@ -339,6 +349,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup-avatar'
     | '/verify-email'
+    | '/admin/activity'
     | '/admin/credits'
     | '/admin/featured'
     | '/admin/jobs'
@@ -370,6 +381,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/setup-avatar'
     | '/verify-email'
+    | '/admin/activity'
     | '/admin/credits'
     | '/admin/featured'
     | '/admin/jobs'
@@ -599,6 +611,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCreditsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/activity': {
+      id: '/admin/activity'
+      path: '/activity'
+      fullPath: '/admin/activity'
+      preLoaderRoute: typeof AdminActivityRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/package/$id/': {
       id: '/package/$id/'
       path: '/'
@@ -624,6 +643,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdminRouteChildren {
+  AdminActivityRoute: typeof AdminActivityRoute
   AdminCreditsRoute: typeof AdminCreditsRoute
   AdminFeaturedRoute: typeof AdminFeaturedRoute
   AdminJobsRoute: typeof AdminJobsRoute
@@ -633,6 +653,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminActivityRoute: AdminActivityRoute,
   AdminCreditsRoute: AdminCreditsRoute,
   AdminFeaturedRoute: AdminFeaturedRoute,
   AdminJobsRoute: AdminJobsRoute,

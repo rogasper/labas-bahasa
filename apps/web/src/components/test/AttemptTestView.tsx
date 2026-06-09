@@ -22,14 +22,18 @@ interface AttemptTestViewProps {
   answers: Record<string, string>;
   onAnswerChange: (questionId: string, sectionResultId: string | undefined, value: string) => void;
   timeElapsed: number;
+  timeLimitSec: number | null;
   answeredCount: number;
   totalQuestions: number;
   onFinish: () => void;
   onAbandon: () => void;
   isFinished: boolean;
+  isTimeUp: boolean;
   submittingQId: string | null;
   markedQuestions: Set<string>;
   toggleMarkQuestion: (questionId: string) => void;
+  activeQuestionId: string | null;
+  setActiveQuestionId: (qId: string | null) => void;
   startQuestionTimer: (questionId: string) => void;
 }
 
@@ -141,21 +145,24 @@ export function AttemptTestView({
   answers,
   onAnswerChange,
   timeElapsed,
+  timeLimitSec,
   answeredCount,
   totalQuestions,
   onFinish,
   onAbandon,
   isFinished,
+  isTimeUp,
   submittingQId,
   markedQuestions,
   toggleMarkQuestion,
+  activeQuestionId,
+  setActiveQuestionId,
+  startQuestionTimer,
 }: AttemptTestViewProps) {
   const [showFinishDialog, setShowFinishDialog] = useState(false);
   const [showAbandonDialog, setShowAbandonDialog] = useState(false);
-  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(null);
   const questionPanelRef = useRef<HTMLDivElement>(null);
   const navSliderRef = useRef<HTMLDivElement>(null);
-  const hasInitRef = useRef(false);
 
   const attemptQuery = useQuery(
     trpc.attempt.getById.queryOptions(
@@ -201,13 +208,16 @@ export function AttemptTestView({
     });
   });
 
-  // Initialize active question once on mount
+  // Init active question on mount: use saved (localStorage) or fallback to first
+  const allQuestionIdsRef = useRef(new Set<string>());
   useEffect(() => {
-    if (!hasInitRef.current && allQuestions.length > 0) {
-      hasInitRef.current = true;
+    if (allQuestions.length === 0) return;
+    allQuestionIdsRef.current = new Set(allQuestions.map((q) => q.id));
+    const isValid = activeQuestionId && allQuestionIdsRef.current.has(activeQuestionId);
+    if (!isValid) {
       setActiveQuestionId(allQuestions[0].id);
     }
-  }, [allQuestions]);
+  }, [activeQuestionId, allQuestions, setActiveQuestionId]);
 
   const addQuestionMeta = (q: Question) => ({
     ...q,
@@ -284,9 +294,11 @@ export function AttemptTestView({
           pkgTitle={pkg.title ?? ""}
           currentSectionTitle={currentSection.title ?? ""}
           timeElapsed={timeElapsed}
+          timeLimitSec={timeLimitSec}
           answeredCount={answeredCount}
           totalQuestions={totalQuestions}
           isFinished={isFinished}
+          isTimeUp={isTimeUp}
           onAbandon={() => setShowAbandonDialog(true)}
           onFinish={() => setShowFinishDialog(true)}
         />
@@ -314,10 +326,21 @@ export function AttemptTestView({
             right={
               <section ref={questionPanelRef} className="h-full bg-[var(--warm-cream)] overflow-y-auto custom-scrollbar p-6 md:p-10 relative">
                 <div className="max-w-2xl mx-auto pb-32">
-              {/* Top bar: question counter + Selesai button */}
-              <div className="flex items-center justify-between mb-6">
+
+              {/* Nav bar with counter + prev/next */}
+              <nav className="flex items-center justify-between mb-6" aria-label="Navigasi soal">
+                <Button
+                  variant="ghost"
+                  onClick={goToPrevQuestion}
+                  disabled={isFirstQuestion}
+                  className="flex items-center gap-2 text-[var(--clay-black)] font-bold px-4 sm:px-6 py-3 rounded-xl hover:bg-[var(--clay-black)]/5 transition-all disabled:opacity-50"
+                >
+                  <MaterialIcon name="arrow_back" />
+                  <span className="hidden sm:inline">Sebelumnya</span>
+                </Button>
+
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-[var(--warm-charcoal)] bg-[var(--oat-light)] px-3 py-1.5 rounded-lg">
+                  <span className="text-sm font-bold text-[var(--warm-charcoal)] bg-[var(--oat-light)] px-3 py-1.5 rounded-lg tabular-nums">
                     Soal {activeGlobalIdx} / {totalQuestions}
                   </span>
                   {markedQuestions.has(activeQuestionId ?? "") && (
@@ -327,15 +350,16 @@ export function AttemptTestView({
                     </span>
                   )}
                 </div>
+
                 <Button
-                  onClick={() => setShowFinishDialog(true)}
-                  disabled={isFinished}
-                  className="flex items-center gap-2 bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-700)] px-4 py-2 rounded-xl text-sm font-bold shadow-sm transition-all"
+                  onClick={goToNextQuestion}
+                  disabled={isLastQuestion}
+                  className="flex items-center gap-2 bg-[var(--clay-black)] text-[var(--pure-white)] font-bold px-4 sm:px-8 py-3 rounded-xl shadow-lg hover:bg-[var(--warm-charcoal)] transition-all disabled:opacity-50"
                 >
-                  Selesai
-                  <MaterialIcon name="check_circle" className="text-sm" />
+                  <span className="hidden sm:inline">Selanjutnya</span>
+                  <MaterialIcon name="arrow_forward" />
                 </Button>
-              </div>
+              </nav>
 
               {/* Active question only */}
               {activeQuestionWithMeta ? (
@@ -357,27 +381,6 @@ export function AttemptTestView({
                 </div>
               )}
 
-              {/* Prev / Next Navigation */}
-              <nav className="flex justify-between items-center pt-8" aria-label="Navigasi soal sebelumnya dan berikutnya">
-                <Button
-                  variant="ghost"
-                  onClick={goToPrevQuestion}
-                  disabled={isFirstQuestion}
-                  className="flex items-center gap-2 text-[var(--clay-black)] font-bold px-6 py-3 rounded-xl hover:bg-[var(--clay-black)]/5 transition-all disabled:opacity-50"
-                >
-                  <MaterialIcon name="arrow_back" />
-                  Sebelumnya
-                </Button>
-
-                <Button
-                  onClick={goToNextQuestion}
-                  disabled={isLastQuestion}
-                  className="flex items-center gap-2 bg-[var(--clay-black)] text-[var(--pure-white)] font-bold px-8 py-3 rounded-xl shadow-lg hover:bg-[var(--warm-charcoal)] transition-all disabled:opacity-50"
-                >
-                  Selanjutnya
-                  <MaterialIcon name="arrow_forward" />
-                </Button>
-              </nav>
             </div>
           </section>
         }

@@ -19,6 +19,7 @@ export const Route = createFileRoute("/admin")({
 
 const adminNavItems = [
   { to: "/admin", label: "Dashboard", icon: "dashboard" },
+  { to: "/admin/activity", label: "Activity", icon: "exercise" },
   { to: "/admin/users", label: "Users", icon: "group" },
   { to: "/admin/featured", label: "Featured", icon: "star" },
   { to: "/admin/credits", label: "Credits", icon: "token" },

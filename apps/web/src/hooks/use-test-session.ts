@@ -72,7 +72,27 @@ function clearSectionIdx(attemptId: string | null) {
   if (key) localStorage.removeItem(key);
 }
 
-export function useTestSession(packageId: string, existingAttemptId?: string) {
+function getQuestionKey(attemptId: string | null) {
+  return attemptId ? `labas_attempt_question_${attemptId}` : null;
+}
+
+function loadActiveQuestionId(attemptId: string | null): string | null {
+  const key = getQuestionKey(attemptId);
+  if (!key) return null;
+  return localStorage.getItem(key);
+}
+
+function saveActiveQuestionId(attemptId: string | null, questionId: string | null) {
+  const key = getQuestionKey(attemptId);
+  if (key && questionId) localStorage.setItem(key, questionId);
+}
+
+function clearActiveQuestionId(attemptId: string | null) {
+  const key = getQuestionKey(attemptId);
+  if (key) localStorage.removeItem(key);
+}
+
+export function useTestSession(packageId: string, existingAttemptId?: string, timeLimitMinutes?: number) {
   const navigate = useNavigate();
   const restoredRef = useRef(false);
 
@@ -87,6 +107,12 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
     () => loadMarkedQuestions(existingAttemptId ?? null),
   );
   const [startError, setStartError] = useState<string | null>(null);
+  const [activeQuestionId, setActiveQuestionId] = useState<string | null>(
+    () => loadActiveQuestionId(existingAttemptId ?? null),
+  );
+
+  // Auto-submit guard
+  const autoSubmittingRef = useRef(false);
 
   // Track when each question was first viewed (for timeSpentSec)
   const questionStartTimes = useRef<Record<string, number>>({});
@@ -142,6 +168,13 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
     if (attemptId) saveSectionIdx(attemptId, currentSectionIdx);
   }, [attemptId, currentSectionIdx]);
 
+  // Persist activeQuestionId to localStorage
+  useEffect(() => {
+    if (attemptId && activeQuestionId) {
+      saveActiveQuestionId(attemptId, activeQuestionId);
+    }
+  }, [attemptId, activeQuestionId]);
+
   // Timer with localStorage persistence
   useEffect(() => {
     if (!isStarted || isFinished || !attemptId) return;
@@ -155,22 +188,20 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
     return () => clearInterval(interval);
   }, [isStarted, isFinished, attemptId]);
 
+  const timeLimitSec = timeLimitMinutes && timeLimitMinutes > 0 ? timeLimitMinutes * 60 : null;
+
   const handleStart = useCallback(async () => {
     setStartError(null);
-    console.log("[useTestSession] handleStart called, packageId:", packageId);
     try {
       const res = await startMutation.mutateAsync({ packageId });
-      console.log("[useTestSession] start mutation result:", res);
       if (!res?.attemptId) {
         throw new Error("Server tidak mengembalikan attempt ID.");
       }
       setAttemptId(res.attemptId);
       setIsStarted(true);
-      // Load any saved timer (in case of refresh during attempt)
       const saved = loadElapsedTime(res.attemptId);
       if (saved > 0) setTimeElapsed(saved);
     } catch (err: unknown) {
-      console.error("[useTestSession] Start attempt failed:", err);
       setStartError(getErrorMessage(err));
     }
   }, [packageId, startMutation]);
@@ -178,18 +209,15 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
   const handleAnswerChange = useCallback(
     async (questionId: string, sectionResultId: string | undefined, value: string) => {
       if (!attemptId || isFinished) return;
-      // Always update UI immediately — sectionResultId may load a tick after attempt starts
       setAnswers((prev) => ({ ...prev, [questionId]: value }));
       if (!sectionResultId) return;
 
       setSubmittingQId(questionId);
 
-      // Start timer if first interaction
       if (!questionStartTimes.current[questionId]) {
         questionStartTimes.current[questionId] = Date.now();
       }
 
-      // Calculate time spent on this question
       const startTime = questionStartTimes.current[questionId];
       const timeSpentSec = startTime ? Math.round((Date.now() - startTime) / 1000) : undefined;
 
@@ -216,6 +244,7 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
     clearElapsedTime(attemptId);
     clearMarkedQuestions(attemptId);
     clearSectionIdx(attemptId);
+    clearActiveQuestionId(attemptId);
     navigate({ to: "/attempt/$id", params: { id: attemptId } });
     return result;
   }, [attemptId, finishMutation, navigate]);
@@ -226,8 +255,19 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
     clearElapsedTime(attemptId);
     clearMarkedQuestions(attemptId);
     clearSectionIdx(attemptId);
+    clearActiveQuestionId(attemptId);
     navigate({ to: "/packages" });
   }, [attemptId, abandonMutation, navigate]);
+
+  const isTimeUp = timeLimitSec !== null && isStarted && !isFinished && timeElapsed >= timeLimitSec;
+
+  // Stop timer and trigger auto-submit when time is up
+  useEffect(() => {
+    if (!isTimeUp || autoSubmittingRef.current) return;
+    autoSubmittingRef.current = true;
+    setIsFinished(true);
+    handleFinish();
+  }, [isTimeUp, handleFinish]);
 
   const toggleMarkQuestion = useCallback(
     (questionId: string) => {
@@ -242,7 +282,6 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
     [attemptId],
   );
 
-  // Track question start time when user navigates to a question
   const startQuestionTimer = useCallback((questionId: string) => {
     if (!questionStartTimes.current[questionId]) {
       questionStartTimes.current[questionId] = Date.now();
@@ -253,10 +292,14 @@ export function useTestSession(packageId: string, existingAttemptId?: string) {
     attemptId,
     currentSectionIdx,
     setCurrentSectionIdx,
+    activeQuestionId,
+    setActiveQuestionId,
     answers,
     timeElapsed,
+    timeLimitSec,
     isStarted,
     isFinished,
+    isTimeUp,
     submittingQId,
     markedQuestions,
     startPending: startMutation.isPending,

@@ -6,6 +6,8 @@ interface Props {
   defaultRatio?: number;
   minRatio?: number;
   maxRatio?: number;
+  minLeftPx?: number;
+  minRightPx?: number;
 }
 
 export function ResizableSplitPanel({
@@ -14,6 +16,8 @@ export function ResizableSplitPanel({
   defaultRatio = 0.5,
   minRatio = 0.2,
   maxRatio = 0.8,
+  minLeftPx = 320,
+  minRightPx = 560,
 }: Props) {
   const [ratio, setRatio] = useState(defaultRatio);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -46,7 +50,13 @@ export function ResizableSplitPanel({
       const total = isVertical ? rect.height : rect.width;
       if (total <= 0) return;
       let newRatio = ((pos - (isVertical ? rect.top : rect.left)) / total);
-      newRatio = Math.max(minRatio, Math.min(maxRatio, newRatio));
+
+      // Clamp with both ratio and pixel constraints
+      const pxMinRatio = minLeftPx > 0 ? minLeftPx / total : 0;
+      const pxMaxRatio = minRightPx > 0 ? 1 - minRightPx / total : 1;
+      const effectiveMin = Math.max(minRatio, pxMinRatio);
+      const effectiveMax = Math.min(maxRatio, pxMaxRatio);
+      newRatio = Math.max(effectiveMin, Math.min(effectiveMax, newRatio));
       setRatio(newRatio);
     };
 
@@ -82,16 +92,13 @@ export function ResizableSplitPanel({
       className="flex overflow-hidden"
       style={{ width: "100%", height: "100%" }}
     >
-      {/* Stack vertically on mobile, side-by-side on desktop */}
       <div
         className={`flex w-full h-full ${isVertical ? "flex-col" : "flex-row"}`}
       >
-        {/* First panel */}
         <div className="overflow-y-auto" style={leftStyle}>
           {left}
         </div>
 
-        {/* Handle */}
         <div
           className={`shrink-0 flex items-center justify-center transition-colors z-10 select-none ${
             isVertical
@@ -114,7 +121,6 @@ export function ResizableSplitPanel({
           />
         </div>
 
-        {/* Second panel */}
         <div className="overflow-y-auto" style={rightStyle}>
           {right}
         </div>
