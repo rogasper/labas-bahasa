@@ -55,7 +55,7 @@ export function ReviewFilterBar({
   };
 
   return (
-    <div className="sticky top-0 z-10 bg-[var(--warm-cream)] pb-4 pt-2 space-y-3">
+    <div className="sticky top-[68px] z-10 bg-[var(--warm-cream)] pb-4 pt-2 space-y-3">
       {/* Status filter chips */}
       <div className="flex flex-wrap gap-2">
         {statusFilters.map(({ id, label, count, icon }) => (

@@ -279,11 +279,11 @@ function AttemptResultComponent() {
                           key={star}
                           onClick={() => ratePackageMutation.mutate({ packageId: attempt.packageId!, score: star })}
                           aria-label={`Nilai ${star} bintang`}
-                          className="p-1 transition-transform hover:scale-110 cursor-pointer"
+                          className="p-2 transition-transform hover:scale-110 cursor-pointer"
                         >
                           <MaterialIcon
                             name={(packageRatingQuery.data?.myRating ?? 0) >= star ? "star" : "star_outline"}
-                            className={`text-xl ${(packageRatingQuery.data?.myRating ?? 0) >= star ? "text-[var(--lemon-500)]" : "text-[var(--oat-border)]"}`}
+                            className={`text-2xl ${(packageRatingQuery.data?.myRating ?? 0) >= star ? "text-[var(--lemon-500)]" : "text-[var(--oat-border)]"}`}
                           />
                         </button>
                       ))}

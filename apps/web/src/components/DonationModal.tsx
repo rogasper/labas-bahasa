@@ -1,3 +1,4 @@
+import { Button } from "@labas/ui/components/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@labas/ui/components/dialog";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
@@ -45,12 +46,14 @@ export function DonationModal({
             <MaterialIcon name="local_cafe" className="text-xl" />
             Support via Ko-fi
           </a>
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onOpenChange(false)}
-            className="mt-3 text-sm text-[var(--warm-silver)] hover:text-[var(--clay-black)] font-semibold transition-colors"
+            className="mt-3 w-full text-sm font-semibold text-[var(--warm-silver)] hover:text-[var(--clay-black)] rounded-[var(--radius-lg)]"
           >
             Mungkin Nanti Saja
-          </button>
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

@@ -241,6 +241,7 @@ export function QuestionDetailModal({
             {/* Admin visibility toggle */}
             {isAdmin && onToggleVisibility && (
               <Button
+                size="sm"
                 className="w-full rounded-[var(--radius-lg)]"
                 variant={isPublic ? "outline" : "default"}
                 onClick={onToggleVisibility}

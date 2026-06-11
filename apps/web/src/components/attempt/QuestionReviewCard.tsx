@@ -93,7 +93,7 @@ export function QuestionReviewCard({
           {secIdx + 1}.{qIdx + 1}
         </span>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-[var(--clay-black)] truncate">
+          <p className="text-sm font-medium text-[var(--clay-black)] leading-snug">
             {q.questionText}
           </p>
           <div className="flex items-center gap-2 mt-1">
@@ -127,7 +127,7 @@ export function QuestionReviewCard({
         <div className="px-4 pb-4 pl-11 space-y-3">
           {/* Passage Text */}
           {q.passageText && (
-            <div className="bg-[var(--oat-light)] rounded-[var(--radius-lg)] p-3 text-sm text-[var(--warm-charcoal)] whitespace-pre-wrap leading-relaxed">
+            <div className="bg-[var(--oat-light)] rounded-[var(--radius-lg)] p-3 text-sm text-[var(--warm-charcoal)] whitespace-pre-wrap leading-relaxed max-w-prose">
               <span className="font-semibold text-[var(--clay-black)] block mb-1">Teks Bacaan:</span>
               {q.passageText}
             </div>
@@ -236,7 +236,7 @@ export function QuestionReviewCard({
 
           {/* Explanation */}
           {q.explanation && !isEditing && (
-            <div className="bg-[var(--oat-light)] rounded-[var(--radius-lg)] p-3 text-sm text-[var(--warm-charcoal)]">
+            <div className="bg-[var(--oat-light)] rounded-[var(--radius-lg)] p-3 text-sm text-[var(--warm-charcoal)] max-w-prose">
               <span className="font-semibold text-[var(--clay-black)]">Penjelasan:</span>{" "}
               {q.explanation}
             </div>
