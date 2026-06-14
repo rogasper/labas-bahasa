@@ -22,6 +22,7 @@ import { Route as HistoryRouteImport } from './routes/history'
 import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CpnsRouteImport } from './routes/cpns'
 import { Route as BankRouteImport } from './routes/bank'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
@@ -30,6 +31,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ProfileUserIdRouteImport } from './routes/profile.$userId'
 import { Route as PackageIdRouteImport } from './routes/package.$id'
+import { Route as CpnsPackagesRouteImport } from './routes/cpns.packages'
+import { Route as CpnsHistoryRouteImport } from './routes/cpns.history'
+import { Route as CpnsGenerateRouteImport } from './routes/cpns.generate'
+import { Route as CpnsDashboardRouteImport } from './routes/cpns.dashboard'
+import { Route as CpnsBankRouteImport } from './routes/cpns.bank'
 import { Route as AttemptIdRouteImport } from './routes/attempt.$id'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
@@ -107,6 +113,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CpnsRoute = CpnsRouteImport.update({
+  id: '/cpns',
+  path: '/cpns',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BankRoute = BankRouteImport.update({
   id: '/bank',
   path: '/bank',
@@ -147,6 +158,31 @@ const PackageIdRoute = PackageIdRouteImport.update({
   path: '/package/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CpnsPackagesRoute = CpnsPackagesRouteImport.update({
+  id: '/packages',
+  path: '/packages',
+  getParentRoute: () => CpnsRoute,
+} as any).lazy(() => import('./routes/cpns.packages.lazy').then((d) => d.Route))
+const CpnsHistoryRoute = CpnsHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => CpnsRoute,
+} as any).lazy(() => import('./routes/cpns.history.lazy').then((d) => d.Route))
+const CpnsGenerateRoute = CpnsGenerateRouteImport.update({
+  id: '/generate',
+  path: '/generate',
+  getParentRoute: () => CpnsRoute,
+} as any).lazy(() => import('./routes/cpns.generate.lazy').then((d) => d.Route))
+const CpnsDashboardRoute = CpnsDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => CpnsRoute,
+} as any)
+const CpnsBankRoute = CpnsBankRouteImport.update({
+  id: '/bank',
+  path: '/bank',
+  getParentRoute: () => CpnsRoute,
+} as any).lazy(() => import('./routes/cpns.bank.lazy').then((d) => d.Route))
 const AttemptIdRoute = AttemptIdRouteImport.update({
   id: '/attempt/$id',
   path: '/attempt/$id',
@@ -210,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/bank': typeof BankRoute
+  '/cpns': typeof CpnsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/generate': typeof GenerateRoute
@@ -231,6 +268,11 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/attempt/$id': typeof AttemptIdRoute
+  '/cpns/bank': typeof CpnsBankRoute
+  '/cpns/dashboard': typeof CpnsDashboardRoute
+  '/cpns/generate': typeof CpnsGenerateRoute
+  '/cpns/history': typeof CpnsHistoryRoute
+  '/cpns/packages': typeof CpnsPackagesRoute
   '/package/$id': typeof PackageIdRouteWithChildren
   '/profile/$userId': typeof ProfileUserIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -243,6 +285,7 @@ export interface FileRoutesByTo {
   '/$': typeof SplatRoute
   '/analytics': typeof AnalyticsRoute
   '/bank': typeof BankRoute
+  '/cpns': typeof CpnsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/generate': typeof GenerateRoute
@@ -264,6 +307,11 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/attempt/$id': typeof AttemptIdRoute
+  '/cpns/bank': typeof CpnsBankRoute
+  '/cpns/dashboard': typeof CpnsDashboardRoute
+  '/cpns/generate': typeof CpnsGenerateRoute
+  '/cpns/history': typeof CpnsHistoryRoute
+  '/cpns/packages': typeof CpnsPackagesRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/admin': typeof AdminIndexRoute
   '/package/$id/take': typeof PackageIdTakeRoute
@@ -277,6 +325,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/bank': typeof BankRoute
+  '/cpns': typeof CpnsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/generate': typeof GenerateRoute
@@ -298,6 +347,11 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/attempt/$id': typeof AttemptIdRoute
+  '/cpns/bank': typeof CpnsBankRoute
+  '/cpns/dashboard': typeof CpnsDashboardRoute
+  '/cpns/generate': typeof CpnsGenerateRoute
+  '/cpns/history': typeof CpnsHistoryRoute
+  '/cpns/packages': typeof CpnsPackagesRoute
   '/package/$id': typeof PackageIdRouteWithChildren
   '/profile/$userId': typeof ProfileUserIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -313,6 +367,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/bank'
+    | '/cpns'
     | '/dashboard'
     | '/forgot-password'
     | '/generate'
@@ -334,6 +389,11 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/attempt/$id'
+    | '/cpns/bank'
+    | '/cpns/dashboard'
+    | '/cpns/generate'
+    | '/cpns/history'
+    | '/cpns/packages'
     | '/package/$id'
     | '/profile/$userId'
     | '/admin/'
@@ -346,6 +406,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/analytics'
     | '/bank'
+    | '/cpns'
     | '/dashboard'
     | '/forgot-password'
     | '/generate'
@@ -367,6 +428,11 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/attempt/$id'
+    | '/cpns/bank'
+    | '/cpns/dashboard'
+    | '/cpns/generate'
+    | '/cpns/history'
+    | '/cpns/packages'
     | '/profile/$userId'
     | '/admin'
     | '/package/$id/take'
@@ -379,6 +445,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/bank'
+    | '/cpns'
     | '/dashboard'
     | '/forgot-password'
     | '/generate'
@@ -400,6 +467,11 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/attempt/$id'
+    | '/cpns/bank'
+    | '/cpns/dashboard'
+    | '/cpns/generate'
+    | '/cpns/history'
+    | '/cpns/packages'
     | '/package/$id'
     | '/profile/$userId'
     | '/admin/'
@@ -414,6 +486,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AnalyticsRoute: typeof AnalyticsRoute
   BankRoute: typeof BankRoute
+  CpnsRoute: typeof CpnsRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   GenerateRoute: typeof GenerateRoute
@@ -525,6 +598,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cpns': {
+      id: '/cpns'
+      path: '/cpns'
+      fullPath: '/cpns'
+      preLoaderRoute: typeof CpnsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/bank': {
       id: '/bank'
       path: '/bank'
@@ -580,6 +660,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/package/$id'
       preLoaderRoute: typeof PackageIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/cpns/packages': {
+      id: '/cpns/packages'
+      path: '/packages'
+      fullPath: '/cpns/packages'
+      preLoaderRoute: typeof CpnsPackagesRouteImport
+      parentRoute: typeof CpnsRoute
+    }
+    '/cpns/history': {
+      id: '/cpns/history'
+      path: '/history'
+      fullPath: '/cpns/history'
+      preLoaderRoute: typeof CpnsHistoryRouteImport
+      parentRoute: typeof CpnsRoute
+    }
+    '/cpns/generate': {
+      id: '/cpns/generate'
+      path: '/generate'
+      fullPath: '/cpns/generate'
+      preLoaderRoute: typeof CpnsGenerateRouteImport
+      parentRoute: typeof CpnsRoute
+    }
+    '/cpns/dashboard': {
+      id: '/cpns/dashboard'
+      path: '/dashboard'
+      fullPath: '/cpns/dashboard'
+      preLoaderRoute: typeof CpnsDashboardRouteImport
+      parentRoute: typeof CpnsRoute
+    }
+    '/cpns/bank': {
+      id: '/cpns/bank'
+      path: '/bank'
+      fullPath: '/cpns/bank'
+      preLoaderRoute: typeof CpnsBankRouteImport
+      parentRoute: typeof CpnsRoute
     }
     '/attempt/$id': {
       id: '/attempt/$id'
@@ -685,6 +800,24 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface CpnsRouteChildren {
+  CpnsBankRoute: typeof CpnsBankRoute
+  CpnsDashboardRoute: typeof CpnsDashboardRoute
+  CpnsGenerateRoute: typeof CpnsGenerateRoute
+  CpnsHistoryRoute: typeof CpnsHistoryRoute
+  CpnsPackagesRoute: typeof CpnsPackagesRoute
+}
+
+const CpnsRouteChildren: CpnsRouteChildren = {
+  CpnsBankRoute: CpnsBankRoute,
+  CpnsDashboardRoute: CpnsDashboardRoute,
+  CpnsGenerateRoute: CpnsGenerateRoute,
+  CpnsHistoryRoute: CpnsHistoryRoute,
+  CpnsPackagesRoute: CpnsPackagesRoute,
+}
+
+const CpnsRouteWithChildren = CpnsRoute._addFileChildren(CpnsRouteChildren)
+
 interface PackageIdRouteChildren {
   PackageIdTakeRoute: typeof PackageIdTakeRoute
   PackageIdIndexRoute: typeof PackageIdIndexRoute
@@ -707,6 +840,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AnalyticsRoute: AnalyticsRoute,
   BankRoute: BankRoute,
+  CpnsRoute: CpnsRouteWithChildren,
   DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   GenerateRoute: GenerateRoute,
