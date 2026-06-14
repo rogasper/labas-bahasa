@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
@@ -55,6 +55,36 @@ const navGroups: NavGroup[] = [
   },
 ];
 
+const cpnsNavGroups: NavGroup[] = [
+  {
+    items: [{ to: "/cpns/dashboard", label: "Dashboard", icon: "dashboard" }],
+  },
+  {
+    label: "Generate",
+    items: [
+      { to: "/cpns/generate", label: "AI Lab", icon: "auto_awesome" },
+    ],
+  },
+  {
+    label: "Bank",
+    items: [{ to: "/cpns/bank", label: "Bank Soal", icon: "database" }],
+  },
+  {
+    label: "Latihan",
+    items: [
+      { to: "/cpns/packages", label: "Paket Soal", icon: "folder" },
+      { to: "/cpns/history", label: "Riwayat", icon: "history" },
+    ],
+  },
+];
+
+const cpnsMobileNavItems: NavItem[] = [
+  { to: "/cpns/dashboard", label: "Dashboard", icon: "dashboard" },
+  { to: "/cpns/generate", label: "AI Lab", icon: "auto_awesome" },
+  { to: "/cpns/bank", label: "Bank", icon: "database" },
+  { to: "/cpns/packages", label: "Latihan", icon: "folder" },
+];
+
 const bottomItems: NavItem[] = [
   { to: "/me", label: "Profil", icon: "person" },
   { to: "/settings", label: "Settings", icon: "settings" },
@@ -105,6 +135,32 @@ export function Sidebar() {
   );
   const isAdmin = !!adminData?.isAdmin;
 
+  // Mode switching: sync with path
+  const [sidebarMode, setSidebarMode] = useState<"bahasa" | "kedinasan">(
+    location.pathname.startsWith("/cpns") ? "kedinasan" : "bahasa",
+  );
+
+  useEffect(() => {
+    if (location.pathname.startsWith("/cpns")) {
+      setSidebarMode("kedinasan");
+    } else {
+      setSidebarMode("bahasa");
+    }
+  }, [location.pathname]);
+
+  const isCpnsMode = sidebarMode === "kedinasan";
+  const activeNavGroups = isCpnsMode ? cpnsNavGroups : navGroups;
+  const activeMobileItems = isCpnsMode ? cpnsMobileNavItems : mobileNavItems;
+
+  function switchMode(mode: "bahasa" | "kedinasan") {
+    setSidebarMode(mode);
+    if (mode === "bahasa") {
+      navigate({ to: "/dashboard" });
+    } else {
+      navigate({ to: "/cpns/dashboard" });
+    }
+  }
+
   async function handleSignOut() {
     await authClient.signOut();
     navigate({ to: "/" });
@@ -118,6 +174,13 @@ export function Sidebar() {
         className={`fixed left-0 top-0 h-full flex flex-col z-40 bg-[var(--warm-cream)] border-r border-[var(--oat-border)] hidden md:flex transition-all duration-300 overflow-y-auto ${
           collapsed ? "w-16 items-center px-2 py-4" : "w-64 py-4 px-3"
         }`}
+        style={isCpnsMode ? {
+          "--matcha-600": "var(--blueberry-800)",
+          "--matcha-500": "var(--blueberry-800)",
+          "--matcha-400": "#5b8cba",
+          "--matcha-300": "#c2d9f5",
+          "--matcha-800": "var(--blueberry-800)",
+        } as React.CSSProperties : undefined}
       >
         <div className={`mb-8 ${collapsed ? "px-0 text-center" : "px-3"}`}>
           <img
@@ -135,8 +198,42 @@ export function Sidebar() {
           )}
         </div>
 
+        {/* Mode Switcher */}
+        {!collapsed && (
+          <div className="px-3 mb-4">
+            <div className="flex rounded-[var(--radius-lg)] bg-[var(--oat-light)] p-0.5 border border-[var(--oat-border)]" role="tablist" aria-label="Mode aplikasi">
+              <button
+                type="button"
+                onClick={() => switchMode("bahasa")}
+                role="tab"
+                aria-selected={!isCpnsMode}
+                className={`flex-1 px-3 py-2 rounded-[var(--radius-md)] text-xs font-semibold text-center transition-all cursor-pointer ${
+                  !isCpnsMode
+                    ? "bg-[var(--matcha-300)] text-[var(--matcha-800)] shadow-sm"
+                    : "text-[var(--warm-charcoal)] hover:text-[var(--clay-black)]"
+                }`}
+              >
+                Bahasa
+              </button>
+              <button
+                type="button"
+                onClick={() => switchMode("kedinasan")}
+                role="tab"
+                aria-selected={isCpnsMode}
+                className={`flex-1 px-3 py-2 rounded-[var(--radius-md)] text-xs font-semibold text-center transition-all cursor-pointer ${
+                  isCpnsMode
+                    ? "bg-[var(--matcha-300)] text-[var(--matcha-800)] shadow-sm"
+                    : "text-[var(--warm-charcoal)] hover:text-[var(--clay-black)]"
+                }`}
+              >
+                Kedinasan
+              </button>
+            </div>
+          </div>
+        )}
+
         <nav className="flex-1 space-y-4 w-full">
-          {navGroups.map((group) => (
+          {activeNavGroups.map((group) => (
             <div key={group.label ?? "ungrouped"} className="space-y-1">
               {!collapsed && group.label && (
                 <p className="px-3 text-[10px] font-bold text-[var(--warm-charcoal)]/50 uppercase tracking-wider">
@@ -278,8 +375,16 @@ export function Sidebar() {
       </button>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-6 pt-3 bg-[var(--warm-cream)]/90 backdrop-blur-xl border-t border-[var(--oat-border)] rounded-t-[var(--radius-xl)]">
-        {mobileNavItems.map((item) => {
+      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-2 pb-6 pt-3 bg-[var(--warm-cream)]/90 backdrop-blur-xl border-t border-[var(--oat-border)] rounded-t-[var(--radius-xl)]"
+        style={isCpnsMode ? {
+          "--matcha-600": "var(--blueberry-800)",
+          "--matcha-500": "var(--blueberry-800)",
+          "--matcha-400": "#5b8cba",
+          "--matcha-300": "#c2d9f5",
+          "--matcha-800": "var(--blueberry-800)",
+        } as React.CSSProperties : undefined}
+      >
+        {activeMobileItems.map((item) => {
           const isActive = location.pathname === item.to;
           return (
             <Link
@@ -313,8 +418,39 @@ export function Sidebar() {
           <SheetHeader className="px-2 pt-2 pb-3">
             <SheetTitle className="text-sm font-headline font-bold text-[var(--clay-black)]">Menu</SheetTitle>
           </SheetHeader>
+          {/* Mobile mode switcher */}
+          <div className="px-2 mb-3">
+            <div className="flex rounded-[var(--radius-lg)] bg-[var(--oat-light)] p-0.5 border border-[var(--oat-border)]" role="tablist" aria-label="Mode aplikasi">
+              <button
+                type="button"
+                onClick={() => { setMobileSheetOpen(false); switchMode("bahasa"); }}
+                role="tab"
+                aria-selected={!isCpnsMode}
+                className={`flex-1 px-3 py-2 rounded-[var(--radius-md)] text-xs font-semibold text-center transition-all cursor-pointer ${
+                  !isCpnsMode
+                    ? "bg-[var(--matcha-300)] text-[var(--matcha-800)] shadow-sm"
+                    : "text-[var(--warm-charcoal)] hover:text-[var(--clay-black)]"
+                }`}
+              >
+                Bahasa
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMobileSheetOpen(false); switchMode("kedinasan"); }}
+                role="tab"
+                aria-selected={isCpnsMode}
+                className={`flex-1 px-3 py-2 rounded-[var(--radius-md)] text-xs font-semibold text-center transition-all cursor-pointer ${
+                  isCpnsMode
+                    ? "bg-[var(--matcha-300)] text-[var(--matcha-800)] shadow-sm"
+                    : "text-[var(--warm-charcoal)] hover:text-[var(--clay-black)]"
+                }`}
+              >
+                Kedinasan
+              </button>
+            </div>
+          </div>
           <div className="space-y-4">
-            {navGroups.map((group) => (
+            {activeNavGroups.map((group) => (
               <div key={group.label ?? "ungrouped"} className="space-y-1">
                 {group.label && (
                   <p className="px-3 text-[10px] font-bold text-[var(--warm-charcoal)]/50 uppercase tracking-wider">

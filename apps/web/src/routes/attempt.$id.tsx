@@ -167,8 +167,25 @@ function AttemptResultComponent() {
     );
   }
 
+  // Detect if this attempt is for a package where any section is TIU/TWK/TKP
+  const isCpnsAttempt = attempt.sections?.some(
+    (sec: any) => sec.sectionTypeId === "TIU" || sec.sectionTypeId === "TWK" || sec.sectionTypeId === "TKP"
+  );
+
   return (
-    <div className="min-h-screen pb-32 bg-[var(--warm-cream)]">
+    <div
+      className="min-h-screen pb-32 bg-[var(--warm-cream)]"
+      style={isCpnsAttempt ? {
+        "--matcha-600": "var(--blueberry-800)",
+        "--matcha-500": "var(--blueberry-800)",
+        "--matcha-400": "#5b8cba",
+        "--matcha-300": "#c2d9f5",
+        "--matcha-800": "var(--blueberry-800)",
+        "--matcha-700": "var(--blueberry-800)",
+        "--matcha-100": "#c2d9f5",
+        "--matcha-50": "#d6e6f8",
+      } as React.CSSProperties : undefined}
+    >
       {/* Sticky header */}
       <div className="sticky top-0 z-20 bg-[var(--warm-cream)]/95 backdrop-blur-sm border-b border-[var(--oat-border)] shadow-sm">
         <div className="px-6 md:px-12 lg:px-16 max-w-4xl mx-auto pt-4 pb-4">
