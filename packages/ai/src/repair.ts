@@ -23,6 +23,7 @@ export const genericQuestionSchema = z.object({
   explanation: z.string().min(1),
   difficulty: z.number().int().min(1).max(5),
   skillTags: z.array(z.string()).min(1),
+  optionWeights: z.array(z.number().int().min(1).max(5)).optional(),
 });
 
 export type GenericQuestion = z.infer<typeof genericQuestionSchema>;
@@ -45,6 +46,7 @@ const FORMATS_WITH_OPTIONS = new Set([
   "article_case",
   "character_reading",
   "sentence_arrangement",
+  "situational_judgment",
 ]);
 
 const FORMATS_MIN_TWO_OPTIONS = new Set([
@@ -241,6 +243,7 @@ export function repairQuestion(
     explanation: ensureExplanation(r as GenericQuestion),
     difficulty: ensureDifficulty(r as GenericQuestion),
     skillTags: ensureSkillTags(r as GenericQuestion),
+    optionWeights: Array.isArray(r.optionWeights) ? r.optionWeights.map((w: any) => Number(w)) : undefined,
   };
 
   // Track repairs
@@ -398,29 +401,35 @@ export function getGenericQuestionJsonSchemaDescription(): string {
                   "article_case",
                   "character_reading",
                   "sentence_arrangement",
+                  "situational_judgment",
                 ],
               },
-              passageText: { type: "string", description: "Relevant excerpt from the passage (or full passage)" },
+              passageText: { type: "string", description: "Relevant excerpt from the passage (or full passage). For situational_judgment, this is the scenario/context." },
               questionText: { type: "string", description: "The question text" },
               options: {
                 type: "array",
-                description: "Required for multiple_choice, synonym, matching_*, reference, kanji_reading, particle_choice, article_case, character_reading, sentence_arrangement, error_recognition, text_insertion, summary_completion, cloze, matching_pairs. Optional for others.",
+                description: "Required for multiple_choice, synonym, matching_*, reference, kanji_reading, particle_choice, article_case, character_reading, sentence_arrangement, error_recognition, text_insertion, summary_completion, cloze, matching_pairs, situational_judgment.",
                 items: {
                   type: "object",
                   properties: {
                     key: { type: "string", description: "Option identifier (e.g. A, B, C, D)" },
-                    text: { type: "string", description: "Meaningful answer text from the passage — never generic labels like 'Option A'" },
+                    text: { type: "string", description: "Meaningful answer text — never generic labels like 'Option A'" },
                   },
                   required: ["key", "text"],
                 },
               },
               correctAnswer: {
                 type: "string",
-                description: "For true_false_not_given use TRUE/FALSE/NOT_GIVEN. For author_view use YES/NO/NOT_GIVEN. For multiple choice use the option key (e.g. A).",
+                description: "For true_false_not_given use TRUE/FALSE/NOT_GIVEN. For author_view use YES/NO/NOT_GIVEN. For multiple choice use the option key (e.g. A). For situational_judgment, key of the highest-weight option.",
               },
               explanation: { type: "string", description: "Explanation in Bahasa Indonesia; may include exam-language terms/kanji when relevant" },
               difficulty: { type: "integer", minimum: 1, maximum: 5 },
               skillTags: { type: "array", items: { type: "string" } },
+              optionWeights: {
+                type: "array",
+                description: "Required for situational_judgment. Array of weight values (1-5) per option, e.g. [5,4,3,2,1]",
+                items: { type: "integer", minimum: 1, maximum: 5 },
+              },
             },
             required: ["format", "passageText", "questionText", "correctAnswer", "explanation", "difficulty", "skillTags"],
           },

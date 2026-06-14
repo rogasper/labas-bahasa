@@ -45,6 +45,8 @@ export const question = pgTable(
     questionText: text("question_text").notNull(),
     // array of options for multiple choice / matching
     options: jsonb("options"),
+    // per-option weight/scoring (e.g. TKP: [5,4,3,2,1] for options A-E)
+    optionWeights: jsonb("option_weights"),
     // correct answer — could be an option key, text, or array for multiple correct
     correctAnswer: text("correct_answer").notNull(),
     // explanation shown after submission

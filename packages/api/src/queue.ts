@@ -313,7 +313,7 @@ async function saveGeneratedArtifacts(
         aiModel: q.aiModel,
         generationKeySource: (input as any)._isPlatformGeneration ? "free_credit" : "byok",
         creatorUserId: userId,
-        isPublic: false,
+        isPublic: input.examType === "CPNS",
       })) as any,
     )
     .returning({ id: question.id });
@@ -347,7 +347,7 @@ async function saveGeneratedArtifacts(
         description: `Paket latihan AI-generated dengan ${savedQuestionIds.length} soal ${input.examType}.`,
         examTypeId: input.examType,
         creatorUserId: userId,
-        isPublic: false,
+        isPublic: input.examType === "CPNS",
         totalQuestions: savedQuestionIds.length,
         totalSections: sectionSplits.length,
         estimatedDurationMin: Math.ceil(savedQuestionIds.length * 1.5),

@@ -11,6 +11,7 @@ export function getTargetLanguage(examType: string): string {
   if (examType === "TOPIK") return "Korean";
   if (examType === "TOAFL") return "Arabic";
   if (examType === "DELE") return "Spanish";
+  if (examType === "CPNS") return "Indonesian";
   return "English";
 }
 
@@ -62,6 +63,13 @@ export function isLikelyIndonesianContent(text: string): boolean {
 
 export function buildContentLanguageRules(examType: string): string {
   const target = getTargetLanguage(examType);
+  if (examType === "CPNS") {
+    return `- LANGUAGE RULE (critical):
+  * ALL text (passageText, questionText, options, explanation) MUST be written in Bahasa Indonesia.
+  * Soal adalah untuk ujian kedinasan CPNS (TIU = Tes Intelegensi Umum, TWK = Tes Wawasan Kebangsaan, TKP = Tes Karakteristik Pribadi).
+  * JANGAN gunakan bahasa Inggris kecuali untuk istilah teknis yang tidak memiliki padanan.
+  * Gunakan bahasa Indonesia yang baik dan benar sesuai EYD.`;
+  }
   return `- LANGUAGE RULE (critical):
   * passageText, questionText, and every option "text" MUST be written in ${target} — the authentic exam language.
   * NEVER write questionText or options in Bahasa Indonesia for ${examType}.
@@ -79,6 +87,9 @@ export function getQuestionLanguageErrors(
 ): string[] {
   const errors: string[] = [];
   const target = getTargetLanguage(examType);
+
+  // CPNS content MUST be in Bahasa Indonesia — skip language checks
+  if (examType === "CPNS") return errors;
 
   if (isLikelyIndonesianContent(q.questionText)) {
     errors.push(`questionText must be ${target}, not Bahasa Indonesia`);
