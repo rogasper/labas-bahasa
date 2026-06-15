@@ -115,26 +115,31 @@ export const statsRouter = router({
     }));
   }),
 
-  bySectionType: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
+  bySectionType: protectedProcedure
+    .input(z.object({ examTypeId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const conditions = [eq(testAttempt.userId, userId)];
+      if (input?.examTypeId) conditions.push(eq(testPackage.examTypeId, input.examTypeId));
 
-    const rows = await db
-      .select({
-        sectionTypeId: sectionType.id,
-        sectionTypeName: sectionType.name,
-        attempts: sql<number>`count(distinct ${testAttempt.id})`,
-        avgScorePct:
-          sql<number>`round(avg(case when ${testAttempt.status} = 'completed' and ${sectionResult.maxScore} > 0 then (${sectionResult.score}::float / ${sectionResult.maxScore}) * 100 end)::numeric, 1)`,
-        avgTimeSpentSec: sql<number>`round(avg(${sectionResult.timeSpentSec})::numeric, 0)`,
-        totalQuestions: sql<number>`count(${answer.id})`,
-        correctQuestions: sql<number>`sum(case when ${answer.isCorrect} = true then 1 else 0 end)`,
-      })
-      .from(testAttempt)
-      .innerJoin(sectionResult, eq(sectionResult.attemptId, testAttempt.id))
-      .innerJoin(sectionType, eq(sectionResult.sectionTypeId, sectionType.id))
-      .leftJoin(answer, eq(answer.sectionResultId, sectionResult.id))
-      .where(eq(testAttempt.userId, userId))
-      .groupBy(sectionType.id, sectionType.name);
+      const rows = await db
+        .select({
+          sectionTypeId: sectionType.id,
+          sectionTypeName: sectionType.name,
+          attempts: sql<number>`count(distinct ${testAttempt.id})`,
+          avgScorePct:
+            sql<number>`round(avg(case when ${sectionResult.maxScore} > 0 then (${sectionResult.score}::float / ${sectionResult.maxScore}) * 100 end)::numeric, 1)`,
+          avgTimeSpentSec: sql<number>`round(avg(${sectionResult.timeSpentSec})::numeric, 0)`,
+          totalQuestions: sql<number>`count(${answer.id})`,
+          correctQuestions: sql<number>`sum(case when ${answer.isCorrect} = true then 1 else 0 end)`,
+        })
+        .from(testAttempt)
+        .innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id))
+        .innerJoin(sectionResult, eq(sectionResult.attemptId, testAttempt.id))
+        .innerJoin(sectionType, eq(sectionResult.sectionTypeId, sectionType.id))
+        .leftJoin(answer, eq(answer.sectionResultId, sectionResult.id))
+        .where(and(...conditions))
+        .groupBy(sectionType.id, sectionType.name);
 
     return rows.map((r) => ({
       ...r,
@@ -150,22 +155,27 @@ export const statsRouter = router({
     }));
   }),
 
-  byFormat: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
+  byFormat: protectedProcedure
+    .input(z.object({ examTypeId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const conditions = [eq(testAttempt.userId, userId)];
+      if (input?.examTypeId) conditions.push(eq(testPackage.examTypeId, input.examTypeId));
 
-    const rows = await db
-      .select({
-        format: question.format,
-        totalQuestions: sql<number>`count(${answer.id})`,
-        correctQuestions: sql<number>`sum(case when ${answer.isCorrect} = true then 1 else 0 end)`,
-        avgTimeSpentSec: sql<number>`round(avg(${answer.timeSpentSec})::numeric, 0)`,
-      })
-      .from(answer)
-      .innerJoin(sectionResult, eq(answer.sectionResultId, sectionResult.id))
-      .innerJoin(testAttempt, eq(sectionResult.attemptId, testAttempt.id))
-      .innerJoin(question, eq(answer.questionId, question.id))
-      .where(eq(testAttempt.userId, userId))
-      .groupBy(question.format);
+      const rows = await db
+        .select({
+          format: question.format,
+          totalQuestions: sql<number>`count(${answer.id})`,
+          correctQuestions: sql<number>`sum(case when ${answer.isCorrect} = true then 1 else 0 end)`,
+          avgTimeSpentSec: sql<number>`round(avg(${answer.timeSpentSec})::numeric, 0)`,
+        })
+        .from(answer)
+        .innerJoin(sectionResult, eq(answer.sectionResultId, sectionResult.id))
+        .innerJoin(testAttempt, eq(sectionResult.attemptId, testAttempt.id))
+        .innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id))
+        .innerJoin(question, eq(answer.questionId, question.id))
+        .where(and(...conditions))
+        .groupBy(question.format);
 
     return rows
       .map((r) => ({
@@ -181,20 +191,25 @@ export const statsRouter = router({
       .sort((a, b) => b.totalQuestions - a.totalQuestions);
   }),
 
-  bySkillTag: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
+  bySkillTag: protectedProcedure
+    .input(z.object({ examTypeId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const conditions = [eq(testAttempt.userId, userId)];
+      if (input?.examTypeId) conditions.push(eq(testPackage.examTypeId, input.examTypeId));
 
-    const rows = await db
-      .select({
-        skillTags: question.skillTags,
-        isCorrect: answer.isCorrect,
-        timeSpentSec: answer.timeSpentSec,
-      })
-      .from(answer)
-      .innerJoin(sectionResult, eq(answer.sectionResultId, sectionResult.id))
-      .innerJoin(testAttempt, eq(sectionResult.attemptId, testAttempt.id))
-      .innerJoin(question, eq(answer.questionId, question.id))
-      .where(eq(testAttempt.userId, userId));
+      const rows = await db
+        .select({
+          skillTags: question.skillTags,
+          isCorrect: answer.isCorrect,
+          timeSpentSec: answer.timeSpentSec,
+        })
+        .from(answer)
+        .innerJoin(sectionResult, eq(answer.sectionResultId, sectionResult.id))
+        .innerJoin(testAttempt, eq(sectionResult.attemptId, testAttempt.id))
+        .innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id))
+        .innerJoin(question, eq(answer.questionId, question.id))
+        .where(and(...conditions));
 
     const tagMap = new Map<
       string,
@@ -228,6 +243,7 @@ export const statsRouter = router({
       z
         .object({
           days: z.number().min(7).max(90).default(30),
+          examTypeId: z.string().optional(),
         })
         .optional(),
     )
@@ -235,22 +251,24 @@ export const statsRouter = router({
       const userId = ctx.session.user.id;
       const days = input?.days ?? 30;
       const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const conditions = [
+        eq(testAttempt.userId, userId),
+        eq(testAttempt.status, "completed"),
+        gte(testAttempt.finishedAt, since),
+      ];
+      if (input?.examTypeId) conditions.push(eq(testPackage.examTypeId, input.examTypeId));
 
-      const rows = await db
+      const query = db
         .select({
           date: sql<string>`date(${testAttempt.finishedAt})`,
           attempts: sql<number>`count(*)`,
           avgScorePct:
             sql<number>`round(avg(case when ${testAttempt.maxScore} > 0 then (${testAttempt.totalScore}::float / ${testAttempt.maxScore}) * 100 end)::numeric, 1)`,
         })
-        .from(testAttempt)
-        .where(
-          and(
-            eq(testAttempt.userId, userId),
-            eq(testAttempt.status, "completed"),
-            gte(testAttempt.finishedAt, since),
-          ),
-        )
+        .from(testAttempt);
+      if (input?.examTypeId) query.innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id));
+      const rows = await query
+        .where(and(...conditions))
         .groupBy(sql`date(${testAttempt.finishedAt})`)
         .orderBy(sql`date(${testAttempt.finishedAt})`);
 
@@ -274,26 +292,33 @@ export const statsRouter = router({
       return filled;
     }),
 
-  weaknesses: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
-    const MIN_QUESTIONS = 5;
+  weaknesses: protectedProcedure
+    .input(z.object({ examTypeId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const examTypeId = input?.examTypeId;
+      const MIN_QUESTIONS = 5;
+      const baseConditions = [eq(testAttempt.userId, userId)];
+      if (examTypeId) baseConditions.push(eq(testPackage.examTypeId, examTypeId));
 
-    // Format weaknesses
-    const formatRows = await db
-      .select({
-        format: question.format,
-        totalQuestions: sql<number>`count(${answer.id})`,
-        correctQuestions: sql<number>`sum(case when ${answer.isCorrect} = true then 1 else 0 end)`,
-      })
-      .from(answer)
-      .innerJoin(sectionResult, eq(answer.sectionResultId, sectionResult.id))
-      .innerJoin(testAttempt, eq(sectionResult.attemptId, testAttempt.id))
-      .innerJoin(question, eq(answer.questionId, question.id))
-      .where(eq(testAttempt.userId, userId))
-      .groupBy(question.format);
+      // Format weaknesses
+      let formatQ = db
+        .select({
+          format: question.format,
+          totalQuestions: sql<number>`count(${answer.id})`,
+          correctQuestions: sql<number>`sum(case when ${answer.isCorrect} = true then 1 else 0 end)`,
+        })
+        .from(answer)
+        .innerJoin(sectionResult, eq(answer.sectionResultId, sectionResult.id))
+        .innerJoin(testAttempt, eq(sectionResult.attemptId, testAttempt.id))
+        .innerJoin(question, eq(answer.questionId, question.id));
+      if (examTypeId) formatQ = formatQ.innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id));
+      const formatRows = await formatQ
+        .where(and(...baseConditions))
+        .groupBy(question.format);
 
     const formatWeaknesses = formatRows
-      .map((r) => ({
+      .map((r: any) => ({
         type: "format" as const,
         name: r.format,
         totalQuestions: Number(r.totalQuestions),
@@ -302,12 +327,12 @@ export const statsRouter = router({
             ? Math.round((Number(r.correctQuestions) / Number(r.totalQuestions)) * 100)
             : 0,
       }))
-      .filter((w) => w.totalQuestions >= MIN_QUESTIONS)
-      .sort((a, b) => a.accuracyPct - b.accuracyPct)
+      .filter((w: any) => w.totalQuestions >= MIN_QUESTIONS)
+      .sort((a: any, b: any) => a.accuracyPct - b.accuracyPct)
       .slice(0, 3);
 
     // Section type weaknesses
-    const sectionRows = await db
+    let sectionQ = db
       .select({
         sectionTypeId: sectionType.id,
         sectionTypeName: sectionType.name,
@@ -317,8 +342,10 @@ export const statsRouter = router({
       .from(answer)
       .innerJoin(sectionResult, eq(answer.sectionResultId, sectionResult.id))
       .innerJoin(testAttempt, eq(sectionResult.attemptId, testAttempt.id))
-      .innerJoin(sectionType, eq(sectionResult.sectionTypeId, sectionType.id))
-      .where(eq(testAttempt.userId, userId))
+      .innerJoin(sectionType, eq(sectionResult.sectionTypeId, sectionType.id));
+    if (examTypeId) sectionQ = sectionQ.innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id));
+    const sectionRows = await sectionQ
+      .where(and(...baseConditions))
       .groupBy(sectionType.id, sectionType.name);
 
     const sectionWeaknesses = sectionRows
@@ -336,7 +363,7 @@ export const statsRouter = router({
       .slice(0, 3);
 
     // Skill tag weaknesses
-    const tagRows = await db
+    let tagQ = db
       .select({
         skillTags: question.skillTags,
         isCorrect: answer.isCorrect,
@@ -344,8 +371,9 @@ export const statsRouter = router({
       .from(answer)
       .innerJoin(sectionResult, eq(answer.sectionResultId, sectionResult.id))
       .innerJoin(testAttempt, eq(sectionResult.attemptId, testAttempt.id))
-      .innerJoin(question, eq(answer.questionId, question.id))
-      .where(eq(testAttempt.userId, userId));
+      .innerJoin(question, eq(answer.questionId, question.id));
+    if (examTypeId) tagQ = tagQ.innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id));
+    const tagRows = await tagQ.where(and(...baseConditions));
 
     const tagMap = new Map<string, { total: number; correct: number }>();
     for (const row of tagRows) {
@@ -401,62 +429,71 @@ export const statsRouter = router({
     return { weaknesses: allWeaknesses, recommendations };
   }),
 
-  timeAnalytics: protectedProcedure.query(async ({ ctx }) => {
-    const userId = ctx.session.user.id;
+  timeAnalytics: protectedProcedure
+    .input(z.object({ examTypeId: z.string().optional() }).optional())
+    .query(async ({ ctx, input }) => {
+      const userId = ctx.session.user.id;
+      const examTypeId = input?.examTypeId;
 
-    // Time by section type
-    const sectionTime = await db
-      .select({
-        sectionTypeName: sectionType.name,
-        avgTimeSpentSec: sql<number>`round(avg(${sectionResult.timeSpentSec})::numeric, 0)`,
-        totalTimeSpentSec: sql<number>`sum(${sectionResult.timeSpentSec})`,
-      })
-      .from(testAttempt)
-      .innerJoin(sectionResult, eq(sectionResult.attemptId, testAttempt.id))
-      .innerJoin(sectionType, eq(sectionResult.sectionTypeId, sectionType.id))
-      .where(eq(testAttempt.userId, userId))
-      .groupBy(sectionType.name);
+      const build = (q: any) => examTypeId
+        ? q.innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id))
+        : q;
+      const conditions = [eq(testAttempt.userId, userId)];
+      if (examTypeId) conditions.push(eq(testPackage.examTypeId, examTypeId));
 
-    // Time by format
-    const formatTime = await db
-      .select({
-        format: question.format,
-        avgTimeSpentSec: sql<number>`round(avg(${answer.timeSpentSec})::numeric, 0)`,
-        totalTimeSpentSec: sql<number>`sum(${answer.timeSpentSec})`,
-      })
-      .from(answer)
-      .innerJoin(sectionResult, eq(answer.sectionResultId, sectionResult.id))
-      .innerJoin(testAttempt, eq(sectionResult.attemptId, testAttempt.id))
-      .innerJoin(question, eq(answer.questionId, question.id))
-      .where(eq(testAttempt.userId, userId))
-      .groupBy(question.format);
+      // Time by section type
+      const sectionTime = await build(db
+        .select({
+          sectionTypeName: sectionType.name,
+          avgTimeSpentSec: sql<number>`round(avg(${sectionResult.timeSpentSec})::numeric, 0)`,
+          totalTimeSpentSec: sql<number>`sum(${sectionResult.timeSpentSec})`,
+        })
+        .from(testAttempt)
+        .innerJoin(sectionResult, eq(sectionResult.attemptId, testAttempt.id))
+        .innerJoin(sectionType, eq(sectionResult.sectionTypeId, sectionType.id)))
+        .where(and(...conditions))
+        .groupBy(sectionType.name);
 
-    // Time trend (avg time per completed attempt)
-    const timeTrend = await db
-      .select({
-        date: sql<string>`date(${testAttempt.finishedAt})`,
-        avgTimeSpentSec: sql<number>`round(avg(${sectionResult.timeSpentSec})::numeric, 0)`,
-      })
-      .from(testAttempt)
-      .innerJoin(sectionResult, eq(sectionResult.attemptId, testAttempt.id))
-      .where(and(eq(testAttempt.userId, userId), eq(testAttempt.status, "completed")))
-      .groupBy(sql`date(${testAttempt.finishedAt})`)
-      .orderBy(sql`date(${testAttempt.finishedAt})`);
+      // Time by format
+      const formatTime = await build(db
+        .select({
+          format: question.format,
+          avgTimeSpentSec: sql<number>`round(avg(${answer.timeSpentSec})::numeric, 0)`,
+          totalTimeSpentSec: sql<number>`sum(${answer.timeSpentSec})`,
+        })
+        .from(answer)
+        .innerJoin(sectionResult, eq(answer.sectionResultId, sectionResult.id))
+        .innerJoin(testAttempt, eq(sectionResult.attemptId, testAttempt.id))
+        .innerJoin(question, eq(answer.questionId, question.id)))
+        .where(and(...conditions))
+        .groupBy(question.format);
+
+      // Time trend
+      const timeTrend = await build(db
+        .select({
+          date: sql<string>`date(${testAttempt.finishedAt})`,
+          avgTimeSpentSec: sql<number>`round(avg(${sectionResult.timeSpentSec})::numeric, 0)`,
+        })
+        .from(testAttempt)
+        .innerJoin(sectionResult, eq(sectionResult.attemptId, testAttempt.id)))
+        .where(and(...conditions, eq(testAttempt.status, "completed")))
+        .groupBy(sql`date(${testAttempt.finishedAt})`)
+        .orderBy(sql`date(${testAttempt.finishedAt})`);
 
     return {
-      sectionTime: sectionTime.map((r) => ({
+      sectionTime: sectionTime.map((r: any) => ({
         sectionTypeName: r.sectionTypeName,
         avgTimeSpentSec: Number(r.avgTimeSpentSec ?? 0),
         totalTimeSpentSec: Number(r.totalTimeSpentSec ?? 0),
       })),
       formatTime: formatTime
-        .map((r) => ({
+        .map((r: any) => ({
           format: r.format,
           avgTimeSpentSec: Number(r.avgTimeSpentSec ?? 0),
           totalTimeSpentSec: Number(r.totalTimeSpentSec ?? 0),
         }))
-        .sort((a, b) => b.totalTimeSpentSec - a.totalTimeSpentSec),
-      timeTrend: timeTrend.map((r) => ({
+        .sort((a: any, b: any) => b.totalTimeSpentSec - a.totalTimeSpentSec),
+      timeTrend: timeTrend.map((r: any) => ({
         date: r.date,
         avgTimeSpentSec: Number(r.avgTimeSpentSec ?? 0),
       })),

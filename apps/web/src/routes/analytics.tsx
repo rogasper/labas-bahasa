@@ -1,16 +1,28 @@
 import { Suspense, lazy, useEffect } from "react";
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { z } from "zod";
 import { authClient } from "@/lib/auth-client";
 import { useAnalytics } from "@/hooks/use-analytics";
 import { trackUmamiEvent, AnalyticsEvent } from "@/lib/umami";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { OverviewCards } from "@/components/analytics/OverviewCards";
 import { WeaknessPanel } from "@/components/analytics/WeaknessPanel";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@labas/ui/components/select";
+import { EXAM_TYPES } from "@/lib/exam-constants";
 
 const ChartsBundle = lazy(() => import("@/components/analytics/ChartsBundle"));
 
 export const Route = createFileRoute("/analytics")({
   component: AnalyticsComponent,
+  validateSearch: z.object({
+    examTypeId: z.string().optional(),
+  }).parse,
   beforeLoad: async () => {
     const session = await authClient.getSession();
     if (!session.data) {
@@ -41,6 +53,10 @@ function ChartSkeleton() {
 }
 
 function AnalyticsComponent() {
+  const navigate = useNavigate();
+  const routeSearch = useSearch({ strict: false }) as Record<string, string>;
+  const examTypeId = routeSearch.examTypeId ?? "";
+
   const {
     overview,
     byExamType,
@@ -50,7 +66,7 @@ function AnalyticsComponent() {
     weaknesses,
     timeAnalytics,
     isLoading,
-  } = useAnalytics();
+  } = useAnalytics(examTypeId || undefined);
 
   useEffect(() => {
     trackUmamiEvent(AnalyticsEvent.VIEW_ANALYTICS);
@@ -91,6 +107,20 @@ function AnalyticsComponent() {
               Pantau perkembangan dan identifikasi area untuk ditingkatkan.
             </p>
           </div>
+          <Select
+            value={examTypeId}
+            onValueChange={(v) => navigate({ search: { examTypeId: v || undefined } as any, replace: true })}
+          >
+            <SelectTrigger className="w-48 h-11">
+              <SelectValue placeholder="Semua Ujian" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Semua Ujian</SelectItem>
+              {EXAM_TYPES.map((t) => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
