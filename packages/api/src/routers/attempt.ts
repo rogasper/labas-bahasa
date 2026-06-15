@@ -105,13 +105,14 @@ function calculatePartialCredit(format: string, userAnswer: string, correctAnswe
 }
 
 /** For TKP (situational_judgment), compute weighted score from optionWeights. */
-function calculateWeightedScore(userAnswer: string, optionWeights: number[] | null, options: Array<{ key: string }> | null): number {
-  if (!optionWeights || !options) return 0;
+function calculateWeightedScore(userAnswer: string, optionWeights: unknown, options: unknown): number {
+  if (!Array.isArray(optionWeights) || !Array.isArray(options)) return 0;
   const ua = userAnswer.trim().toUpperCase();
-  const idx = options.findIndex((o) => o.key.toUpperCase() === ua);
-  if (idx === -1) return 0;
-  const weight = optionWeights[idx] ?? 0;
-  const maxWeight = Math.max(...optionWeights, 1);
+  if (!ua) return 0;
+  const idx = options.findIndex((o) => o && typeof o === "object" && "key" in o && String(o.key).toUpperCase() === ua);
+  if (idx === -1 || idx >= optionWeights.length) return 0;
+  const weight = typeof optionWeights[idx] === "number" ? optionWeights[idx] : 0;
+  const maxWeight = Math.max(...optionWeights.filter((w): w is number => typeof w === "number"), 1);
   return weight / maxWeight;
 }
 

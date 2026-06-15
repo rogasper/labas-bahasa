@@ -155,16 +155,18 @@ export function CpnsGenerateComponent() {
     };
 
     const firstJob = sectionConfigs[0];
+    const generatedMode = isFullTest ? "agentic" : (firstJob.count > 15 ? "agentic" : "quick");
+
     generateMutation.mutate({
       examType: "CPNS" as const,
-      section: firstJob.section as any,
-      selectedSections: [firstJob.section as any],
-      formats: [firstJob.format as any],
+      section: firstJob.section,
+      selectedSections: [firstJob.section],
+      formats: [firstJob.format],
       difficulty,
       topics: CPNS_SECTION_TOPICS[firstJob.section] ?? [],
       questionCount: firstJob.count,
-      mode: isFullTest ? "agentic" : (firstJob.count > 15 ? "agentic" : "quick") as any,
-      apiKeyConfig: apiKeyConfig as any,
+      mode: generatedMode,
+      apiKeyConfig,
     } as any);
   };
 
