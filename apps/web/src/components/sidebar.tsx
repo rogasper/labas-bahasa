@@ -63,7 +63,7 @@ const cpnsNavGroups: NavGroup[] = [
     label: "Generate",
     items: [
       { to: "/cpns/generate", label: "AI Lab", icon: "auto_awesome" },
-      { to: "/cpns/jobs", label: "Jobs", icon: "schedule" },
+      { to: "/jobs", label: "Jobs", icon: "schedule" },
     ],
   },
   {
@@ -80,8 +80,8 @@ const cpnsNavGroups: NavGroup[] = [
   {
     label: "Track",
     items: [
-      { to: "/cpns/analytics", label: "Analytics", icon: "analytics" },
-      { to: "/cpns/leaderboard", label: "Klasemen", icon: "leaderboard" },
+      { to: "/analytics", label: "Analytics", icon: "analytics" },
+      { to: "/leaderboard", label: "Klasemen", icon: "leaderboard" },
     ],
   },
 ];
