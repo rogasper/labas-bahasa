@@ -135,16 +135,22 @@ export const aiRouter = router({
   myJobs: protectedProcedure
     .input(
       z.object({
+        examTypeId: z.string().optional(),
         ...paginationSchema.shape,
       }).optional(),
     )
     .query(async ({ ctx, input }) => {
       const { limit, offset } = paginateDefaults(input);
+      const conditions = [eq(generationJob.userId, ctx.session.user.id)];
+
+      if (input?.examTypeId) {
+        conditions.push(eq(generationJob.examTypeId, input.examTypeId));
+      }
 
       const [total] = await db
         .select({ count: count() })
         .from(generationJob)
-        .where(eq(generationJob.userId, ctx.session.user.id));
+        .where(and(...conditions));
 
       const rows = await db
         .select({
@@ -167,7 +173,7 @@ export const aiRouter = router({
           completedAt: generationJob.completedAt,
         })
         .from(generationJob)
-        .where(eq(generationJob.userId, ctx.session.user.id))
+        .where(and(...conditions))
         .orderBy(desc(generationJob.createdAt))
         .limit(limit)
         .offset(offset);

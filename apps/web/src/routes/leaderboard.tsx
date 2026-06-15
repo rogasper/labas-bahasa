@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, redirect, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
+import { z } from "zod";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
@@ -28,6 +29,9 @@ const PERIODS = [
 
 export const Route = createFileRoute("/leaderboard")({
   component: LeaderboardPage,
+  validateSearch: z.object({
+    examTypeId: z.string().optional(),
+  }).parse,
 });
 
 function GapRow({ count }: { count: number }) {
@@ -43,9 +47,16 @@ function GapRow({ count }: { count: number }) {
 function LeaderboardPage() {
   const { data: session } = authClient.useSession();
   const isLoggedIn = !!session;
+  const navigate = useNavigate();
+  const routeSearch = useSearch({ strict: false }) as Record<string, string>;
 
   const [period, setPeriod] = useState<(typeof PERIODS)[number]["value"]>("week");
-  const [examTypeId, setExamTypeId] = useState<string>("");
+  const [examTypeId, setExamTypeId] = useState<string>(routeSearch.examTypeId ?? "");
+
+  const handleExamTypeChange = (value: string) => {
+    setExamTypeId(value);
+    navigate({ search: { examTypeId: value || undefined } as any, replace: true });
+  };
 
   const rankingsQuery = useQuery(
     trpc.leaderboard.getRankings.queryOptions({
@@ -118,7 +129,7 @@ function LeaderboardPage() {
 
       {/* Exam Filter */}
       <div className="mb-6">
-        <Select value={examTypeId} onValueChange={(v) => setExamTypeId(v ?? "")}>
+        <Select value={examTypeId} onValueChange={(v) => handleExamTypeChange(v ?? "")}>
           <SelectTrigger className="w-[180px] rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)]">
             <SelectValue placeholder="Semua Ujian" />
           </SelectTrigger>

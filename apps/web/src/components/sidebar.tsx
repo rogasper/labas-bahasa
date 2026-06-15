@@ -17,6 +17,7 @@ interface NavItem {
   to: string;
   label: string;
   icon: string;
+  search?: Record<string, string>;
 }
 
 interface NavGroup {
@@ -63,7 +64,7 @@ const cpnsNavGroups: NavGroup[] = [
     label: "Generate",
     items: [
       { to: "/cpns/generate", label: "AI Lab", icon: "auto_awesome" },
-      { to: "/jobs", label: "Jobs", icon: "schedule" },
+      { to: "/jobs", label: "Jobs", icon: "schedule", search: { examTypeId: "CPNS" } },
     ],
   },
   {
@@ -80,8 +81,8 @@ const cpnsNavGroups: NavGroup[] = [
   {
     label: "Track",
     items: [
-      { to: "/analytics", label: "Analytics", icon: "analytics" },
-      { to: "/leaderboard", label: "Klasemen", icon: "leaderboard" },
+      { to: "/analytics", label: "Analytics", icon: "analytics", search: { examTypeId: "CPNS" } },
+      { to: "/leaderboard", label: "Klasemen", icon: "leaderboard", search: { examTypeId: "CPNS" } },
     ],
   },
 ];
@@ -114,6 +115,7 @@ function NavLink({ item, isActive, collapsed }: { item: NavItem; isActive: boole
   return (
     <Link
       to={item.to}
+      search={item.search as any}
       {...tourAttr}
       aria-current={isActive ? "page" : undefined}
       className={`flex items-center gap-3 rounded-[var(--radius-lg)] transition-all group clay-hover cursor-pointer ${
