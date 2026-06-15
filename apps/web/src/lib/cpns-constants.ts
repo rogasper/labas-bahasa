@@ -72,3 +72,9 @@ export const CPNS_SECTION_TOPICS: Record<string, string[]> = {
   TWK: ["Pancasila", "UUD 1945", "NKRI", "Bhinneka Tunggal Ika", "Sejarah Indonesia", "Sistem Pemerintahan", "HAM"],
   TKP: ["Pelayanan Publik", "Jejaring Kerja", "Sosial Budaya", "Profesionalisme", "Anti-Radikalisme", "Teknologi Informasi"],
 };
+
+export const CPNS_SECTION_COLORS: Record<string, { bg: string; text: string; bgOnly: string }> = {
+  TIU: { bg: "bg-[var(--matcha-300)]", text: "text-[var(--matcha-800)]", bgOnly: "bg-[var(--matcha-300)]" },
+  TWK: { bg: "bg-[var(--slushie-500)]/30", text: "text-[var(--slushie-800)]", bgOnly: "bg-[var(--slushie-500)]/30" },
+  TKP: { bg: "bg-[var(--lemon-400)]/50", text: "text-[var(--lemon-800)]", bgOnly: "bg-[var(--lemon-400)]/50" },
+};

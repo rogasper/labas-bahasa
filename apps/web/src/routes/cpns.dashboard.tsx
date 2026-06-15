@@ -5,6 +5,7 @@ import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
+import { CpnsPageHeader } from "@/components/ui/CpnsPageHeader";
 import { CPNS_SECTION_NAMES, CPNS_SECTION_DESCRIPTIONS } from "@/lib/cpns-constants";
 
 export const Route = createFileRoute("/cpns/dashboard")({
@@ -41,19 +42,7 @@ function CpnsDashboard() {
 
   return (
     <div>
-      <div className="flex items-center gap-4 mb-8">
-        <div className="h-14 w-14 bg-[var(--blueberry-800)] rounded-[var(--radius-xl)] flex items-center justify-center shrink-0">
-          <MaterialIcon name="account_balance" className="text-2xl text-[var(--pure-white)]" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-headline font-bold text-[var(--clay-black)]">
-            Halo, {session?.user.name ?? "Pengguna"}!
-          </h1>
-          <p className="text-sm text-[var(--warm-charcoal)]">
-            Persiapan CPNS SKD — Fokus pada TIU, TWK, dan TKP.
-          </p>
-        </div>
-      </div>
+      <CpnsPageHeader icon="account_balance" title={"Halo, " + (session?.user.name ?? "Pengguna") + "!"} subtitle="Persiapan CPNS SKD — Fokus pada TIU, TWK, dan TKP." />
 
       {/* Quick Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
