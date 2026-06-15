@@ -63,6 +63,7 @@ const cpnsNavGroups: NavGroup[] = [
     label: "Generate",
     items: [
       { to: "/cpns/generate", label: "AI Lab", icon: "auto_awesome" },
+      { to: "/cpns/jobs", label: "Jobs", icon: "schedule" },
     ],
   },
   {
@@ -74,6 +75,13 @@ const cpnsNavGroups: NavGroup[] = [
     items: [
       { to: "/cpns/packages", label: "Paket Soal", icon: "folder" },
       { to: "/cpns/history", label: "Riwayat", icon: "history" },
+    ],
+  },
+  {
+    label: "Track",
+    items: [
+      { to: "/cpns/analytics", label: "Analytics", icon: "analytics" },
+      { to: "/cpns/leaderboard", label: "Klasemen", icon: "leaderboard" },
     ],
   },
 ];
@@ -143,8 +151,6 @@ export function Sidebar() {
   useEffect(() => {
     if (location.pathname.startsWith("/cpns")) {
       setSidebarMode("kedinasan");
-    } else {
-      setSidebarMode("bahasa");
     }
   }, [location.pathname]);
 

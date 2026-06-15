@@ -32,10 +32,13 @@ import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ProfileUserIdRouteImport } from './routes/profile.$userId'
 import { Route as PackageIdRouteImport } from './routes/package.$id'
 import { Route as CpnsPackagesRouteImport } from './routes/cpns.packages'
+import { Route as CpnsLeaderboardRouteImport } from './routes/cpns.leaderboard'
+import { Route as CpnsJobsRouteImport } from './routes/cpns.jobs'
 import { Route as CpnsHistoryRouteImport } from './routes/cpns.history'
 import { Route as CpnsGenerateRouteImport } from './routes/cpns.generate'
 import { Route as CpnsDashboardRouteImport } from './routes/cpns.dashboard'
 import { Route as CpnsBankRouteImport } from './routes/cpns.bank'
+import { Route as CpnsAnalyticsRouteImport } from './routes/cpns.analytics'
 import { Route as AttemptIdRouteImport } from './routes/attempt.$id'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
@@ -163,6 +166,16 @@ const CpnsPackagesRoute = CpnsPackagesRouteImport.update({
   path: '/packages',
   getParentRoute: () => CpnsRoute,
 } as any).lazy(() => import('./routes/cpns.packages.lazy').then((d) => d.Route))
+const CpnsLeaderboardRoute = CpnsLeaderboardRouteImport.update({
+  id: '/leaderboard',
+  path: '/leaderboard',
+  getParentRoute: () => CpnsRoute,
+} as any)
+const CpnsJobsRoute = CpnsJobsRouteImport.update({
+  id: '/jobs',
+  path: '/jobs',
+  getParentRoute: () => CpnsRoute,
+} as any)
 const CpnsHistoryRoute = CpnsHistoryRouteImport.update({
   id: '/history',
   path: '/history',
@@ -183,6 +196,11 @@ const CpnsBankRoute = CpnsBankRouteImport.update({
   path: '/bank',
   getParentRoute: () => CpnsRoute,
 } as any).lazy(() => import('./routes/cpns.bank.lazy').then((d) => d.Route))
+const CpnsAnalyticsRoute = CpnsAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => CpnsRoute,
+} as any)
 const AttemptIdRoute = AttemptIdRouteImport.update({
   id: '/attempt/$id',
   path: '/attempt/$id',
@@ -268,10 +286,13 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/attempt/$id': typeof AttemptIdRoute
+  '/cpns/analytics': typeof CpnsAnalyticsRoute
   '/cpns/bank': typeof CpnsBankRoute
   '/cpns/dashboard': typeof CpnsDashboardRoute
   '/cpns/generate': typeof CpnsGenerateRoute
   '/cpns/history': typeof CpnsHistoryRoute
+  '/cpns/jobs': typeof CpnsJobsRoute
+  '/cpns/leaderboard': typeof CpnsLeaderboardRoute
   '/cpns/packages': typeof CpnsPackagesRoute
   '/package/$id': typeof PackageIdRouteWithChildren
   '/profile/$userId': typeof ProfileUserIdRoute
@@ -307,10 +328,13 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/attempt/$id': typeof AttemptIdRoute
+  '/cpns/analytics': typeof CpnsAnalyticsRoute
   '/cpns/bank': typeof CpnsBankRoute
   '/cpns/dashboard': typeof CpnsDashboardRoute
   '/cpns/generate': typeof CpnsGenerateRoute
   '/cpns/history': typeof CpnsHistoryRoute
+  '/cpns/jobs': typeof CpnsJobsRoute
+  '/cpns/leaderboard': typeof CpnsLeaderboardRoute
   '/cpns/packages': typeof CpnsPackagesRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/admin': typeof AdminIndexRoute
@@ -347,10 +371,13 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/attempt/$id': typeof AttemptIdRoute
+  '/cpns/analytics': typeof CpnsAnalyticsRoute
   '/cpns/bank': typeof CpnsBankRoute
   '/cpns/dashboard': typeof CpnsDashboardRoute
   '/cpns/generate': typeof CpnsGenerateRoute
   '/cpns/history': typeof CpnsHistoryRoute
+  '/cpns/jobs': typeof CpnsJobsRoute
+  '/cpns/leaderboard': typeof CpnsLeaderboardRoute
   '/cpns/packages': typeof CpnsPackagesRoute
   '/package/$id': typeof PackageIdRouteWithChildren
   '/profile/$userId': typeof ProfileUserIdRoute
@@ -389,10 +416,13 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/attempt/$id'
+    | '/cpns/analytics'
     | '/cpns/bank'
     | '/cpns/dashboard'
     | '/cpns/generate'
     | '/cpns/history'
+    | '/cpns/jobs'
+    | '/cpns/leaderboard'
     | '/cpns/packages'
     | '/package/$id'
     | '/profile/$userId'
@@ -428,10 +458,13 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/attempt/$id'
+    | '/cpns/analytics'
     | '/cpns/bank'
     | '/cpns/dashboard'
     | '/cpns/generate'
     | '/cpns/history'
+    | '/cpns/jobs'
+    | '/cpns/leaderboard'
     | '/cpns/packages'
     | '/profile/$userId'
     | '/admin'
@@ -467,10 +500,13 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/attempt/$id'
+    | '/cpns/analytics'
     | '/cpns/bank'
     | '/cpns/dashboard'
     | '/cpns/generate'
     | '/cpns/history'
+    | '/cpns/jobs'
+    | '/cpns/leaderboard'
     | '/cpns/packages'
     | '/package/$id'
     | '/profile/$userId'
@@ -668,6 +704,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CpnsPackagesRouteImport
       parentRoute: typeof CpnsRoute
     }
+    '/cpns/leaderboard': {
+      id: '/cpns/leaderboard'
+      path: '/leaderboard'
+      fullPath: '/cpns/leaderboard'
+      preLoaderRoute: typeof CpnsLeaderboardRouteImport
+      parentRoute: typeof CpnsRoute
+    }
+    '/cpns/jobs': {
+      id: '/cpns/jobs'
+      path: '/jobs'
+      fullPath: '/cpns/jobs'
+      preLoaderRoute: typeof CpnsJobsRouteImport
+      parentRoute: typeof CpnsRoute
+    }
     '/cpns/history': {
       id: '/cpns/history'
       path: '/history'
@@ -694,6 +744,13 @@ declare module '@tanstack/react-router' {
       path: '/bank'
       fullPath: '/cpns/bank'
       preLoaderRoute: typeof CpnsBankRouteImport
+      parentRoute: typeof CpnsRoute
+    }
+    '/cpns/analytics': {
+      id: '/cpns/analytics'
+      path: '/analytics'
+      fullPath: '/cpns/analytics'
+      preLoaderRoute: typeof CpnsAnalyticsRouteImport
       parentRoute: typeof CpnsRoute
     }
     '/attempt/$id': {
@@ -801,18 +858,24 @@ const AdminRouteChildren: AdminRouteChildren = {
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface CpnsRouteChildren {
+  CpnsAnalyticsRoute: typeof CpnsAnalyticsRoute
   CpnsBankRoute: typeof CpnsBankRoute
   CpnsDashboardRoute: typeof CpnsDashboardRoute
   CpnsGenerateRoute: typeof CpnsGenerateRoute
   CpnsHistoryRoute: typeof CpnsHistoryRoute
+  CpnsJobsRoute: typeof CpnsJobsRoute
+  CpnsLeaderboardRoute: typeof CpnsLeaderboardRoute
   CpnsPackagesRoute: typeof CpnsPackagesRoute
 }
 
 const CpnsRouteChildren: CpnsRouteChildren = {
+  CpnsAnalyticsRoute: CpnsAnalyticsRoute,
   CpnsBankRoute: CpnsBankRoute,
   CpnsDashboardRoute: CpnsDashboardRoute,
   CpnsGenerateRoute: CpnsGenerateRoute,
   CpnsHistoryRoute: CpnsHistoryRoute,
+  CpnsJobsRoute: CpnsJobsRoute,
+  CpnsLeaderboardRoute: CpnsLeaderboardRoute,
   CpnsPackagesRoute: CpnsPackagesRoute,
 }
 
