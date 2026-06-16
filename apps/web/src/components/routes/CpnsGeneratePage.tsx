@@ -478,11 +478,10 @@ export function CpnsGenerateComponent() {
       </div>
 
       {/* Results with Tabs */}
-      <div ref={resultsRef}>
-        {completedResults.length > 0 && (
-          <div className="mt-12">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-headline font-bold text-[var(--clay-black)]">Hasil Generate</h2>
+      <div ref={resultsRef} className={completedResults.length > 0 ? "" : "hidden"}>
+        <div className="mt-12">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-headline font-bold text-[var(--clay-black)]">Hasil Generate</h2>
               <Button
                 variant="ghost"
                 size="sm"
@@ -548,8 +547,7 @@ export function CpnsGenerateComponent() {
               />
             )}
           </div>
-        )}
+        </div>
       </div>
-    </div>
   );
 }
