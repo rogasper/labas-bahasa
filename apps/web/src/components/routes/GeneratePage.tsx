@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { useApiKeys } from "@/hooks/use-api-key";
@@ -96,8 +96,12 @@ export function RouteComponent() {
     }
   }, [completedResults.length]);
 
-  const [examType, setExamType] = useState("IELTS");
-  const [selectedSections, setSelectedSections] = useState<string[]>(["READING"]);
+  const routeSearch = useSearch({ strict: false }) as Record<string, unknown>;
+  const defaultExamType = (routeSearch.examType as string) || "IELTS";
+  const defaultSection = defaultExamType === "CPNS" ? "TIU" : "READING";
+
+  const [examType, setExamType] = useState(defaultExamType);
+  const [selectedSections, setSelectedSections] = useState<string[]>([defaultSection]);
   const [selectedFormats, setSelectedFormats] = useState<string[]>(["multiple_choice"]);
   const [difficulty, setDifficulty] = useState(2);
   const [selectedTopics, setSelectedTopics] = useState<string[]>(["Science & Tech"]);

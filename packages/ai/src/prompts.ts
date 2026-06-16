@@ -1,12 +1,18 @@
 import type { GenerationInput } from "./schemas";
 import { getQuestionJsonSchemaDescription } from "./schema-to-prompt";
 import { buildContentLanguageRules, buildExplanationLanguageRule } from "./language-rules";
+import { buildCpnsQuickModePrompt } from "./prompts-cpns";
 
 export const OPTION_QUALITY_RULES = `- Each option "text" must be meaningful content derived from the passage or question — NEVER use generic labels like "Option A", "Option B", "Pilihan A", "Choice B", or "Placeholder".
 - For multiple choice: always provide at least 4 real answer choices labeled A, B, C, D with plausible distractors.`;
 
 export function buildQuickModePrompt(input: GenerationInput): string {
   const { examType, section, formats, difficulty, topics, questionCount } = input;
+
+  // Route CPNS to its own prompt builder
+  if (examType === "CPNS") {
+    return buildCpnsQuickModePrompt(input);
+  }
 
   const questionSchemaJson = getQuestionJsonSchemaDescription();
 

@@ -135,16 +135,22 @@ export const aiRouter = router({
   myJobs: protectedProcedure
     .input(
       z.object({
+        examTypeId: z.string().optional(),
         ...paginationSchema.shape,
       }).optional(),
     )
     .query(async ({ ctx, input }) => {
       const { limit, offset } = paginateDefaults(input);
+      const conditions = [eq(generationJob.userId, ctx.session.user.id)];
+
+      if (input?.examTypeId) {
+        conditions.push(eq(generationJob.examTypeId, input.examTypeId));
+      }
 
       const [total] = await db
         .select({ count: count() })
         .from(generationJob)
-        .where(eq(generationJob.userId, ctx.session.user.id));
+        .where(and(...conditions));
 
       const rows = await db
         .select({
@@ -167,7 +173,7 @@ export const aiRouter = router({
           completedAt: generationJob.completedAt,
         })
         .from(generationJob)
-        .where(eq(generationJob.userId, ctx.session.user.id))
+        .where(and(...conditions))
         .orderBy(desc(generationJob.createdAt))
         .limit(limit)
         .offset(offset);
@@ -360,9 +366,18 @@ export const aiRouter = router({
         throwBadRequest("Invalid API key configuration for retry");
       }
 
+      // Check how many questions were already saved (partial failure)
+      const savedIds: string[] = (job as any).resultJson?.savedQuestionIds ?? [];
+      const existingPackageId: string | null = (job as any).resultJson?.generatedPackageId ?? null;
+      const alreadyCount = savedIds.length;
+      const remainingCount = Math.max(1, (jobInput.questionCount ?? 0) - alreadyCount);
+      const sectionTypeId = jobInput.sectionTypeId ?? "";
+
       // Decrypt the stored apiKey before re-enqueuing
       const decryptedInput = {
         ...jobInput,
+        questionCount: remainingCount,
+        ...(existingPackageId ? { _retryPackageId: existingPackageId, _retrySectionTypeId: sectionTypeId } : {}),
         apiKeyConfig: {
           ...jobInput.apiKeyConfig,
           apiKey: decryptApiKey(jobInput.apiKeyConfig.apiKey),
@@ -370,7 +385,7 @@ export const aiRouter = router({
       };
 
       const newJobId = await enqueueGeneration(ctx.session.user.id, decryptedInput);
-      return { jobId: newJobId };
+      return { jobId: newJobId, remainingCount, alreadyCount };
     }),
 
   saveQuestions: protectedProcedure

@@ -122,6 +122,7 @@ export const Route = createFileRoute("/jobs")({
   component: RouteComponent,
   validateSearch: z.object({
     page: z.coerce.number().min(1).default(1),
+    examTypeId: z.string().optional(),
   }).parse,
   beforeLoad: async () => {
     const session = await authClient.getSession();
@@ -181,6 +182,7 @@ function RouteComponent() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   const page = search.page;
+  const examTypeId = search.examTypeId;
 
   const [expandedJobId, setExpandedJobId] = useState<string | null>(null);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
@@ -190,7 +192,7 @@ function RouteComponent() {
     navigate({ search: (prev) => ({ ...prev, page: Math.max(1, newPage) }) });
 
   const jobsQuery = useQuery({
-    ...trpc.ai.myJobs.queryOptions({ limit: JOBS_PER_PAGE, offset: (page - 1) * JOBS_PER_PAGE }),
+    ...trpc.ai.myJobs.queryOptions({ examTypeId: examTypeId || undefined, limit: JOBS_PER_PAGE, offset: (page - 1) * JOBS_PER_PAGE }),
     refetchInterval: (query) => {
       const data = query.state.data;
       if (!data) return false;

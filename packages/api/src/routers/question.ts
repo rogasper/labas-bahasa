@@ -8,6 +8,9 @@ import { buildVisibilityCondition } from "../lib/visibility";
 import { assertOwnership } from "../lib/ownership";
 import { throwNotFound } from "../lib/errors";
 
+const optionSchema = z.object({ key: z.string(), text: z.string() })
+  .or(z.object({ left: z.string(), right: z.string() }));
+
 const questionListSelect = {
   id: question.id,
   examTypeId: question.examTypeId,
@@ -205,7 +208,7 @@ export const questionRouter = router({
         format: z.string(),
         passageText: z.string().min(1),
         questionText: z.string().min(1),
-        options: z.any().optional(),
+        options: z.array(optionSchema).optional(),
         correctAnswer: z.string(),
         explanation: z.string().optional(),
         difficulty: z.number().min(1).max(5).default(3),
@@ -235,7 +238,7 @@ export const questionRouter = router({
         format: z.string().optional(),
         passageText: z.string().min(1).optional(),
         questionText: z.string().min(1).optional(),
-        options: z.any().optional(),
+        options: z.array(optionSchema).optional(),
         correctAnswer: z.string().optional(),
         explanation: z.string().optional(),
         difficulty: z.number().min(1).max(5).optional(),

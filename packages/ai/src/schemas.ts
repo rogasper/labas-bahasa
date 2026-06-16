@@ -2,8 +2,8 @@ import { z } from "zod";
 
 // ── Shared Schemas ─────────────────────────────────────────
 
-export const examTypeSchema = z.enum(["IELTS", "TOEFL", "JLPT", "HSK", "GOETHE", "TOPIK", "TOAFL", "DELE"]);
-export const sectionTypeSchema = z.enum(["READING", "WRITING", "LISTENING", "SPEAKING"]);
+export const examTypeSchema = z.enum(["IELTS", "TOEFL", "JLPT", "HSK", "GOETHE", "TOPIK", "TOAFL", "DELE", "CPNS"]);
+export const sectionTypeSchema = z.enum(["READING", "WRITING", "LISTENING", "SPEAKING", "TIU", "TWK", "TKP"]);
 
 export const questionFormatSchema = z.enum([
   "multiple_choice",
@@ -26,6 +26,7 @@ export const questionFormatSchema = z.enum([
   "article_case",
   "character_reading",
   "sentence_arrangement",
+  "situational_judgment",
 ]);
 
 export const difficultySchema = z.number().int().min(1).max(5);
@@ -181,6 +182,14 @@ export const sentenceArrangementQuestionSchema = baseQuestionSchema.extend({
   correctAnswer: z.string(),
 });
 
+export const situationalJudgmentQuestionSchema = baseQuestionSchema.extend({
+  format: z.literal("situational_judgment"),
+  options: z.array(multipleChoiceOptionSchema).length(5),
+  correctAnswer: z.string(),
+  optionWeights: z.array(z.number().int().min(1).max(5)).length(5),
+  passageText: z.string().min(10),
+});
+
 // ── Unified Question Schema ────────────────────────────────
 
 export const questionSchema = z.discriminatedUnion("format", [
@@ -204,6 +213,7 @@ export const questionSchema = z.discriminatedUnion("format", [
   articleCaseQuestionSchema,
   characterReadingQuestionSchema,
   sentenceArrangementQuestionSchema,
+  situationalJudgmentQuestionSchema,
 ]);
 
 export type Question = z.infer<typeof questionSchema>;
@@ -217,7 +227,7 @@ export const generationInputSchema = z.object({
   formats: z.array(questionFormatSchema).min(1),
   difficulty: difficultySchema,
   topics: z.array(z.string()).min(1),
-  questionCount: z.number().int().min(1).max(40),
+  questionCount: z.number().int().min(1).max(120),
   mode: z.enum(["quick", "agentic"]).default("quick"),
   apiKeyConfig: aiKeyConfigSchema,
 });

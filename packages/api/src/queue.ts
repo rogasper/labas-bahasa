@@ -313,7 +313,7 @@ async function saveGeneratedArtifacts(
         aiModel: q.aiModel,
         generationKeySource: (input as any)._isPlatformGeneration ? "free_credit" : "byok",
         creatorUserId: userId,
-        isPublic: false,
+        isPublic: input.examType === "CPNS",
       })) as any,
     )
     .returning({ id: question.id });
@@ -321,6 +321,69 @@ async function saveGeneratedArtifacts(
   const savedQuestionIds = inserted.map((r) => r.id);
   if (!savedQuestionIds.length) {
     return { savedQuestionIds, generatedPackageId: null };
+  }
+
+  // Retry: append to existing package instead of creating new
+  const retryPkgId = (input as any)._retryPackageId;
+  const retrySectionTypeId = (input as any)._retrySectionTypeId;
+
+  if (retryPkgId) {
+    generatedPackageId = retryPkgId;
+    try {
+      const [nextOrder] = await db
+        .select({ maxOrder: sql<number>`COALESCE(MAX(${packageSection.orderIndex}), -1) + 1` })
+        .from(packageSection)
+        .where(eq(packageSection.packageId, retryPkgId));
+
+      const orderIdx = Number(nextOrder?.maxOrder ?? 0);
+
+      for (let i = 0; i < sectionSplits.length; i++) {
+        const split = sectionSplits[i]!;
+        const sectionQuestions = allQuestions
+          .map((q, idx) => ({ ...q, _globalIndex: idx }))
+          .filter((q) => q.section === split.section);
+
+        const [sec] = await db
+          .insert(packageSection)
+          .values({
+            packageId: retryPkgId,
+            sectionTypeId: retrySectionTypeId || split.section,
+            title: `${retrySectionTypeId || split.section} Section (lanjutan)`,
+            orderIndex: orderIdx + i,
+          })
+          .returning();
+
+        if (sec) {
+          const sectionQuestionRows = sectionQuestions
+            .map((q, idx) => ({
+              sectionId: sec.id,
+              questionId: savedQuestionIds[q._globalIndex],
+              orderIndex: idx,
+            }))
+            .filter((q) => q.questionId != null);
+
+          if (sectionQuestionRows.length > 0) {
+            await db.insert(sectionQuestion).values(sectionQuestionRows as any);
+          }
+        }
+      }
+    } catch (retryErr: any) {
+      console.warn("[GENERATION] Failed to append retry sections, but questions were saved.", {
+        error: retryErr?.message ?? String(retryErr),
+        jobId,
+        retryPkgId,
+      });
+    }
+
+    await db
+      .update(testPackage)
+      .set({
+        totalQuestions: sql`${testPackage.totalQuestions} + ${savedQuestionIds.length}`,
+        totalSections: sql`${testPackage.totalSections} + ${sectionSplits.length}`,
+      })
+      .where(eq(testPackage.id, retryPkgId));
+
+    return { savedQuestionIds, generatedPackageId };
   }
 
   let generatedPackageId: string | null = null;
@@ -347,7 +410,7 @@ async function saveGeneratedArtifacts(
         description: `Paket latihan AI-generated dengan ${savedQuestionIds.length} soal ${input.examType}.`,
         examTypeId: input.examType,
         creatorUserId: userId,
-        isPublic: false,
+        isPublic: input.examType === "CPNS",
         totalQuestions: savedQuestionIds.length,
         totalSections: sectionSplits.length,
         estimatedDurationMin: Math.ceil(savedQuestionIds.length * 1.5),

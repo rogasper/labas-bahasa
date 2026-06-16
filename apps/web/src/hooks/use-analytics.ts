@@ -1,15 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { trpc } from "@/utils/trpc";
 
-export function useAnalytics() {
-  const overview = useQuery(trpc.stats.overview.queryOptions());
-  const byExamType = useQuery(trpc.stats.byExamType.queryOptions());
-  const bySectionType = useQuery(trpc.stats.bySectionType.queryOptions());
-  const byFormat = useQuery(trpc.stats.byFormat.queryOptions());
-  const bySkillTag = useQuery(trpc.stats.bySkillTag.queryOptions());
-  const trend = useQuery(trpc.stats.trend.queryOptions());
-  const weaknesses = useQuery(trpc.stats.weaknesses.queryOptions());
-  const timeAnalytics = useQuery(trpc.stats.timeAnalytics.queryOptions());
+export function useAnalytics(examTypeId?: string) {
+  const input = { examTypeId: examTypeId || undefined };
+
+  const overview = useQuery(trpc.stats.overview.queryOptions(input));
+  const byExamType = useQuery(trpc.stats.byExamType.queryOptions(input));
+  const bySectionType = useQuery(trpc.stats.bySectionType.queryOptions(input));
+  const byFormat = useQuery(trpc.stats.byFormat.queryOptions(input));
+  const bySkillTag = useQuery(trpc.stats.bySkillTag.queryOptions(input));
+  const trend = useQuery(trpc.stats.trend.queryOptions(input));
+  const weaknesses = useQuery(trpc.stats.weaknesses.queryOptions(input));
+  const timeAnalytics = useQuery(trpc.stats.timeAnalytics.queryOptions(input));
 
   const isLoading =
     overview.isLoading ||

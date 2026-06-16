@@ -177,6 +177,7 @@ export function AttemptTestView({
   const examType: string = pkg.examTypeName ?? "";
   const isRtl = examType === "TOAFL";
   const useFurigana = examType === "JLPT" || examType === "TOPIK";
+  const isCpns = pkg.examTypeId === "CPNS";
 
   // If user picks an answer before attempt.getById finishes, persist once sectionResultId exists
   const flushKeyRef = useRef<string | null>(null);
@@ -289,7 +290,19 @@ export function AttemptTestView({
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
-      <div className="h-full flex flex-col bg-[var(--warm-cream)] overflow-hidden">
+      <div
+        className="h-full flex flex-col bg-[var(--warm-cream)] overflow-hidden"
+        style={isCpns ? {
+          "--matcha-600": "var(--blueberry-800)",
+          "--matcha-500": "var(--blueberry-800)",
+          "--matcha-400": "#5b8cba",
+          "--matcha-300": "#c2d9f5",
+          "--matcha-800": "var(--blueberry-800)",
+          "--matcha-700": "var(--blueberry-800)",
+          "--matcha-100": "#c2d9f5",
+          "--matcha-50": "#d6e6f8",
+        } as React.CSSProperties : undefined}
+      >
         <AttemptHeader
           pkgTitle={pkg.title ?? ""}
           currentSectionTitle={currentSection.title ?? ""}

@@ -7,6 +7,7 @@ export const DIFFICULTY_LABELS: Record<string, string[]> = {
   TOPIK:  ["TOPIK I (Lv 1)", "TOPIK I (Lv 2)", "TOPIK II (Lv 3)", "TOPIK II (Lv 4)", "TOPIK II (Lv 5-6)"],
   TOAFL:  ["A1", "A2", "B1", "B2", "C1-C2"],
   DELE:   ["A1", "A2", "B1", "B2", "C1-C2"],
+  CPNS:   ["Sangat Mudah", "Mudah", "Sedang", "Sulit", "Sangat Sulit"],
 };
 
 export function getDifficultyLabel(examType: string, level: number): string {

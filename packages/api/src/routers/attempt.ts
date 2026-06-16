@@ -44,9 +44,10 @@ function normalizeAnswer(format: string, userAnswer: string, correctAnswer: stri
     case "sentence_arrangement":
     case "matching_headings":
     case "matching_information":
-    case "matching_pairs":
+     case "matching_pairs":
     case "error_recognition":
     case "text_insertion":
+    case "situational_judgment":
       return ua.toUpperCase() === ca.toUpperCase();
     default:
       return ua === ca;
@@ -101,6 +102,18 @@ function calculatePartialCredit(format: string, userAnswer: string, correctAnswe
     return null;
   }
   return null;
+}
+
+/** For TKP (situational_judgment), compute weighted score from optionWeights. */
+function calculateWeightedScore(userAnswer: string, optionWeights: unknown, options: unknown): number {
+  if (!Array.isArray(optionWeights) || !Array.isArray(options)) return 0;
+  const ua = userAnswer.trim().toUpperCase();
+  if (!ua) return 0;
+  const idx = options.findIndex((o) => o && typeof o === "object" && "key" in o && String(o.key).toUpperCase() === ua);
+  if (idx === -1 || idx >= optionWeights.length) return 0;
+  const weight = typeof optionWeights[idx] === "number" ? optionWeights[idx] : 0;
+  const maxWeight = Math.max(...optionWeights.filter((w): w is number => typeof w === "number"), 1);
+  return weight / maxWeight;
 }
 
 // ── Word Count Validator ──
@@ -520,6 +533,8 @@ export const attemptRouter = router({
             questionFormat: question.format,
             questionCorrectAnswer: question.correctAnswer,
             questionIsCaseSensitive: question.isCaseSensitive,
+            questionOptionWeights: question.optionWeights,
+            questionOptions: question.options,
           })
           .from(answer)
           .innerJoin(question, eq(answer.questionId, question.id))
@@ -533,10 +548,23 @@ export const attemptRouter = router({
         let sectionScore = 0;
         for (const a of secAnswers) {
           if (!a.userAnswer) continue;
-          const isCaseSensitive = a.questionIsCaseSensitive ?? false;
-          const isCorrect = normalizeAnswer(a.questionFormat, a.userAnswer, a.questionCorrectAnswer, isCaseSensitive);
-          const partialScore = calculatePartialCredit(a.questionFormat, a.userAnswer, a.questionCorrectAnswer);
-          const effectiveScore = isCorrect ? 1 : (partialScore != null ? partialScore / 100 : 0);
+
+          let isCorrect = false;
+          let partialScore: number | null = null;
+          let effectiveScore = 0;
+
+          // TKP (situational_judgment) uses weighted scoring
+          if (a.questionFormat === "situational_judgment") {
+            const weights = a.questionOptionWeights ? (a.questionOptionWeights as number[]) : null;
+            const options = a.questionOptions ? (a.questionOptions as Array<{ key: string }>) : null;
+            effectiveScore = calculateWeightedScore(a.userAnswer, weights, options);
+          } else {
+            const isCaseSensitive = a.questionIsCaseSensitive ?? false;
+            isCorrect = normalizeAnswer(a.questionFormat, a.userAnswer, a.questionCorrectAnswer, isCaseSensitive);
+            partialScore = calculatePartialCredit(a.questionFormat, a.userAnswer, a.questionCorrectAnswer);
+            effectiveScore = isCorrect ? 1 : (partialScore != null ? partialScore / 100 : 0);
+          }
+
           sectionScore += effectiveScore;
 
           // Persist computed values for review page display

@@ -52,7 +52,6 @@ async function fetchAllRankings(
   if (periodStart) {
     conditions.push(gte(testAttempt.finishedAt, periodStart));
   }
-  let where: any = and(...conditions);
 
   const q = db
     .select({
@@ -65,13 +64,14 @@ async function fetchAllRankings(
     })
     .from(testAttempt)
     .innerJoin(user, eq(testAttempt.userId, user.id))
-    .where(where) as any;
+    .innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id));
 
   if (examTypeId) {
-    q.innerJoin(testPackage, eq(testAttempt.packageId, testPackage.id));
+    conditions.push(eq(testPackage.examTypeId, examTypeId));
   }
 
   const rows: any[] = await q
+    .where(and(...conditions))
     .groupBy(user.id, user.name, user.image)
     .orderBy(desc(sql`sum(${testAttempt.totalScore})`));
 

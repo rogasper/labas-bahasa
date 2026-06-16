@@ -159,7 +159,7 @@ function AttemptResultComponent() {
         <div className="text-center py-20">
           <MaterialIcon name="error_outline" className="text-6xl text-[var(--warm-silver)] mx-auto mb-4" />
           <p className="text-lg text-[var(--warm-charcoal)] font-semibold">Hasil tidak ditemukan</p>
-          <Link to="/packages" className="text-[var(--matcha-600)] font-semibold mt-4 inline-block">
+          <Link to={packagesLink} className="text-[var(--matcha-600)] font-semibold mt-4 inline-block">
             Kembali ke Paket
           </Link>
         </div>
@@ -167,14 +167,32 @@ function AttemptResultComponent() {
     );
   }
 
+  // Detect if this attempt is for a package where any section is TIU/TWK/TKP
+  const isCpnsAttempt = attempt.sections?.some(
+    (sec: any) => sec.sectionTypeId === "TIU" || sec.sectionTypeId === "TWK" || sec.sectionTypeId === "TKP"
+  );
+  const packagesLink = isCpnsAttempt ? "/cpns/packages" : "/packages";
+
   return (
-    <div className="min-h-screen pb-32 bg-[var(--warm-cream)]">
+    <div
+      className="min-h-screen pb-32 bg-[var(--warm-cream)]"
+      style={isCpnsAttempt ? {
+        "--matcha-600": "var(--blueberry-800)",
+        "--matcha-500": "var(--blueberry-800)",
+        "--matcha-400": "#5b8cba",
+        "--matcha-300": "#c2d9f5",
+        "--matcha-800": "var(--blueberry-800)",
+        "--matcha-700": "var(--blueberry-800)",
+        "--matcha-100": "#c2d9f5",
+        "--matcha-50": "#d6e6f8",
+      } as React.CSSProperties : undefined}
+    >
       {/* Sticky header */}
       <div className="sticky top-0 z-20 bg-[var(--warm-cream)]/95 backdrop-blur-sm border-b border-[var(--oat-border)] shadow-sm">
         <div className="px-6 md:px-12 lg:px-16 max-w-4xl mx-auto pt-4 pb-4">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-xs text-[var(--warm-charcoal)] mb-3">
-            <Link to="/packages" className="hover:text-[var(--clay-black)] transition-colors">
+            <Link to={packagesLink} className="hover:text-[var(--clay-black)] transition-colors">
               Paket
             </Link>
             <MaterialIcon name="chevron_right" className="text-[10px]" />
@@ -211,7 +229,7 @@ function AttemptResultComponent() {
                   <span className="ml-1.5">Coba Lagi</span>
                 </Button>
               </Link>
-              <Link to="/packages">
+              <Link to={packagesLink}>
                 <Button
                   variant="outline"
                   className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"

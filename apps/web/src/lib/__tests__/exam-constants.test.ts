@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { EXAM_TYPES, SECTIONS, FORMATS, DIFFICULTIES } from "../exam-constants";
 
 describe("EXAM_TYPES", () => {
-  it("has 8 exam types", () => {
-    expect(EXAM_TYPES).toHaveLength(8);
+  it("has 9 exam types", () => {
+    expect(EXAM_TYPES).toHaveLength(9);
   });
 
   it("each entry has id and name", () => {
@@ -25,6 +25,7 @@ describe("EXAM_TYPES", () => {
     expect(ids).toContain("TOPIK");
     expect(ids).toContain("TOAFL");
     expect(ids).toContain("DELE");
+    expect(ids).toContain("CPNS");
   });
 
   it("has no duplicate IDs", () => {
@@ -34,20 +35,23 @@ describe("EXAM_TYPES", () => {
 });
 
 describe("SECTIONS", () => {
-  it("has 2 sections", () => {
-    expect(SECTIONS).toHaveLength(2);
+  it("has 5 sections", () => {
+    expect(SECTIONS).toHaveLength(5);
   });
 
-  it("includes READING and WRITING", () => {
+  it("includes READING, WRITING, TIU, TWK, TKP", () => {
     const ids = SECTIONS.map((s) => s.id);
     expect(ids).toContain("READING");
     expect(ids).toContain("WRITING");
+    expect(ids).toContain("TIU");
+    expect(ids).toContain("TWK");
+    expect(ids).toContain("TKP");
   });
 });
 
 describe("FORMATS", () => {
-  it("has 20 question formats", () => {
-    expect(FORMATS).toHaveLength(20);
+  it("has 21 question formats", () => {
+    expect(FORMATS).toHaveLength(21);
   });
 
   it("has no duplicates", () => {

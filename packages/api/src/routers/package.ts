@@ -35,6 +35,12 @@ export const packageRouter = router({
 
       if (input?.examTypeId) conditions.push(eq(testPackage.examTypeId, input.examTypeId));
 
+      if (input?.search) {
+        conditions.push(
+          sql`LOWER(${testPackage.title}) LIKE LOWER(${"%" + input.search + "%"})`,
+        );
+      }
+
       if (input?.isPublic !== undefined) {
         conditions.push(eq(testPackage.isPublic, input.isPublic));
       } else {

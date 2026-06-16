@@ -2,8 +2,8 @@ import { describe, expect, it } from "bun:test";
 import { DIFFICULTY_LABELS, getDifficultyLabel } from "../difficulty-mapping";
 
 describe("DIFFICULTY_LABELS", () => {
-  it("has entries for all 8 exam types", () => {
-    const expected = ["IELTS", "TOEFL", "JLPT", "HSK", "GOETHE", "TOPIK", "TOAFL", "DELE"];
+  it("has entries for all 9 exam types", () => {
+    const expected = ["IELTS", "TOEFL", "JLPT", "HSK", "GOETHE", "TOPIK", "TOAFL", "DELE", "CPNS"];
     expect(Object.keys(DIFFICULTY_LABELS)).toEqual(expected);
   });
 

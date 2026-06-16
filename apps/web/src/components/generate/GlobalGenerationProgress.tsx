@@ -154,6 +154,11 @@ function SingleJobCard({
   const message = job.progressMessage ?? "Sedang berjalan...";
   const logs = (job.logs ?? []) as LogEntry[];
   const isAgentic = job.mode === "agentic";
+  const isCpns = job.examTypeId === "CPNS";
+
+  const sectionLabel = isCpns && job.sectionTypeId
+    ? (job.sectionTypeId === "TIU" ? "TIU" : job.sectionTypeId === "TWK" ? "TWK" : job.sectionTypeId === "TKP" ? "TKP" : job.sectionTypeId)
+    : null;
 
   if (minimized) {
     return (
@@ -183,6 +188,9 @@ function SingleJobCard({
             <span className="text-xs font-semibold block truncate">{message}</span>
             {isAgentic && (
               <span className="text-[10px] text-[var(--matcha-400)]">Agentic</span>
+            )}
+            {sectionLabel && (
+              <span className="text-[10px] text-[var(--blueberry-500)] ml-1">· {sectionLabel}</span>
             )}
           </div>
         </div>
