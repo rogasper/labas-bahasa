@@ -228,37 +228,24 @@ export function CpnsGenerateComponent() {
       maxTokens: selectedConfig?.maxTokens ?? 16384,
     };
 
-    if (isFullTest) {
-      // Full Test SKD — single job with all sections; pipeline splits questions
-      const allFormats = [...new Set(sectionConfigs.map((c) => c.format))];
-      const allTopics = [...new Set(sectionConfigs.flatMap((c) => CPNS_SECTION_TOPICS[c.section] ?? []))];
-      generateMutation.mutate({
-        examType: "CPNS" as const,
-        section: sectionConfigs[0].section,
-        selectedSections: sectionConfigs.map((c) => c.section),
-        formats: allFormats,
-        difficulty,
-        topics: allTopics,
-        questionCount: CPNS_FULL_TEST.totalQuestions,
-        mode: "agentic",
-        apiKeyConfig,
-      } as any);
-    } else {
-      for (const job of sectionConfigs) {
-        const mode = job.count > 15 ? "agentic" : "quick";
-        generateMutation.mutate({
-          examType: "CPNS" as const,
-          section: job.section,
-          selectedSections: [job.section],
-          formats: [job.format],
-          difficulty,
-          topics: CPNS_SECTION_TOPICS[job.section] ?? [],
-          questionCount: job.count,
-          mode,
-          apiKeyConfig,
-        } as any);
-      }
-    }
+    const jobs = sectionConfigs.map((job) => ({
+      examType: "CPNS" as const,
+      section: job.section,
+      selectedSections: [job.section],
+      formats: [job.format],
+      difficulty,
+      topics: CPNS_SECTION_TOPICS[job.section] ?? [],
+      questionCount: job.count,
+      mode: (isFullTest ? "agentic" : (job.count > 15 ? "agentic" : "quick")) as any,
+      apiKeyConfig,
+    }));
+
+    // Stagger mutations to prevent DOM race conditions with Select portal
+    jobs.forEach((input, i) => {
+      setTimeout(() => {
+        generateMutation.mutate(input as any);
+      }, i * 300);
+    });
   };
 
   return (

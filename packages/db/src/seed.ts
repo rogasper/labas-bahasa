@@ -14,6 +14,7 @@ const examTypes = [
   { id: "TOPIK", name: "TOPIK", language: "Korean", description: "Test of Proficiency in Korean" },
   { id: "TOAFL", name: "TOAFL", language: "Arabic", description: "Test of Arabic as a Foreign Language" },
   { id: "DELE", name: "DELE", language: "Spanish", description: "Diplomas de Español como Lengua Extranjera" },
+  { id: "CPNS", name: "CPNS SKD", language: "Indonesian", description: "Seleksi Kompetensi Dasar Calon Pegawai Negeri Sipil" },
 ];
 
 const sectionTypes = [
@@ -21,6 +22,9 @@ const sectionTypes = [
   { id: "WRITING", name: "Writing" },
   { id: "LISTENING", name: "Listening" },
   { id: "SPEAKING", name: "Speaking" },
+  { id: "TIU", name: "Tes Intelegensi Umum" },
+  { id: "TWK", name: "Tes Wawasan Kebangsaan" },
+  { id: "TKP", name: "Tes Karakteristik Pribadi" },
 ];
 
 async function seed() {
