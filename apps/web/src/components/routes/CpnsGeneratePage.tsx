@@ -7,13 +7,6 @@ import { useApiKeys } from "@/hooks/use-api-key";
 import { useGenerationJobs, type CompletedResult } from "@/hooks/use-generation-jobs";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@labas/ui/components/select";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { ResultSection } from "@/components/generate/ResultSection";
 import {
@@ -376,20 +369,17 @@ export function CpnsGenerateComponent() {
           <div className="mt-4 pt-4 border-t border-[var(--oat-border)]">
             <label className="text-sm font-medium text-[var(--clay-black)] mb-2 block">Provider / API Key</label>
             <div className="flex gap-3">
-              <Select value={selectedKeyId} onValueChange={(v) => v && setSelectedKeyId(v)}>
-                <SelectTrigger className="flex-1 h-11">
-                  <SelectValue>
-                    {selectedConfig ? selectedConfig.name + " . " + selectedConfig.modelName : "Pilih provider..."}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {configs.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name} . {c.modelName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <select
+                value={selectedKeyId}
+                onChange={(e) => setSelectedKeyId(e.target.value)}
+                className="flex-1 h-11 px-3 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] text-sm text-[var(--clay-black)] focus:outline-none focus:border-[var(--matcha-500)] cursor-pointer"
+              >
+                {configs.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name} . {c.modelName}
+                  </option>
+                ))}
+              </select>
               <Link to="/settings">
                 <Button variant="outline" size="xl" className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover">
                   <MaterialIcon name="settings" className="mr-1" />

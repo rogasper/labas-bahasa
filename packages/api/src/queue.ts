@@ -323,6 +323,8 @@ async function saveGeneratedArtifacts(
     return { savedQuestionIds, generatedPackageId: null };
   }
 
+  let generatedPackageId: string | null = null;
+
   // Retry: append to existing package instead of creating new
   const retryPkgId = (input as any)._retryPackageId;
   const retrySectionTypeId = (input as any)._retrySectionTypeId;
@@ -386,7 +388,6 @@ async function saveGeneratedArtifacts(
     return { savedQuestionIds, generatedPackageId };
   }
 
-  let generatedPackageId: string | null = null;
   try {
     const dateStr = new Date().toLocaleDateString("id-ID", {
       day: "numeric",
