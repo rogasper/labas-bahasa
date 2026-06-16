@@ -29,6 +29,8 @@ function TakeTestComponent() {
 
   const packageQuery = useQuery(trpc.package.getById.queryOptions({ id: packageId }));
   const pkg = packageQuery.data;
+  const isCpns = pkg?.examTypeId === "CPNS";
+  const packagesLink = isCpns ? "/cpns/packages" : "/packages";
 
   // Check if there's an active in-progress attempt for this package
   const activeAttemptQuery = useQuery(
@@ -120,7 +122,7 @@ function TakeTestComponent() {
         <div className="text-center py-20">
           <MaterialIcon name="error_outline" className="text-6xl text-[var(--warm-silver)] mx-auto mb-4" />
           <p className="text-lg text-[var(--warm-charcoal)] font-semibold">Paket tidak ditemukan</p>
-          <Link to="/packages" className="text-[var(--matcha-600)] font-semibold mt-4 inline-block">
+          <Link to={packagesLink} className="text-[var(--matcha-600)] font-semibold mt-4 inline-block">
             Kembali ke Paket
           </Link>
         </div>
@@ -134,7 +136,7 @@ function TakeTestComponent() {
       <div className="min-h-screen pt-8 pb-32 px-6 md:px-12 lg:px-16 max-w-3xl mx-auto bg-[var(--warm-cream)]">
         <div className="mb-8">
           <div className="flex items-center gap-2 text-sm text-[var(--warm-charcoal)] mb-6">
-            <Link to="/packages" className="hover:text-[var(--clay-black)] transition-colors">
+            <Link to={packagesLink} className="hover:text-[var(--clay-black)] transition-colors">
               Paket
             </Link>
             <MaterialIcon name="chevron_right" className="text-xs" />

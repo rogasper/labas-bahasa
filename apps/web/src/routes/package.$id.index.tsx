@@ -37,6 +37,8 @@ function PackageDetailComponent() {
   });
 
   const pkg = packageQuery.data;
+  const isCpns = pkg?.examTypeId === "CPNS";
+  const bankLink = isCpns ? "/cpns/bank" : "/bank";
 
   if (packageQuery.isLoading) {
     return (
@@ -53,7 +55,7 @@ function PackageDetailComponent() {
         <div className="text-center py-20">
           <MaterialIcon name="error_outline" className="text-6xl text-[var(--warm-silver)] mx-auto mb-4" />
           <p className="text-lg text-[var(--warm-charcoal)] font-semibold">Paket tidak ditemukan</p>
-          <Link to="/bank" className="text-[var(--matcha-600)] font-semibold mt-4 inline-block">
+          <Link to={bankLink} className="text-[var(--matcha-600)] font-semibold mt-4 inline-block">
             Kembali ke Bank Soal
           </Link>
         </div>
@@ -71,7 +73,7 @@ function PackageDetailComponent() {
         <div className="px-6 md:px-12 lg:px-16 max-w-4xl mx-auto pt-4 pb-4">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-xs text-[var(--warm-charcoal)] mb-3">
-            <Link to="/bank" className="hover:text-[var(--clay-black)] transition-colors">Bank Soal</Link>
+            <Link to={bankLink} className="hover:text-[var(--clay-black)] transition-colors">Bank Soal</Link>
             <MaterialIcon name="chevron_right" className="text-[10px]" />
             <span className="text-[var(--clay-black)] font-medium truncate max-w-[240px]">{pkg.title}</span>
           </div>

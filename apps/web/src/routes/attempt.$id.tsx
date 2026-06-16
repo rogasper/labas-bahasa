@@ -159,7 +159,7 @@ function AttemptResultComponent() {
         <div className="text-center py-20">
           <MaterialIcon name="error_outline" className="text-6xl text-[var(--warm-silver)] mx-auto mb-4" />
           <p className="text-lg text-[var(--warm-charcoal)] font-semibold">Hasil tidak ditemukan</p>
-          <Link to="/packages" className="text-[var(--matcha-600)] font-semibold mt-4 inline-block">
+          <Link to={packagesLink} className="text-[var(--matcha-600)] font-semibold mt-4 inline-block">
             Kembali ke Paket
           </Link>
         </div>
@@ -171,6 +171,7 @@ function AttemptResultComponent() {
   const isCpnsAttempt = attempt.sections?.some(
     (sec: any) => sec.sectionTypeId === "TIU" || sec.sectionTypeId === "TWK" || sec.sectionTypeId === "TKP"
   );
+  const packagesLink = isCpnsAttempt ? "/cpns/packages" : "/packages";
 
   return (
     <div
@@ -191,7 +192,7 @@ function AttemptResultComponent() {
         <div className="px-6 md:px-12 lg:px-16 max-w-4xl mx-auto pt-4 pb-4">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-xs text-[var(--warm-charcoal)] mb-3">
-            <Link to="/packages" className="hover:text-[var(--clay-black)] transition-colors">
+            <Link to={packagesLink} className="hover:text-[var(--clay-black)] transition-colors">
               Paket
             </Link>
             <MaterialIcon name="chevron_right" className="text-[10px]" />
@@ -228,7 +229,7 @@ function AttemptResultComponent() {
                   <span className="ml-1.5">Coba Lagi</span>
                 </Button>
               </Link>
-              <Link to="/packages">
+              <Link to={packagesLink}>
                 <Button
                   variant="outline"
                   className="rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] clay-hover"

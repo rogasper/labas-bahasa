@@ -27,6 +27,8 @@ function ContinueAttemptComponent() {
 
   const packageQuery = useQuery(trpc.package.getById.queryOptions({ id: packageId }));
   const pkg = packageQuery.data;
+  const isCpns = pkg?.examTypeId === "CPNS";
+  const packagesLink = isCpns ? "/cpns/packages" : "/packages";
 
   const {
     currentSectionIdx,
@@ -87,7 +89,7 @@ function ContinueAttemptComponent() {
         <div className="text-center py-20">
           <MaterialIcon name="error_outline" className="text-6xl text-[var(--warm-silver)] mx-auto mb-4" />
           <p className="text-lg text-[var(--warm-charcoal)] font-semibold">Paket tidak ditemukan</p>
-          <Link to="/packages" className="text-[var(--matcha-600)] font-semibold mt-4 inline-block">
+          <Link to={packagesLink} className="text-[var(--matcha-600)] font-semibold mt-4 inline-block">
             Kembali ke Paket
           </Link>
         </div>
