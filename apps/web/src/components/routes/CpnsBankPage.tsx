@@ -158,7 +158,7 @@ export function CpnsBankComponent() {
             <button
               key={s || "all"}
               onClick={() => navigate({ search: { sectionTypeId: s || undefined, page: 1 } as any, replace: true })}
-              className={`px-3 py-1.5 rounded-[var(--radius-lg)] text-xs font-semibold border-2 transition-all ${!section === !s
+              className={`px-3 py-1.5 rounded-[var(--radius-lg)] text-xs font-semibold border-2 transition-all ${section === s
                   ? "border-[var(--matcha-500)] bg-[var(--matcha-300)]/10 text-[var(--matcha-800)]"
                   : "border-[var(--oat-border)] text-[var(--warm-charcoal)] hover:border-[var(--oat-light)]"
                 }`}

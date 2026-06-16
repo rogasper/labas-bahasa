@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
-import { trpc } from "@/utils/trpc";
+import { trpc, queryClient } from "@/utils/trpc";
 import { useApiKeys } from "@/hooks/use-api-key";
 import { useGenerationJobs, type CompletedResult } from "@/hooks/use-generation-jobs";
 import { Button } from "@labas/ui/components/button";
@@ -31,6 +31,7 @@ import {
   type CpnsSection,
 } from "@/lib/cpns-constants";
 import { toast } from "sonner";
+import { getErrorMessage } from "@/lib/error-utils";
 
 type ModeTab = "latihan" | "full-test";
 
@@ -122,6 +123,78 @@ export function CpnsGenerateComponent() {
     }) as any,
   );
 
+  const combineMutation = useMutation(trpc.combo.create.mutationOptions());
+  const hasCombined = useRef(false);
+
+  const allSectionsComplete = isFullTest && sectionConfigs.length === completedResults.length && completedResults.every(r => r.generatedPackageId);
+
+  // Auto-combine Full Test SKD saat semua 3 section selesai
+  useEffect(() => {
+    if (allSectionsComplete && !hasCombined.current) {
+      hasCombined.current = true;
+      const autoCombine = async () => {
+        const title = "Full Test SKD - " + new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+        try {
+          const sections = await Promise.all(
+            completedResults.map(async (r, i) => {
+              const pkg = await queryClient.fetchQuery(
+                trpc.package.getById.queryOptions({ id: r.generatedPackageId! }),
+              );
+              const sec = pkg?.sections?.[0];
+              return {
+                sourcePackageId: r.generatedPackageId!,
+                sourceSectionId: sec?.id ?? "",
+                orderIndex: i,
+              };
+            }),
+          );
+          await combineMutation.mutateAsync({
+            title,
+            description: "Paket gabungan Full Test SKD (TIU + TWK + TKP, 110 soal).",
+            isPublic: true,
+            sections,
+          });
+          toast.success("Paket Full Test SKD siap!");
+          navigate({ to: "/cpns/packages" });
+        } catch (err: unknown) {
+          toast.error("Gagal menggabungkan paket", { description: getErrorMessage(err) });
+        }
+      };
+      autoCombine();
+    }
+  }, [allSectionsComplete]);
+
+  const combineFullTest = async () => {
+    hasCombined.current = false;
+    // Re-trigger by resetting ref — allSectionsComplete is still true
+    const title = "Full Test SKD - " + new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+    try {
+      const sections = await Promise.all(
+        completedResults.map(async (r, i) => {
+          const pkg = await queryClient.fetchQuery(
+            trpc.package.getById.queryOptions({ id: r.generatedPackageId! }),
+          );
+          const sec = pkg?.sections?.[0];
+          return {
+            sourcePackageId: r.generatedPackageId!,
+            sourceSectionId: sec?.id ?? "",
+            orderIndex: i,
+          };
+        }),
+      );
+      await combineMutation.mutateAsync({
+        title,
+        description: "Paket gabungan Full Test SKD (TIU + TWK + TKP, 110 soal).",
+        isPublic: true,
+        sections,
+      });
+      toast.success("Paket Full Test SKD siap!");
+      navigate({ to: "/cpns/packages" });
+    } catch (err: unknown) {
+      toast.error("Gagal menggabungkan paket", { description: getErrorMessage(err) });
+    }
+  };
+
   const [activeTabIdx, setActiveTabIdx] = useState(0);
   const prevResultsLengthRef = useRef(0);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -147,6 +220,7 @@ export function CpnsGenerateComponent() {
       toast.error("Pilih API key atau gunakan free credits");
       return;
     }
+    hasCombined.current = false;
     const apiKeyConfig = useFreeCredits ? undefined : {
       baseUrl: selectedConfig?.baseUrl ?? "",
       apiKey: selectedConfig?.apiKey ?? "",
@@ -154,20 +228,37 @@ export function CpnsGenerateComponent() {
       maxTokens: selectedConfig?.maxTokens ?? 16384,
     };
 
-    const firstJob = sectionConfigs[0];
-    const generatedMode = isFullTest ? "agentic" : (firstJob.count > 15 ? "agentic" : "quick");
-
-    generateMutation.mutate({
-      examType: "CPNS" as const,
-      section: firstJob.section,
-      selectedSections: [firstJob.section],
-      formats: [firstJob.format],
-      difficulty,
-      topics: CPNS_SECTION_TOPICS[firstJob.section] ?? [],
-      questionCount: firstJob.count,
-      mode: generatedMode,
-      apiKeyConfig,
-    } as any);
+    if (isFullTest) {
+      // Full Test SKD — single job with all sections; pipeline splits questions
+      const allFormats = [...new Set(sectionConfigs.map((c) => c.format))];
+      const allTopics = [...new Set(sectionConfigs.flatMap((c) => CPNS_SECTION_TOPICS[c.section] ?? []))];
+      generateMutation.mutate({
+        examType: "CPNS" as const,
+        section: sectionConfigs[0].section,
+        selectedSections: sectionConfigs.map((c) => c.section),
+        formats: allFormats,
+        difficulty,
+        topics: allTopics,
+        questionCount: CPNS_FULL_TEST.totalQuestions,
+        mode: "agentic",
+        apiKeyConfig,
+      } as any);
+    } else {
+      for (const job of sectionConfigs) {
+        const mode = job.count > 15 ? "agentic" : "quick";
+        generateMutation.mutate({
+          examType: "CPNS" as const,
+          section: job.section,
+          selectedSections: [job.section],
+          formats: [job.format],
+          difficulty,
+          topics: CPNS_SECTION_TOPICS[job.section] ?? [],
+          questionCount: job.count,
+          mode,
+          apiKeyConfig,
+        } as any);
+      }
+    }
   };
 
   return (
@@ -232,8 +323,32 @@ export function CpnsGenerateComponent() {
             <Link to="/settings" className="text-xs text-[var(--matcha-600)] underline ml-2">
               Atur BYOK di Settings
             </Link>
-          )}
-        </div>
+            )}
+            {allSectionsComplete && (
+              <Card className="bg-gradient-to-br from-[var(--blueberry-800)]/5 to-[var(--ube-800)]/5 border-2 border-[var(--blueberry-800)]/20 rounded-[var(--radius-xl)] mt-6">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-[var(--radius-lg)] bg-[var(--blueberry-800)] flex items-center justify-center shrink-0">
+                      <MaterialIcon name="workspace_premium" className="text-lg text-[var(--pure-white)]" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-[var(--clay-black)]">Full Test SKD Selesai!</p>
+                      <p className="text-xs text-[var(--warm-charcoal)]">
+                        {completedResults.reduce((sum, r) => sum + (r.result?.questions?.length ?? 0), 0)} soal dari TIU, TWK, dan TKP
+                      </p>
+                    </div>
+                    <Button
+                      onClick={combineFullTest}
+                      disabled={combineMutation.isPending}
+                      className="bg-[var(--clay-black)] text-[var(--pure-white)] rounded-[var(--radius-lg)] text-sm"
+                    >
+                      {combineMutation.isPending ? "Menggabungkan..." : "Buat Paket Gabungan SKD"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
         {useFreeCredits && myCredit.data && (
           <div className="mt-4 pt-4 border-t border-[var(--oat-border)] space-y-2">
