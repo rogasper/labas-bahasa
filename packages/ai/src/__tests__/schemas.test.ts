@@ -221,7 +221,7 @@ describe("generationInputSchema", () => {
     expect(() => generationInputSchema.parse(data)).not.toThrow();
   });
 
-  it("rejects questionCount over 40", () => {
+  it("rejects questionCount over 120", () => {
     expect(() =>
       generationInputSchema.parse({
         examType: "IELTS",
@@ -229,7 +229,7 @@ describe("generationInputSchema", () => {
         formats: ["multiple_choice"],
         difficulty: 3,
         topics: ["education"],
-        questionCount: 100,
+        questionCount: 130,
         apiKeyConfig: {
           baseUrl: "https://api.openai.com/v1",
           apiKey: "sk-test",

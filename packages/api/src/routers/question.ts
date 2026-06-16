@@ -8,7 +8,8 @@ import { buildVisibilityCondition } from "../lib/visibility";
 import { assertOwnership } from "../lib/ownership";
 import { throwNotFound } from "../lib/errors";
 
-const optionSchema = z.object({ key: z.string(), text: z.string() });
+const optionSchema = z.object({ key: z.string(), text: z.string() })
+  .or(z.object({ left: z.string(), right: z.string() }));
 
 const questionListSelect = {
   id: question.id,
