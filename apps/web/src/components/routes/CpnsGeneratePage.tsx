@@ -233,12 +233,10 @@ export function CpnsGenerateComponent() {
       apiKeyConfig,
     }));
 
-    // Stagger mutations to prevent DOM race conditions with Select portal
-    jobs.forEach((input, i) => {
-      setTimeout(() => {
-        generateMutation.mutate(input as any);
-      }, i * 300);
-    });
+    // Generate each section — React 18 batches state updates from event handlers
+    for (const input of jobs) {
+      generateMutation.mutate(input as any);
+    }
   };
 
   return (
