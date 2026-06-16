@@ -366,9 +366,18 @@ export const aiRouter = router({
         throwBadRequest("Invalid API key configuration for retry");
       }
 
+      // Check how many questions were already saved (partial failure)
+      const savedIds: string[] = (job as any).resultJson?.savedQuestionIds ?? [];
+      const existingPackageId: string | null = (job as any).resultJson?.generatedPackageId ?? null;
+      const alreadyCount = savedIds.length;
+      const remainingCount = Math.max(1, (jobInput.questionCount ?? 0) - alreadyCount);
+      const sectionTypeId = jobInput.sectionTypeId ?? "";
+
       // Decrypt the stored apiKey before re-enqueuing
       const decryptedInput = {
         ...jobInput,
+        questionCount: remainingCount,
+        ...(existingPackageId ? { _retryPackageId: existingPackageId, _retrySectionTypeId: sectionTypeId } : {}),
         apiKeyConfig: {
           ...jobInput.apiKeyConfig,
           apiKey: decryptApiKey(jobInput.apiKeyConfig.apiKey),
@@ -376,7 +385,7 @@ export const aiRouter = router({
       };
 
       const newJobId = await enqueueGeneration(ctx.session.user.id, decryptedInput);
-      return { jobId: newJobId };
+      return { jobId: newJobId, remainingCount, alreadyCount };
     }),
 
   saveQuestions: protectedProcedure
