@@ -11,4 +11,4 @@ cmds = ["bun install --frozen-lockfile"]
 cmds = ["bunx turbo build -F server"]
 
 [start]
-cmd = "bun run db:migrate && bun run --cwd apps/server start"
+cmd = "bun run db:push && bun run --cwd apps/server start"
