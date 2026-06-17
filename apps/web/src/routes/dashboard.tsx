@@ -77,14 +77,13 @@ function HomeComponent() {
     trpc.attempt.myAttempts.queryOptions({ limit: 5, offset: 0 }),
   );
   const featured = useQuery(
-    trpc.admin.listFeatured.queryOptions(),
+    trpc.admin.getDashboardFeatured.queryOptions(),
   );
 
   const stats = overview.data;
   const attempts = recentAttempts.data?.attempts ?? [];
   const featuredPkg = featured.data?.packages ?? [];
-  const featuredQ = featured.data?.questions ?? [];
-  const hasFeatured = featuredPkg.length > 0 || featuredQ.length > 0;
+  const hasFeatured = featuredPkg.length > 0 || (featured.data?.questionsTotal ?? 0) > 0;
 
   const isNewUser = !stats || (stats.completedAttempts === 0 && stats.totalQuestionsAnswered === 0);
 

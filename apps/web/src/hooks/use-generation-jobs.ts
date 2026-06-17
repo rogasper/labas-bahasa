@@ -119,7 +119,7 @@ export function useGenerationJobs() {
 
   /* Merge discovered jobs from myJobs fallback */
   useEffect(() => {
-    if (!myJobsQuery.data?.jobs) return;
+    if (!Array.isArray(myJobsQuery.data?.jobs)) return;
     const clearedIds = new Set<string>();
     const discovered = myJobsQuery.data.jobs
       .filter(

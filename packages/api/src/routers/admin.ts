@@ -381,6 +381,38 @@ export const adminRouter = router({
     return { packages, questions };
   }),
 
+  /** Lightweight featured items for the public dashboard (no admin access required). */
+  getDashboardFeatured: protectedProcedure.query(async () => {
+    const packages = await db
+      .select({
+        id: schema.testPackage.id,
+        title: schema.testPackage.title,
+        description: schema.testPackage.description,
+        examTypeId: schema.testPackage.examTypeId,
+        creatorUserId: schema.testPackage.creatorUserId,
+        creatorName: schema.user.name,
+        totalQuestions: schema.testPackage.totalQuestions,
+        totalSections: schema.testPackage.totalSections,
+        estimatedDurationMin: schema.testPackage.estimatedDurationMin,
+        usageCount: schema.testPackage.usageCount,
+        avgRating: schema.testPackage.avgRating,
+        examTypeName: schema.examType.name,
+      })
+      .from(schema.testPackage)
+      .leftJoin(schema.examType, eq(schema.testPackage.examTypeId, schema.examType.id))
+      .leftJoin(schema.user, eq(schema.testPackage.creatorUserId, schema.user.id))
+      .where(eq(schema.testPackage.isFeatured, true))
+      .orderBy(desc(schema.testPackage.updatedAt));
+
+    const [questionCount] = await db
+      .select({ count: count() })
+      .from(schema.question)
+      .where(eq(schema.question.isFeatured, true));
+    const questionsTotal = Number(questionCount?.count ?? 0);
+
+    return { packages, questionsTotal };
+  }),
+
   searchContent: adminProcedure
     .input(
       z.object({

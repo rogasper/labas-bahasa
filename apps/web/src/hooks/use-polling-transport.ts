@@ -48,6 +48,7 @@ export function usePollingTransport({
   });
 
   useEffect(() => {
+    if (!jobIds.length) return;
     const nextActive = jobQueries
       .filter((q) => q.data && !isTerminal((q.data as { status: string }).status))
       .map((q) => q.data as unknown as ActiveJob);
