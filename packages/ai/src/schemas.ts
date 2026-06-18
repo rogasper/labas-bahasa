@@ -218,6 +218,15 @@ export const questionSchema = z.discriminatedUnion("format", [
 
 export type Question = z.infer<typeof questionSchema>;
 
+/** Reduced discriminated union for CPNS — only 3 formats relevant to TIU/TWK/TKP. */
+export const cpnsQuestionSchema = z.discriminatedUnion("format", [
+  multipleChoiceQuestionSchema,
+  trueFalseQuestionSchema,
+  situationalJudgmentQuestionSchema,
+]);
+
+export type CpnsQuestion = z.infer<typeof cpnsQuestionSchema>;
+
 // ── Generation Input / Output ──────────────────────────────
 
 export const generationInputSchema = z.object({

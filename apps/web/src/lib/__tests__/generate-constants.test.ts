@@ -28,12 +28,31 @@ describe("EXAM_TYPES", () => {
 });
 
 describe("SECTIONS", () => {
-  it("has 5 sections with id, name, and icon", () => {
+  it("has 5 sections with id, name, icon, and allowedExams", () => {
     expect(SECTIONS).toHaveLength(5);
     for (const s of SECTIONS) {
       expect(s).toHaveProperty("id");
       expect(s).toHaveProperty("name");
       expect(s).toHaveProperty("icon");
+      expect(s).toHaveProperty("allowedExams");
+      expect(Array.isArray(s.allowedExams)).toBe(true);
+    }
+  });
+
+  it("READING and WRITING are allowed for all language exams", () => {
+    const langExams = ["IELTS", "TOEFL", "JLPT", "HSK", "GOETHE", "TOPIK", "TOAFL", "DELE"];
+    for (const s of SECTIONS) {
+      if (s.id === "READING" || s.id === "WRITING") {
+        expect(s.allowedExams).toEqual(langExams);
+      }
+    }
+  });
+
+  it("TIU, TWK, TKP are allowed only for CPNS", () => {
+    for (const s of SECTIONS) {
+      if (s.id === "TIU" || s.id === "TWK" || s.id === "TKP") {
+        expect(s.allowedExams).toEqual(["CPNS"]);
+      }
     }
   });
 });

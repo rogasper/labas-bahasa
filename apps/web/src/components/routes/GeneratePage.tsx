@@ -430,7 +430,7 @@ export function RouteComponent() {
               </span>
             </div>
             <div className="flex flex-wrap gap-3">
-              {SECTIONS.map((s) => {
+              {SECTIONS.filter((s) => s.allowedExams.includes(examType)).map((s) => {
                 const isSelected = selectedSections.includes(s.id);
                 return (
                   <button

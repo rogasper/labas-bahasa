@@ -1,5 +1,5 @@
 import type { GenerationInput } from "./schemas";
-import { getQuestionJsonSchemaDescription } from "./schema-to-prompt";
+import { getCpnsQuestionJsonSchemaDescription } from "./schema-to-prompt";
 import { buildContentLanguageRules } from "./language-rules";
 
 const CPNS_TIU_TOPICS = [
@@ -45,7 +45,7 @@ const CPNS_TKP_RULES = `- Setiap soal adalah skenario singkat situasi kerja/kedi
 export function buildCpnsQuickModePrompt(input: GenerationInput): string {
   const { examType, section, formats, difficulty, topics, questionCount } = input;
 
-  const questionSchemaJson = getQuestionJsonSchemaDescription();
+  const questionSchemaJson = getCpnsQuestionJsonSchemaDescription();
 
   const sectionHeader = getSectionHeader(section);
   const sectionRules = getSectionRules(section, topics);

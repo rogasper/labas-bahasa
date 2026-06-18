@@ -1,5 +1,5 @@
 import { toJSONSchema } from "zod";
-import { questionSchema } from "./schemas";
+import { questionSchema, cpnsQuestionSchema } from "./schemas";
 
 /**
  * Generate a concise JSON-schema description of the question schema
@@ -7,6 +7,16 @@ import { questionSchema } from "./schemas";
  */
 export function getQuestionJsonSchemaDescription(): string {
   const jsonSchema = toJSONSchema(questionSchema);
+  return JSON.stringify(jsonSchema, null, 2);
+}
+
+/**
+ * Generate a JSON schema description for CPNS-only formats
+ * (multiple_choice, true_false_not_given, situational_judgment).
+ * Much smaller than the full 21-format schema.
+ */
+export function getCpnsQuestionJsonSchemaDescription(): string {
+  const jsonSchema = toJSONSchema(cpnsQuestionSchema);
   return JSON.stringify(jsonSchema, null, 2);
 }
 

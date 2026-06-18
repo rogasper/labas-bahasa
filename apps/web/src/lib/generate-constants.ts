@@ -1,3 +1,5 @@
+const ALL_EXAMS = ["IELTS", "TOEFL", "JLPT", "HSK", "GOETHE", "TOPIK", "TOAFL", "DELE"];
+
 export const EXAM_TYPES = [
   { id: "IELTS", name: "IELTS Academic", code: "gb" },
   { id: "TOEFL", name: "TOEFL iBT", code: "us" },
@@ -11,14 +13,12 @@ export const EXAM_TYPES = [
 ];
 
 export const SECTIONS = [
-  { id: "READING", name: "Reading", icon: "menu_book" },
-  { id: "WRITING", name: "Writing", icon: "edit_note" },
-  { id: "TIU", name: "TIU", icon: "psychology" },
-  { id: "TWK", name: "TWK", icon: "gavel" },
-  { id: "TKP", name: "TKP", icon: "diversity_3" },
+  { id: "READING", name: "Reading", icon: "menu_book", allowedExams: ALL_EXAMS },
+  { id: "WRITING", name: "Writing", icon: "edit_note", allowedExams: ALL_EXAMS },
+  { id: "TIU", name: "TIU", icon: "psychology", allowedExams: ["CPNS"] },
+  { id: "TWK", name: "TWK", icon: "gavel", allowedExams: ["CPNS"] },
+  { id: "TKP", name: "TKP", icon: "diversity_3", allowedExams: ["CPNS"] },
 ];
-
-const ALL_EXAMS = ["IELTS", "TOEFL", "JLPT", "HSK", "GOETHE", "TOPIK", "TOAFL", "DELE"];
 
 export const FORMATS = [
   { id: "multiple_choice", name: "Multiple Choice", allowedExams: [...ALL_EXAMS, "CPNS"] },
