@@ -302,31 +302,31 @@ export function CpnsGenerateComponent() {
               Atur BYOK di Settings
             </Link>
             )}
-            {allSectionsComplete && (
-              <Card className="bg-gradient-to-br from-[var(--blueberry-800)]/5 to-[var(--ube-800)]/5 border-2 border-[var(--blueberry-800)]/20 rounded-[var(--radius-xl)] mt-6">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-[var(--radius-lg)] bg-[var(--blueberry-800)] flex items-center justify-center shrink-0">
-                      <MaterialIcon name="workspace_premium" className="text-lg text-[var(--pure-white)]" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-[var(--clay-black)]">Full Test SKD Selesai!</p>
-                      <p className="text-xs text-[var(--warm-charcoal)]">
-                        {completedResults.reduce((sum, r) => sum + (r.result?.questions?.length ?? 0), 0)} soal dari TIU, TWK, dan TKP
-                      </p>
-                    </div>
-                    <Button
-                      onClick={combineFullTest}
-                      disabled={combineMutation.isPending}
-                      className="bg-[var(--clay-black)] text-[var(--pure-white)] rounded-[var(--radius-lg)] text-sm"
-                    >
-                      {combineMutation.isPending ? "Menggabungkan..." : "Buat Paket Gabungan SKD"}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
+          {allSectionsComplete && (
+            <Card className="bg-gradient-to-br from-[var(--blueberry-800)]/5 to-[var(--ube-800)]/5 border-2 border-[var(--blueberry-800)]/20 rounded-[var(--radius-xl)] mt-6">
+              <CardContent className="p-5">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-[var(--radius-lg)] bg-[var(--blueberry-800)] flex items-center justify-center shrink-0">
+                    <MaterialIcon name="workspace_premium" className="text-lg text-[var(--pure-white)]" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-[var(--clay-black)]">Full Test SKD Selesai!</p>
+                    <p className="text-xs text-[var(--warm-charcoal)]">
+                      {completedResults.reduce((sum, r) => sum + (r.result?.questions?.length ?? 0), 0)} soal dari TIU, TWK, dan TKP
+                    </p>
+                  </div>
+                  <Button
+                    onClick={combineFullTest}
+                    disabled={combineMutation.isPending}
+                    className="bg-[var(--clay-black)] text-[var(--pure-white)] rounded-[var(--radius-lg)] text-sm"
+                  >
+                    {combineMutation.isPending ? "Menggabungkan..." : "Buat Paket Gabungan SKD"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
         {useFreeCredits && myCredit.data && (
           <div className="mt-4 pt-4 border-t border-[var(--oat-border)] space-y-2">
