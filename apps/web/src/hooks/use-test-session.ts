@@ -92,7 +92,7 @@ function clearActiveQuestionId(attemptId: string | null) {
   if (key) localStorage.removeItem(key);
 }
 
-export function useTestSession(packageId: string, existingAttemptId?: string, timeLimitMinutes?: number) {
+export function useTestSession(packageId: string, existingAttemptId?: string, timeLimitMinutes?: number, abandonLink = "/packages") {
   const navigate = useNavigate();
   const restoredRef = useRef(false);
 
@@ -256,8 +256,8 @@ export function useTestSession(packageId: string, existingAttemptId?: string, ti
     clearMarkedQuestions(attemptId);
     clearSectionIdx(attemptId);
     clearActiveQuestionId(attemptId);
-    navigate({ to: "/packages" });
-  }, [attemptId, abandonMutation, navigate]);
+    navigate({ to: abandonLink });
+  }, [attemptId, abandonMutation, navigate, abandonLink]);
 
   const isTimeUp = timeLimitSec !== null && isStarted && !isFinished && timeElapsed >= timeLimitSec;
 

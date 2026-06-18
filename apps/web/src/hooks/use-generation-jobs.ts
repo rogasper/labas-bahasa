@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { trpc, trpcClient } from "@/utils/trpc";
 import { authClient } from "@/lib/auth-client";
-import { useJobState } from "./use-job-state";
+import { useJobStore } from "@/lib/job-store";
 import { usePollingTransport } from "./use-polling-transport";
 import { MAX_PARALLEL, ACTIVE_STATUSES, isTerminal } from "./use-job-shared";
 import type { GenerationResult } from "@labas/ai";
@@ -13,21 +13,19 @@ export function useGenerationJobs() {
   const { data: session, isPending: isSessionPending } = authClient.useSession();
   const isAuthenticated = Boolean(session?.user?.id) && !isSessionPending;
 
-  const {
-    jobIds,
-    completedResults,
-    error,
-    processedStates,
-    removedIds,
-    addJob,
-    removeJob,
-    resetAll,
-    setError,
-    trackStatus,
-    setResult,
-    clearResult,
-    dismissResult,
-  } = useJobState();
+  const jobIds = useJobStore((s) => s.jobIds);
+  const completedResults = useJobStore((s) => s.completedResults);
+  const error = useJobStore((s) => s.error);
+  const processedStates = useJobStore((s) => s.processedStates);
+  const removedIds = useJobStore((s) => s.removedIds);
+  const addJob = useJobStore((s) => s.addJob);
+  const removeJobStore = useJobStore((s) => s.removeJob);
+  const resetAll = useJobStore((s) => s.resetAll);
+  const setError = useJobStore((s) => s.setError);
+  const trackStatus = useJobStore((s) => s.trackStatus);
+  const setResult = useJobStore((s) => s.setResult);
+  const clearResult = useJobStore((s) => s.clearResult);
+  const dismissResult = useJobStore((s) => s.dismissResult);
 
   /* Fallback: discover active jobs from myJobs endpoint */
   const myJobsQuery = useQuery({
@@ -120,13 +118,11 @@ export function useGenerationJobs() {
   /* Merge discovered jobs from myJobs fallback */
   useEffect(() => {
     if (!Array.isArray(myJobsQuery.data?.jobs)) return;
-    const clearedIds = new Set<string>();
     const discovered = myJobsQuery.data.jobs
       .filter(
         (j) =>
           ACTIVE_STATUSES.has(j.status) &&
-          !removedIds.has(j.id) &&
-          !clearedIds.has(j.id),
+          !removedIds.includes(j.id),
       )
       .map((j) => j.id);
     for (const id of discovered) {
@@ -142,21 +138,21 @@ export function useGenerationJobs() {
         return ev && isTerminal(ev);
       })
       .map((id) =>
-        setTimeout(() => removeJob(id), 5000),
+        setTimeout(() => removeJobStore(id), 5000),
       );
     return () => timers.forEach(clearTimeout);
-  }, [processedStates, jobIds, removeJob]);
+  }, [processedStates, jobIds, removeJobStore]);
 
   const activeCount = activeJobs.length;
   const canAddMore = activeCount < MAX_PARALLEL;
   const isGenerating = activeCount > 0;
 
-  const wrappedRemoveJob = useCallback(
+  const removeJob = useCallback(
     (id: string) => {
       trpcClient.ai.cancelJob.mutate({ jobId: id }).catch(() => {});
-      removeJob(id);
+      removeJobStore(id);
     },
-    [removeJob],
+    [removeJobStore],
   );
 
   return {
@@ -168,7 +164,7 @@ export function useGenerationJobs() {
     canAddMore,
     error,
     addJob,
-    removeJob: wrappedRemoveJob,
+    removeJob,
     resetAll,
     dismissResult,
     setError,

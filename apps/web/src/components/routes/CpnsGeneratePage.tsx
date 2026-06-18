@@ -634,6 +634,7 @@ export function CpnsGenerateComponent() {
                 result={activeResult.result}
                 generatedPackageId={activeResult.generatedPackageId}
                 onClear={resetAll}
+                bankLink="/cpns/bank"
               />
             )}
           </div>

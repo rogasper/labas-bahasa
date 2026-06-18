@@ -1,6 +1,7 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { useAppMode } from "@/lib/app-mode";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { Button } from "@labas/ui/components/button";
@@ -44,6 +45,7 @@ export const Route = createFileRoute("/attempt/$id")({
 function AttemptResultComponent() {
   const { id: attemptId } = Route.useParams();
   const { data: session } = authClient.useSession();
+  const { setMode } = useAppMode();
 
   const attemptQuery = useQuery(trpc.attempt.getById.queryOptions({ id: attemptId }));
   const attempt = attemptQuery.data;
@@ -153,6 +155,17 @@ function AttemptResultComponent() {
     );
   }
 
+  const isCpnsAttempt = attempt?.sections?.some(
+    (sec: any) => sec.sectionTypeId === "TIU" || sec.sectionTypeId === "TWK" || sec.sectionTypeId === "TKP"
+  ) ?? false;
+  const packagesLink = isCpnsAttempt ? "/cpns/packages" : "/packages";
+
+  useEffect(() => {
+    if (attempt) {
+      setMode(isCpnsAttempt ? "kedinasan" : "bahasa");
+    }
+  }, [attempt, isCpnsAttempt, setMode]);
+
   if (!attempt) {
     return (
       <div className="min-h-screen pt-8 pb-32 px-6 md:px-12 lg:px-16 max-w-4xl mx-auto bg-[var(--warm-cream)]">
@@ -166,12 +179,6 @@ function AttemptResultComponent() {
       </div>
     );
   }
-
-  // Detect if this attempt is for a package where any section is TIU/TWK/TKP
-  const isCpnsAttempt = attempt.sections?.some(
-    (sec: any) => sec.sectionTypeId === "TIU" || sec.sectionTypeId === "TWK" || sec.sectionTypeId === "TKP"
-  );
-  const packagesLink = isCpnsAttempt ? "/cpns/packages" : "/packages";
 
   return (
     <div

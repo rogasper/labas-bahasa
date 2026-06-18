@@ -41,7 +41,8 @@
     "recharts": "^3.8.1",
     "sonner": "^2.0.7",
     "vite-plugin-pwa": "^1.2.0",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

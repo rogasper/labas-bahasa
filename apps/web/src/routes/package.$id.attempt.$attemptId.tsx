@@ -1,7 +1,8 @@
-import { useCallback } from "react";
+import { useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
+import { useAppMode } from "@/lib/app-mode";
 import { trpc } from "@/utils/trpc";
 import { useTestSession } from "@/hooks/use-test-session";
 import { trackUmamiEvent, AnalyticsEvent } from "@/lib/umami";
@@ -24,11 +25,18 @@ export const Route = createFileRoute("/package/$id/attempt/$attemptId")({
 
 function ContinueAttemptComponent() {
   const { id: packageId, attemptId } = Route.useParams();
+  const { setMode } = useAppMode();
 
   const packageQuery = useQuery(trpc.package.getById.queryOptions({ id: packageId }));
   const pkg = packageQuery.data;
   const isCpns = pkg?.examTypeId === "CPNS";
   const packagesLink = isCpns ? "/cpns/packages" : "/packages";
+
+  useEffect(() => {
+    if (pkg) {
+      setMode(isCpns ? "kedinasan" : "bahasa");
+    }
+  }, [pkg, isCpns, setMode]);
 
   const {
     currentSectionIdx,
@@ -47,7 +55,7 @@ function ContinueAttemptComponent() {
     handleAbandon,
     toggleMarkQuestion,
     startQuestionTimer,
-  } = useTestSession(packageId, attemptId, pkg?.estimatedDurationMin ?? undefined);
+  } = useTestSession(packageId, attemptId, pkg?.estimatedDurationMin ?? undefined, packagesLink);
 
   const totalQuestions = pkg?.sections.reduce((sum: number, sec) => sum + sec.questions.length, 0) ?? 0;
   const answeredCount = Object.keys(answers).length;

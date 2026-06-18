@@ -8,9 +8,10 @@ interface ResultSectionProps {
   result: GenerationResult;
   generatedPackageId: string | null;
   onClear?: () => void;
+  bankLink?: string;
 }
 
-export function ResultSection({ result, generatedPackageId, onClear }: ResultSectionProps) {
+export function ResultSection({ result, generatedPackageId, onClear, bankLink = "/bank" }: ResultSectionProps) {
   return (
     <div className="mt-16 space-y-6">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -29,7 +30,7 @@ export function ResultSection({ result, generatedPackageId, onClear }: ResultSec
               </Button>
             </Link>
           )}
-          <Link to="/bank" onClick={() => onClear?.()}>
+          <Link to={bankLink} onClick={() => onClear?.()}>
             <Button className="bg-[var(--matcha-600)] text-[var(--pure-white)] hover:bg-[var(--matcha-800)] clay-hover rounded-[var(--radius-lg)]">
               <MaterialIcon name="database" className="mr-2" />
               Bank Soal

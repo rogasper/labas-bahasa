@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
+import { useAppMode } from "@/lib/app-mode";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
@@ -25,6 +26,7 @@ function PackageDetailComponent() {
   const { id } = Route.useParams();
   const { data: session } = authClient.useSession();
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const { setMode } = useAppMode();
 
   const packageQuery = useQuery(trpc.package.getById.queryOptions({ id }));
 
@@ -39,6 +41,12 @@ function PackageDetailComponent() {
   const pkg = packageQuery.data;
   const isCpns = pkg?.examTypeId === "CPNS";
   const bankLink = isCpns ? "/cpns/bank" : "/bank";
+
+  useEffect(() => {
+    if (pkg) {
+      setMode(isCpns ? "kedinasan" : "bahasa");
+    }
+  }, [pkg, isCpns, setMode]);
 
   if (packageQuery.isLoading) {
     return (

@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { GlobalGenerationProgress } from "@/components/generate/GlobalGenerationProgress";
+import { AppModeProvider } from "@/lib/app-mode";
 import { AnnouncementBanner } from "@/components/ui/AnnouncementBanner";
 import { ErrorFallback } from "@/components/ErrorFallback";
 import type { RouteShell } from "@/lib/route-shell";
@@ -101,6 +102,7 @@ function RootComponent() {
         disableTransitionOnChange
         storageKey="labas-theme"
       >
+        <AppModeProvider>
         <AnnouncementBanner />
         {shell === "fullscreen" ? (
           <div className="h-screen bg-background text-on-surface flex flex-col overflow-y-auto relative">
@@ -125,6 +127,7 @@ function RootComponent() {
         {shell !== "public" && <GlobalGenerationProgress />}
         <Toaster richColors />
       </ThemeProvider>
+      </AppModeProvider>
       {import.meta.env.DEV && (
         <>
           <TanStackRouterDevtools position="bottom-left" />

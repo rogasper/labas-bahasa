@@ -2,6 +2,7 @@ import { useEffect, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
+import { useAppMode } from "@/lib/app-mode";
 import { trpc } from "@/utils/trpc";
 import { useTestSession } from "@/hooks/use-test-session";
 import { trackUmamiEvent, AnalyticsEvent } from "@/lib/umami";
@@ -26,11 +27,18 @@ export const Route = createFileRoute("/package/$id/take")({
 function TakeTestComponent() {
   const { id: packageId } = Route.useParams();
   const navigate = useNavigate();
+  const { setMode } = useAppMode();
 
   const packageQuery = useQuery(trpc.package.getById.queryOptions({ id: packageId }));
   const pkg = packageQuery.data;
   const isCpns = pkg?.examTypeId === "CPNS";
   const packagesLink = isCpns ? "/cpns/packages" : "/packages";
+
+  useEffect(() => {
+    if (pkg) {
+      setMode(isCpns ? "kedinasan" : "bahasa");
+    }
+  }, [pkg, isCpns, setMode]);
 
   // Check if there's an active in-progress attempt for this package
   const activeAttemptQuery = useQuery(
@@ -71,7 +79,7 @@ function TakeTestComponent() {
     handleAbandon,
     toggleMarkQuestion,
     startQuestionTimer,
-  } = useTestSession(packageId, undefined, pkg?.estimatedDurationMin ?? undefined);
+  } = useTestSession(packageId, undefined, pkg?.estimatedDurationMin ?? undefined, packagesLink);
 
   const totalQuestions = pkg?.sections.reduce((sum: number, sec) => sum + sec.questions.length, 0) ?? 0;
   const answeredCount = Object.keys(answers).length;

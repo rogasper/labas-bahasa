@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { useSidebar } from "@/hooks/use-sidebar";
+import { useAppMode } from "@/lib/app-mode";
 import { triggerGlobalTour } from "@/components/TourGuide";
 import { CommunityModal } from "@/components/CommunityModal";
 import {
@@ -145,16 +146,15 @@ export function Sidebar() {
   );
   const isAdmin = !!adminData?.isAdmin;
 
-  // Mode switching: sync with path
+  const { mode: appMode, setMode: setAppMode } = useAppMode();
+
   const [sidebarMode, setSidebarMode] = useState<"bahasa" | "kedinasan">(
     location.pathname.startsWith("/cpns") ? "kedinasan" : "bahasa",
   );
 
   useEffect(() => {
-    if (location.pathname.startsWith("/cpns")) {
-      setSidebarMode("kedinasan");
-    }
-  }, [location.pathname]);
+    setSidebarMode(appMode);
+  }, [appMode]);
 
   const isCpnsMode = sidebarMode === "kedinasan";
   const activeNavGroups = isCpnsMode ? cpnsNavGroups : navGroups;
@@ -162,6 +162,7 @@ export function Sidebar() {
 
   function switchMode(mode: "bahasa" | "kedinasan") {
     setSidebarMode(mode);
+    setAppMode(mode);
     if (mode === "bahasa") {
       navigate({ to: "/dashboard" });
     } else {

@@ -1,6 +1,8 @@
 import { createFileRoute, redirect, Outlet } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { authClient } from "@/lib/auth-client";
 import { routeShell } from "@/lib/route-shell";
+import { useAppMode } from "@/lib/app-mode";
 
 export const Route = createFileRoute("/cpns")({
   staticData: routeShell.app,
@@ -15,6 +17,13 @@ export const Route = createFileRoute("/cpns")({
 });
 
 function CpnsLayout() {
+  const { setMode } = useAppMode();
+
+  useEffect(() => {
+    setMode("kedinasan");
+    return () => setMode("bahasa");
+  }, [setMode]);
+
   return (
     <div className="min-h-screen pt-8 pb-32 px-6 md:px-12 lg:px-16 max-w-6xl mx-auto bg-[var(--warm-cream)]">
       <div
