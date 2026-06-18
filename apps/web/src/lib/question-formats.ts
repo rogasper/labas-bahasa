@@ -8,13 +8,17 @@ export const MCQ_FORMATS = [
   "kanji_reading",
   "particle_choice",
   "article_case",
-  "matching_headings",
-  "matching_information",
   "summary_completion",
   "cloze",
   "error_recognition",
   "text_insertion",
   "matching_pairs",
+] as const;
+
+/** Matching formats that require multi-answer input (one per sub-item). */
+export const MATCHING_FORMATS = [
+  "matching_headings",
+  "matching_information",
 ] as const;
 
 export type McqFormat = (typeof MCQ_FORMATS)[number];

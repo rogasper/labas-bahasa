@@ -49,7 +49,8 @@ ${OPTION_QUALITY_RULES}
 - For error_recognition: options are error segments (A, B, C, D) and correctAnswer is the key of the segment containing an error.
 - For text_insertion: options are position markers (A, B, C, D) within the passage where a sentence could be inserted. correctAnswer is the best position key.
 - For sentence_arrangement: Provide options as shuffled fragments in random order. correctAnswer is the correct order as comma-separated keys (e.g. "D,A,C,B").
-- For matching_information: options are information items with key and text. correctAnswer is the correct match as serialized mapping.
+- For matching_information: options are information items (numbered statements) with key and text. correctAnswer is a serialized mapping e.g. "1:D,2:E,3:G" mapping each item key to its paragraph letter.
+- For matching_headings: options are heading items with key and text. correctAnswer is a serialized mapping e.g. "1:C,2:A,3:F" mapping each heading key to its paragraph letter.
 
 OUTPUT FORMAT:
 Return ONLY a valid JSON object with this exact structure (no markdown code blocks, no extra text):

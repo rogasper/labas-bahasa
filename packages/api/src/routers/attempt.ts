@@ -57,7 +57,7 @@ function normalizeAnswer(format: string, userAnswer: string, correctAnswer: stri
 // ── Partial Credit Engine ──
 // For ordering/matching formats, compute a score 0-100 based on per-element correctness.
 function calculatePartialCredit(format: string, userAnswer: string, correctAnswer: string): number | null {
-  if (format !== "sentence_arrangement" && format !== "matching_pairs" && format !== "cloze") {
+  if (format !== "sentence_arrangement" && format !== "matching_pairs" && format !== "cloze" && format !== "matching_headings" && format !== "matching_information") {
     return null; // not a partial-credit format
   }
 
@@ -75,7 +75,7 @@ function calculatePartialCredit(format: string, userAnswer: string, correctAnswe
       return Math.round((correctCount / correctParts.length) * 100);
     }
 
-    if (format === "matching_pairs") {
+    if (format === "matching_pairs" || format === "matching_headings" || format === "matching_information") {
       // Serialized mapping: e.g. "A:1,B:2,C:3" or "A-hat,B-shoes,C-scarf"
       const parseMapping = (s: string): Map<string, string> => {
         const map = new Map();

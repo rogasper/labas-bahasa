@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { Input } from "@labas/ui/components/input";
 
-import { MCQ_FORMATS } from "@/lib/question-formats";
+import { MCQ_FORMATS, MATCHING_FORMATS } from "@/lib/question-formats";
 import type { Question } from "@/lib/types";
 
 const TRUE_FALSE_CHOICES = [
@@ -151,6 +151,57 @@ export function QuestionInput({
                 placeholder="Padanan..."
                 aria-label="Padanan jawaban"
                 className="w-24 px-3 py-2 text-sm rounded-[var(--radius-md)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] focus:outline-none focus:border-[var(--matcha-600)]"
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if ((MATCHING_FORMATS as readonly string[]).includes(format ?? "")) {
+    if (!options || options.length === 0) {
+      return (
+        <div className="text-sm text-[var(--warm-silver)] italic">
+          Tidak ada opsi tersedia untuk soal ini.
+        </div>
+      );
+    }
+    const parseCurrentMapping = (val: string): Map<string, string> => {
+      const map = new Map<string, string>();
+      val.split(",").forEach((pair) => {
+        const [k, v] = pair.split(":").map((s) => s.trim());
+        if (k && v) map.set(k, v);
+      });
+      return map;
+    };
+    const currentMap = value ? parseCurrentMapping(value) : new Map();
+    const updateMapping = (key: string, val: string) => {
+      currentMap.set(key, val);
+      const serialized = Array.from(currentMap.entries())
+        .map(([k, v]) => `${k}:${v}`)
+        .join(",");
+      onChange(serialized);
+    };
+    return (
+      <div className="space-y-3">
+        {options.map((opt) => {
+          const matched = currentMap.get(opt.key) || "";
+          return (
+            <div key={opt.key} className="flex items-center gap-3">
+              <span className="w-8 h-8 rounded-full text-sm font-bold flex items-center justify-center shrink-0 bg-[var(--oat-light)] text-[var(--clay-black)]">
+                {opt.key}
+              </span>
+              <span className="flex-1 text-sm text-[var(--clay-black)]">{opt.text}</span>
+              <span className="text-[var(--warm-silver)]">→</span>
+              <input
+                type="text"
+                value={matched}
+                onChange={(e) => updateMapping(opt.key, e.target.value)}
+                disabled={disabled}
+                placeholder={format === "matching_headings" ? "Heading..." : "Huruf..."}
+                aria-label={`Jawaban untuk item ${opt.key}`}
+                className="w-16 px-3 py-2 text-sm text-center rounded-[var(--radius-md)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] focus:outline-none focus:border-[var(--matcha-600)]"
               />
             </div>
           );

@@ -1,6 +1,6 @@
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 
-import { MCQ_FORMATS, McqFormat } from "@/lib/question-formats";
+import { MCQ_FORMATS, MATCHING_FORMATS, McqFormat } from "@/lib/question-formats";
 
 interface McqOptionItem {
   key: string;
@@ -24,6 +24,10 @@ export function OptionDisplay({ format, options, correctAnswer, userAnswer }: Op
 
   if (format === "matching_pairs") {
     return <MatchingPairsOptions options={options as MatchingOptionItem[]} correctAnswer={correctAnswer} userAnswer={userAnswer} />;
+  }
+
+  if ((MATCHING_FORMATS as readonly string[]).includes(format)) {
+    return <MatchingItemsOptions options={options as McqOptionItem[]} correctAnswer={correctAnswer} userAnswer={userAnswer} />;
   }
 
   if (format === "true_false_not_given") {
@@ -160,6 +164,52 @@ function MatchingPairsOptions({ options, correctAnswer, userAnswer }: { options:
             )}
             {!isMatchCorrect && matchedCorrect && (
               <span className="text-sm font-medium px-3 py-1.5 rounded-[var(--radius-md)] bg-[var(--matcha-300)]/20 text-[var(--matcha-700)]">
+                {matchedCorrect}
+              </span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MatchingItemsOptions({ options, correctAnswer, userAnswer }: { options: McqOptionItem[]; correctAnswer: string; userAnswer: string }) {
+  const parseMapping = (s: string): Map<string, string> => {
+    const map = new Map();
+    if (!s) return map;
+    s.split(",").forEach((pair) => {
+      const [k, v] = pair.split(":").map((x) => x.trim());
+      if (k && v) map.set(k, v);
+    });
+    return map;
+  };
+
+  const correctMap = parseMapping(correctAnswer);
+  const userMap = parseMapping(userAnswer);
+
+  return (
+    <div className="space-y-2">
+      {options.map((opt) => {
+        const matchedCorrect = correctMap.get(opt.key)?.toUpperCase() || "";
+        const matchedUser = userMap.get(opt.key)?.toUpperCase() || "";
+        const isMatchCorrect = matchedUser === matchedCorrect;
+        const hasUserAnswer = !!matchedUser;
+
+        return (
+          <div key={opt.key} className="flex items-center gap-3 p-3 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--oat-light)]">
+            <span className="w-8 h-8 rounded-full text-sm font-bold flex items-center justify-center shrink-0 bg-[var(--oat-light)] text-[var(--clay-black)] border-2 border-[var(--oat-border)]">
+              {opt.key}
+            </span>
+            <span className="flex-1 text-sm text-[var(--clay-black)]">{opt.text}</span>
+            <span className="text-[var(--warm-silver)]">→</span>
+            {hasUserAnswer && (
+              <span className={`text-sm font-medium px-3 py-1.5 rounded-[var(--radius-md)] min-w-[2.5rem] text-center ${isMatchCorrect ? "bg-[var(--matcha-300)]/20 text-[var(--matcha-700)]" : "bg-[var(--pomegranate-100)] text-[var(--pomegranate-600)] line-through"}`}>
+                {matchedUser}
+              </span>
+            )}
+            {!isMatchCorrect && matchedCorrect && (
+              <span className="text-sm font-medium px-3 py-1.5 rounded-[var(--radius-md)] min-w-[2.5rem] text-center bg-[var(--matcha-300)]/20 text-[var(--matcha-700)]">
                 {matchedCorrect}
               </span>
             )}
