@@ -202,10 +202,10 @@ export function AttemptTestView({
   }
 
   // Build global question index across all sections
-  const allQuestions: Array<{ id: string; sectionIdx: number; localIdx: number; passageText?: string }> = [];
+  const allQuestions: Array<{ id: string; sectionIdx: number; localIdx: number; passageText?: string; passageId?: string | null }> = [];
   pkg.sections.forEach((sec: PackageSection, sIdx: number) => {
     sec.questions?.forEach((q: Question, qIdx: number) => {
-      allQuestions.push({ id: q.id, sectionIdx: sIdx, localIdx: qIdx, passageText: q.passageText ?? undefined });
+      allQuestions.push({ id: q.id, sectionIdx: sIdx, localIdx: qIdx, passageText: q.passageText ?? undefined, passageId: q.passageId ?? undefined });
     });
   });
 

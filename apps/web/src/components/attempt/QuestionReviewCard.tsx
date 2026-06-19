@@ -16,6 +16,7 @@ interface QuestionReviewCardProps {
   userId?: string;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  hidePassage?: boolean;
 }
 
 export function QuestionReviewCard({
@@ -26,6 +27,7 @@ export function QuestionReviewCard({
   userId,
   isExpanded,
   onToggleExpand,
+  hidePassage,
 }: QuestionReviewCardProps) {
   const isCorrect = ans?.isCorrect;
   const userAnswer = ans?.userAnswer ?? "Tidak dijawab";
@@ -126,7 +128,7 @@ export function QuestionReviewCard({
       {isExpanded && (
         <div className="px-4 pb-4 pl-11 space-y-3">
           {/* Passage Text */}
-          {q.passageText && (
+          {q.passageText && !hidePassage && (
             <div className="bg-[var(--oat-light)] rounded-[var(--radius-lg)] p-3 text-sm text-[var(--warm-charcoal)] whitespace-pre-wrap leading-relaxed max-w-prose">
               <span className="font-semibold text-[var(--clay-black)] block mb-1">Teks Bacaan:</span>
               {q.passageText}

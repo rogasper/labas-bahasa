@@ -126,8 +126,8 @@ function RootComponent() {
         )}
         {shell !== "public" && <GlobalGenerationProgress />}
         <Toaster richColors />
-      </ThemeProvider>
       </AppModeProvider>
+      </ThemeProvider>
       {import.meta.env.DEV && (
         <>
           <TanStackRouterDevtools position="bottom-left" />

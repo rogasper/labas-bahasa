@@ -94,6 +94,29 @@ function DebouncedTextInput({
   );
 }
 
+/** Derive dropdown targets for matching formats:
+ *  1. matchTargets (new questions) — always available, no security concern
+ *  2. correctAnswer fallback (old questions, owner viewing) — extract unique values from mapping
+ *  3. Neither (old question during test-taking by non-owner) — empty, will fall back to text input */
+function resolveDropdownTargets(question: Question): string[] {
+  const matchTargets = question.matchTargets as string[] | null | undefined;
+  if (Array.isArray(matchTargets) && matchTargets.length > 0) return matchTargets;
+
+  if (question.correctAnswer) {
+    const targets = new Set<string>();
+    question.correctAnswer.split(",").forEach((pair) => {
+      const parts = pair.split(":").map((s) => s.trim());
+      if (parts.length >= 2 && parts[1]) {
+        targets.add(parts[1]!.toUpperCase());
+      }
+    });
+    const sorted = Array.from(targets).sort();
+    if (sorted.length > 0) return sorted;
+  }
+
+  return [];
+}
+
 export function QuestionInput({
   question,
   value,
@@ -183,6 +206,10 @@ export function QuestionInput({
         .join(",");
       onChange(serialized);
     };
+
+    const dropdownTargets = resolveDropdownTargets(question);
+    const hasDropdown = dropdownTargets.length > 0;
+
     return (
       <div className="space-y-3">
         {options.map((opt) => {
@@ -194,15 +221,30 @@ export function QuestionInput({
               </span>
               <span className="flex-1 text-sm text-[var(--clay-black)]">{opt.text}</span>
               <span className="text-[var(--warm-silver)]">→</span>
-              <input
-                type="text"
-                value={matched}
-                onChange={(e) => updateMapping(opt.key, e.target.value)}
-                disabled={disabled}
-                placeholder={format === "matching_headings" ? "Heading..." : "Huruf..."}
-                aria-label={`Jawaban untuk item ${opt.key}`}
-                className="w-16 px-3 py-2 text-sm text-center rounded-[var(--radius-md)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] focus:outline-none focus:border-[var(--matcha-600)]"
-              />
+              {hasDropdown ? (
+                <select
+                  value={matched}
+                  onChange={(e) => updateMapping(opt.key, e.target.value)}
+                  disabled={disabled}
+                  aria-label={`Jawaban untuk item ${opt.key}`}
+                  className="w-20 px-2 py-2 text-sm rounded-[var(--radius-md)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] focus:outline-none focus:border-[var(--matcha-600)]"
+                >
+                  <option value="">—</option>
+                  {dropdownTargets.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={matched}
+                  onChange={(e) => updateMapping(opt.key, e.target.value)}
+                  disabled={disabled}
+                  placeholder={format === "matching_headings" ? "Heading..." : "Huruf..."}
+                  aria-label={`Jawaban untuk item ${opt.key}`}
+                  className="w-16 px-3 py-2 text-sm text-center rounded-[var(--radius-md)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] focus:outline-none focus:border-[var(--matcha-600)]"
+                />
+              )}
             </div>
           );
         })}

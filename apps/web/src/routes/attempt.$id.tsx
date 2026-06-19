@@ -118,6 +118,23 @@ function AttemptResultComponent() {
     });
   }, [allQuestions, filterStatus, filterSkills]);
 
+  const passageGroups = useMemo(() => {
+    const groups: Array<{ passageKey: string; passageText: string | null; items: QuestionAnswer[] }> = [];
+    const seen = new Set<string>();
+    for (const item of allQuestions) {
+      const q = item.q;
+      const key = q.passageId ?? `_text_${q.passageText ?? ""}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const items = allQuestions.filter((other) => {
+        const otherKey = other.q.passageId ?? `_text_${other.q.passageText ?? ""}`;
+        return otherKey === key;
+      });
+      groups.push({ passageKey: key, passageText: q.passageText ?? null, items });
+    }
+    return groups;
+  }, [allQuestions]);
+
   // ── Expand/collapse ──
   const toggleAllExpanded = () => {
     const next = !allExpanded;
@@ -404,18 +421,39 @@ function AttemptResultComponent() {
           />
 
           <div className="space-y-3">
-            {filteredQuestions.map(({ q, secIdx, qIdx, ans }) => (
-              <QuestionReviewCard
-                key={q.id}
-                q={q}
-                secIdx={secIdx}
-                qIdx={qIdx}
-                ans={ans}
-                userId={session?.user.id}
-                isExpanded={expandedIds.has(q.id)}
-                onToggleExpand={() => toggleExpand(q.id)}
-              />
-            ))}
+            {filteredQuestions.map(({ q, secIdx, qIdx, ans }, idx) => {
+              const prevKey = idx > 0
+                ? (filteredQuestions[idx - 1]!.q.passageId ?? `_text_${filteredQuestions[idx - 1]!.q.passageText ?? ""}`)
+                : null;
+              const thisKey = q.passageId ?? `_text_${q.passageText ?? ""}`;
+              const isFirstInGroup = prevKey !== thisKey;
+              const hasSharedPassage = !!(q.passageText && q.passageText.length >= 50 && (q.passageId != null || allQuestions.filter((o) => {
+                const oKey = o.q.passageId ?? `_text_${o.q.passageText ?? ""}`;
+                return oKey === thisKey;
+              }).length > 1));
+
+              return (
+                <div key={q.id}>
+                  {isFirstInGroup && hasSharedPassage && (
+                    <div className="bg-[var(--oat-light)] rounded-[var(--radius-lg)] p-4 mb-3 text-sm text-[var(--warm-charcoal)] whitespace-pre-wrap leading-relaxed max-w-prose border-l-4 border-[var(--matcha-400)]">
+                      <span className="font-semibold text-[var(--clay-black)] block mb-1">Teks Bacaan:</span>
+                      {q.passageText}
+                    </div>
+                  )}
+                  <QuestionReviewCard
+                    key={q.id}
+                    q={q}
+                    secIdx={secIdx}
+                    qIdx={qIdx}
+                    ans={ans}
+                    userId={session?.user.id}
+                    isExpanded={expandedIds.has(q.id)}
+                    onToggleExpand={() => toggleExpand(q.id)}
+                    hidePassage={hasSharedPassage}
+                  />
+                </div>
+              );
+            })}
             {filteredQuestions.length === 0 && (
               <div className="text-center py-12">
                 <MaterialIcon name="search_off" className="text-4xl text-[var(--warm-silver)] mx-auto mb-3" />

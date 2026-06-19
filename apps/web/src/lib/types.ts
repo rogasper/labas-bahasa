@@ -8,8 +8,10 @@ export interface Question {
   sectionTypeId?: string;
   format?: string;
   passageText?: string | null;
+  passageId?: string | null;
   questionText?: string;
   options?: unknown;
+  matchTargets?: unknown;
   correctAnswer?: string | null;
   explanation?: string | null;
   difficulty?: number | null;
