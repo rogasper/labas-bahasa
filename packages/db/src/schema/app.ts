@@ -25,6 +25,35 @@ export const sectionType = pgTable("section_type", {
   name: text("name").notNull(),
 });
 
+// ── Passages (Shared Reading Texts) ───────────────────────
+
+export const passage = pgTable(
+  "passage",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    text: text("text").notNull(),
+    title: text("title"),
+    examTypeId: text("exam_type_id")
+      .notNull()
+      .references(() => examType.id, { onDelete: "cascade" }),
+    sectionTypeId: text("section_type_id")
+      .notNull()
+      .references(() => sectionType.id, { onDelete: "cascade" }),
+    creatorUserId: text("creator_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at")
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("passage_creatorUserId_idx").on(table.creatorUserId),
+    index("passage_examTypeId_idx").on(table.examTypeId),
+  ],
+);
+
 // ── Questions ──────────────────────────────────────────────
 
 export const question = pgTable(
@@ -41,12 +70,16 @@ export const question = pgTable(
     format: text("format").notNull(),
     // the reading passage / context text
     passageText: text("passage_text").notNull(),
+    // shared passage reference (null = inline passageText only)
+    passageId: uuid("passage_id").references(() => passage.id, { onDelete: "set null" }),
     // the actual question prompt
     questionText: text("question_text").notNull(),
     // array of options for multiple choice / matching
     options: jsonb("options"),
     // per-option weight/scoring (e.g. TKP: [5,4,3,2,1] for options A-E)
     optionWeights: jsonb("option_weights"),
+    // target labels for matching formats (e.g. paragraph letters ["A","B","C"])
+    matchTargets: jsonb("match_targets"),
     // correct answer — could be an option key, text, or array for multiple correct
     correctAnswer: text("correct_answer").notNull(),
     // explanation shown after submission
@@ -78,6 +111,7 @@ export const question = pgTable(
     index("question_sectionTypeId_idx").on(table.sectionTypeId),
     index("question_creatorUserId_idx").on(table.creatorUserId),
     index("question_isPublic_idx").on(table.isPublic),
+    index("question_passageId_idx").on(table.passageId),
     index("question_format_idx").on(table.format),
     index("question_difficulty_idx").on(table.difficulty),
   ],
@@ -351,10 +385,30 @@ export const questionRelations = relations(question, ({ one, many }) => ({
     fields: [question.creatorUserId],
     references: [user.id],
   }),
+  passage: one(passage, {
+    fields: [question.passageId],
+    references: [passage.id],
+  }),
   sectionQuestions: many(sectionQuestion),
   ratings: many(questionRating),
   feedbacks: many(questionFeedback),
   answers: many(answer),
+}));
+
+export const passageRelations = relations(passage, ({ one, many }) => ({
+  examType: one(examType, {
+    fields: [passage.examTypeId],
+    references: [examType.id],
+  }),
+  sectionType: one(sectionType, {
+    fields: [passage.sectionTypeId],
+    references: [sectionType.id],
+  }),
+  creator: one(user, {
+    fields: [passage.creatorUserId],
+    references: [user.id],
+  }),
+  questions: many(question),
 }));
 
 export const examTypeRelations = relations(examType, ({ many }) => ({
