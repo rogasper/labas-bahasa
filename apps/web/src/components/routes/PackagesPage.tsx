@@ -26,6 +26,7 @@ import { Pagination } from "@/components/admin/Pagination";
 import { CalloutCard } from "@/components/bank/CalloutCard";
 import { PackageCard } from "@/components/packages/PackageCard";
 import { PageTour, TourHelpButton } from "@/components/TourGuide";
+import { useDebouncedSearch, useDebouncedNavigate } from "@/hooks/use-debounced-search";
 import type { Step } from "react-joyride";
 import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/error-utils";
@@ -62,6 +63,9 @@ export function PackagesComponent() {
   const page = search.page ?? 1;
   const visibilityFilter = search.visibility ?? "all";
   const limit = 12;
+
+  const [localSearch, setLocalSearch] = useDebouncedSearch(searchText);
+  useDebouncedNavigate(localSearch, searchText, navigate, { tab: tab !== "all" ? tab : undefined, examType: examType || undefined, visibility: visibilityFilter !== "all" ? visibilityFilter : undefined });
 
   const allQuery = useQuery(
     trpc.package.list.queryOptions(
@@ -188,10 +192,6 @@ export function PackagesComponent() {
     if (ids.length > 0) bulkPublish.mutate({ ids });
   };
 
-  const setSearch = (value: string) => {
-    navigate({ search: (prev) => ({ ...prev, search: value, page: 1 }) });
-  };
-
   const setExamType = (value: string) => {
     navigate({ search: (prev) => ({ ...prev, examType: value, page: 1 }) });
   };
@@ -252,8 +252,8 @@ export function PackagesComponent() {
           <MaterialIcon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--warm-charcoal)]" />
           <Input
             placeholder="Cari paket..."
-            value={searchText}
-            onChange={(e) => setSearch(e.target.value)}
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
             aria-label="Cari paket"
             className="pl-10 rounded-[var(--radius-lg)] border-2 border-[var(--oat-border)] bg-[var(--pure-white)] h-11"
           />

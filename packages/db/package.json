@@ -19,7 +19,8 @@
     "db:watch": "docker compose up",
     "db:stop": "docker compose stop",
     "db:down": "docker compose down",
-    "db:seed": "bun run src/seed.ts"
+    "db:seed": "bun run src/seed.ts",
+    "db:migrate-passages": "bun run src/scripts/migrate-passages.ts"
   },
   "dependencies": {
     "@labas/env": "workspace:*",
