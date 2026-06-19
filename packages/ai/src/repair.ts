@@ -17,6 +17,7 @@ import {
 export const genericQuestionSchema = z.object({
   format: questionFormatSchema,
   passageText: z.string(),
+  passageId: z.string().uuid().optional(),
   questionText: z.string().min(1),
   options: z.array(multipleChoiceOptionSchema).optional(),
   correctAnswer: z.string().min(1),
@@ -24,6 +25,7 @@ export const genericQuestionSchema = z.object({
   difficulty: z.number().int().min(1).max(5),
   skillTags: z.array(z.string()).min(1),
   optionWeights: z.array(z.number().int().min(1).max(5)).optional(),
+  matchTargets: z.array(z.string()).optional(),
 });
 
 export type GenericQuestion = z.infer<typeof genericQuestionSchema>;
@@ -244,6 +246,10 @@ export function repairQuestion(
     difficulty: ensureDifficulty(r as GenericQuestion),
     skillTags: ensureSkillTags(r as GenericQuestion),
     optionWeights: Array.isArray(r.optionWeights) ? r.optionWeights.map((w: any) => Number(w)) : undefined,
+    matchTargets: Array.isArray(r.matchTargets)
+      ? r.matchTargets.map((t: any) => String(t)).filter(Boolean)
+      : undefined,
+    passageId: typeof r.passageId === "string" && r.passageId.length > 0 ? r.passageId : undefined,
   };
 
   // Track repairs
@@ -284,7 +290,28 @@ export function repairQuestion(
     q.options = undefined;
   }
 
+  // For matching formats, derive matchTargets from correctAnswer if missing
+  if ((q.format === "matching_headings" || q.format === "matching_information" || q.format === "matching_pairs") && (!q.matchTargets || q.matchTargets.length === 0)) {
+    const derived = deriveMatchTargets(q.correctAnswer);
+    if (derived.length > 0) {
+      q.matchTargets = derived;
+      notes.push("matchTargets derived from correctAnswer");
+      wasRepaired = true;
+    }
+  }
+
   return { question: q, wasRepaired, repairNotes: notes };
+}
+
+function deriveMatchTargets(correctAnswer: string): string[] {
+  const targets = new Set<string>();
+  correctAnswer.split(",").forEach((pair) => {
+    const parts = pair.split(":").map((s) => s.trim());
+    if (parts.length >= 2 && parts[1]) {
+      targets.add(parts[1]!.toUpperCase());
+    }
+  });
+  return Array.from(targets).sort();
 }
 
 /**
@@ -429,6 +456,11 @@ export function getGenericQuestionJsonSchemaDescription(): string {
                 type: "array",
                 description: "Required for situational_judgment. Array of weight values (1-5) per option, e.g. [5,4,3,2,1]",
                 items: { type: "integer", minimum: 1, maximum: 5 },
+              },
+              matchTargets: {
+                type: "array",
+                description: "Required for matching_headings and matching_information. All paragraph/heading labels in the passage (e.g. [\"A\",\"B\",\"C\",\"D\",\"E\",\"F\"])",
+                items: { type: "string" },
               },
             },
             required: ["format", "passageText", "questionText", "correctAnswer", "explanation", "difficulty", "skillTags"],

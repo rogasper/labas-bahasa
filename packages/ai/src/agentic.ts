@@ -193,6 +193,8 @@ ${buildExplanationLanguageRule(input.examType)}
 - For true_false_not_given: correctAnswer must be exactly TRUE, FALSE, or NOT_GIVEN (uppercase)
 - For author_view: correctAnswer must be exactly YES, NO, or NOT_GIVEN (uppercase)
 - For matching_pairs: options are {key, text} pairs. correctAnswer is serialized mapping like "A:1,B:2".
+- For matching_headings: options are heading items. correctAnswer is serialized mapping e.g. "1:C,2:A,3:F". matchTargets must list all paragraph letters in the passage (e.g. ["A","B","C","D","E","F"]).
+- For matching_information: options are information items. correctAnswer is serialized mapping e.g. "1:D,2:E,3:G". matchTargets must list all paragraph letters in the passage (e.g. ["A","B","C","D","E","F","G"]).
 - For error_recognition: options are error segments. correctAnswer is key of segment with error.
 - For text_insertion: options are position markers. correctAnswer is best position key.
 

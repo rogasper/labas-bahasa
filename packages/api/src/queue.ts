@@ -20,6 +20,7 @@ import { db } from "@labas/db";
 import {
   generationJob,
   question,
+  passage,
   testPackage,
   packageSection,
   sectionQuestion,
@@ -60,8 +61,10 @@ interface PersistableQuestion {
   section: string;
   format: string;
   passageText: string;
+  passageId?: string;
   questionText: string;
   options: unknown;
+  matchTargets: string[] | null;
   correctAnswer: string;
   explanation: string;
   difficulty: number;
@@ -249,14 +252,60 @@ export function normalizeQuestions(
     section,
     format: q.format,
     passageText: q.passageText,
+    passageId: (q as any).passageId ?? undefined,
     questionText: q.questionText,
     options: (q as any).options ?? null,
+    matchTargets: (q as any).matchTargets ?? null,
     correctAnswer: q.correctAnswer,
     explanation: q.explanation,
     difficulty: q.difficulty,
     skillTags: q.skillTags,
     aiModel: model,
   }));
+}
+
+async function createSharedPassages(
+  allQuestions: PersistableQuestion[],
+  input: GenerationInput,
+  userId: string,
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+
+  const uniquePassages = new Set<string>();
+  for (const q of allQuestions) {
+    if (q.passageText && q.passageText.length >= 50 && !q.passageId) {
+      uniquePassages.add(q.passageText);
+    }
+  }
+
+  for (const text of uniquePassages) {
+    const firstQ = allQuestions.find((q) => q.passageText === text);
+    const [existing] = await db
+      .select({ id: passage.id })
+      .from(passage)
+      .where(eq(passage.text, text))
+      .limit(1);
+
+    if (existing) {
+      map.set(text, existing.id);
+    } else {
+      const [created] = await db
+        .insert(passage)
+        .values({
+          text,
+          examTypeId: input.examType,
+          sectionTypeId: firstQ?.section ?? input.section,
+          creatorUserId: userId,
+        })
+        .returning({ id: passage.id });
+
+      if (created) {
+        map.set(text, created.id);
+      }
+    }
+  }
+
+  return map;
 }
 
 async function saveGeneratedArtifacts(
@@ -295,6 +344,8 @@ async function saveGeneratedArtifacts(
   const userId = jobRow?.userId;
   if (!userId) return { savedQuestionIds: [], generatedPackageId: null };
 
+  const passageMap = await createSharedPassages(allQuestions, input, userId);
+
   const inserted = await db
     .insert(question)
     .values(
@@ -303,8 +354,10 @@ async function saveGeneratedArtifacts(
         sectionTypeId: q.section,
         format: q.format,
         passageText: q.passageText,
+        passageId: q.passageId ?? passageMap.get(q.passageText) ?? null,
         questionText: q.questionText,
         options: q.options,
+        matchTargets: q.matchTargets ?? null,
         correctAnswer: q.correctAnswer,
         explanation: q.explanation,
         difficulty: q.difficulty,

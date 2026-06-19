@@ -80,12 +80,14 @@ export const matchingHeadingsQuestionSchema = baseQuestionSchema.extend({
   format: z.literal("matching_headings"),
   options: z.array(multipleChoiceOptionSchema), // headings to match
   correctAnswer: z.string(), // serialized mapping
+  matchTargets: z.array(z.string()).min(1), // paragraph labels e.g. ["A","B","C","D","E"]
 });
 
 export const matchingInformationQuestionSchema = baseQuestionSchema.extend({
   format: z.literal("matching_information"),
   options: z.array(multipleChoiceOptionSchema),
   correctAnswer: z.string(),
+  matchTargets: z.array(z.string()).min(1), // paragraph labels e.g. ["A","B","C","D","E","F"]
 });
 
 export const matchingPairsQuestionSchema = baseQuestionSchema.extend({

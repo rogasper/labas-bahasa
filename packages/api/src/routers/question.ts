@@ -17,8 +17,10 @@ const questionListSelect = {
   sectionTypeId: question.sectionTypeId,
   format: question.format,
   passageText: question.passageText,
+  passageId: question.passageId,
   questionText: question.questionText,
   options: question.options,
+  matchTargets: question.matchTargets,
   correctAnswer: question.correctAnswer,
   explanation: question.explanation,
   difficulty: question.difficulty,
@@ -35,7 +37,6 @@ const questionListSelect = {
   examTypeName: examType.name,
   sectionTypeName: sectionType.name,
 };
-
 const questionDetailSelect = {
   ...questionListSelect,
 };
@@ -149,8 +150,10 @@ export const questionRouter = router({
           sectionTypeId: question.sectionTypeId,
           format: question.format,
           passageText: question.passageText,
+          passageId: question.passageId,
           questionText: question.questionText,
           options: question.options,
+          matchTargets: question.matchTargets,
           correctAnswer: question.correctAnswer,
           explanation: question.explanation,
           difficulty: question.difficulty,
@@ -209,6 +212,8 @@ export const questionRouter = router({
         passageText: z.string().min(1),
         questionText: z.string().min(1),
         options: z.array(optionSchema).optional(),
+        matchTargets: z.array(z.string()).optional(),
+        passageId: z.string().uuid().optional(),
         correctAnswer: z.string(),
         explanation: z.string().optional(),
         difficulty: z.number().min(1).max(5).default(3),
@@ -239,6 +244,8 @@ export const questionRouter = router({
         passageText: z.string().min(1).optional(),
         questionText: z.string().min(1).optional(),
         options: z.array(optionSchema).optional(),
+        matchTargets: z.array(z.string()).optional(),
+        passageId: z.string().uuid().optional(),
         correctAnswer: z.string().optional(),
         explanation: z.string().optional(),
         difficulty: z.number().min(1).max(5).optional(),
