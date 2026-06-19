@@ -28,6 +28,11 @@ import { getErrorMessage } from "@/lib/error-utils";
 
 type ModeTab = "latihan" | "full-test";
 
+function selectDistinctTopics(allTopics: string[], count: number): string[] {
+  if (allTopics.length <= count) return allTopics;
+  return [...allTopics].sort(() => Math.random() - 0.5).slice(0, count);
+}
+
 const SWATCH_COLORS: Record<string, string> = {
   TIU: "bg-[var(--matcha-300)] text-[var(--matcha-800)]",
   TWK: "bg-[var(--slushie-500)]/30 text-[var(--slushie-800)]",
@@ -208,7 +213,7 @@ export function CpnsGenerateComponent() {
 
   const activeResult = completedResults[activeTabIdx] ?? null;
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!hasConfigs && !useFreeCredits) {
       toast.error("Pilih API key atau gunakan free credits");
       return;
@@ -227,15 +232,15 @@ export function CpnsGenerateComponent() {
       selectedSections: [job.section],
       formats: [job.format],
       difficulty,
-      topics: CPNS_SECTION_TOPICS[job.section] ?? [],
+      topics: selectDistinctTopics(CPNS_SECTION_TOPICS[job.section] ?? [], job.count),
       questionCount: job.count,
       mode: (isFullTest ? "agentic" : (job.count > 15 ? "agentic" : "quick")) as any,
       apiKeyConfig,
     }));
 
-    // Generate each section — React 18 batches state updates from event handlers
     for (const input of jobs) {
       generateMutation.mutate(input as any);
+      await new Promise((r) => setTimeout(r, 0));
     }
   };
 

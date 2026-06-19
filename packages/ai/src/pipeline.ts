@@ -46,29 +46,38 @@ export async function generateQuestionsQuick(
   log("info", "Prompt built", { promptLength: prompt.length });
 
   let result;
-  try {
-    result = await client.chatCompletion(
-      {
-        model: input.apiKeyConfig.model,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a precise exam question generator. You always return valid JSON. You never include markdown formatting around the JSON.",
-          },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.7,
-        max_tokens: input.apiKeyConfig.maxTokens,
-        response_format: { type: "json_object" },
-      },
-      callbacks?.onToken
-        ? { onToken: callbacks.onToken }
-        : undefined,
-    );
-  } catch (err: any) {
-    log("error", "chatCompletion failed in quick mode", { error: err.message });
-    throw err;
+  let retriedEmpty = false;
+  while (true) {
+    try {
+      result = await client.chatCompletion(
+        {
+          model: input.apiKeyConfig.model,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a precise exam question generator. You always return valid JSON. You never include markdown formatting around the JSON.",
+            },
+            { role: "user", content: prompt },
+          ],
+          temperature: retriedEmpty ? 0.5 : (input.examType === "CPNS" ? 0.9 : 0.7),
+          max_tokens: retriedEmpty ? Math.round(input.apiKeyConfig.maxTokens * 0.5) : input.apiKeyConfig.maxTokens,
+          response_format: { type: "json_object" },
+        },
+        callbacks?.onToken
+          ? { onToken: callbacks.onToken }
+          : undefined,
+      );
+      break;
+    } catch (err: any) {
+      if (!retriedEmpty && (err.message?.includes("Empty response") || err.message?.includes("Empty response body"))) {
+        log("warn", "Empty response, retrying with lower temperature and reduced tokens");
+        retriedEmpty = true;
+        continue;
+      }
+      log("error", "chatCompletion failed in quick mode", { error: err.message });
+      throw err;
+    }
   }
 
   const content = result.content;

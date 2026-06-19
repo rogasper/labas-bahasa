@@ -63,6 +63,13 @@ ${buildContentLanguageRules(examType)}
 
 ${sectionRules}
 
+ATURAN KERAGAMAN SOAL:
+- Setiap soal WAJIB mencakup topik yang BERBEDA dari daftar topik yang tersedia.
+- Untuk ${questionCount} soal, pastikan ${questionCount} konteks/pertanyaan yang unik.
+- Jangan ulangi pola soal, format pertanyaan, atau struktur yang sama.
+- Variasikan jenis soal dalam satu section (jika ada beberapa format).
+- Konteks setiap soal harus unik dan tidak saling menyerupai.
+
 INSTRUKSI FORMAT SOAL:
 ${formatSection}
 
