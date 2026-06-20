@@ -142,6 +142,11 @@ function ensureOptions(
 function coerceCorrectAnswer(q: GenericQuestion): string {
   const ans = String(q.correctAnswer).trim();
 
+  // Mapping formats: correctAnswer is serialized "key:value,key:value" — skip option-key coercion
+  if (["matching_headings", "matching_information", "matching_pairs", "sentence_arrangement"].includes(q.format)) {
+    return ans;
+  }
+
   if (q.format === "true_false_not_given") {
     const upper = ans.toUpperCase();
     if (upper === "T" || upper === "TRUE") return "TRUE";
