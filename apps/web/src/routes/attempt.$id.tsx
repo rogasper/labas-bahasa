@@ -118,21 +118,13 @@ function AttemptResultComponent() {
     });
   }, [allQuestions, filterStatus, filterSkills]);
 
-  const passageGroups = useMemo(() => {
-    const groups: Array<{ passageKey: string; passageText: string | null; items: QuestionAnswer[] }> = [];
-    const seen = new Set<string>();
-    for (const item of allQuestions) {
-      const q = item.q;
+  const passageCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const { q } of allQuestions) {
       const key = q.passageId ?? `_text_${q.passageText ?? ""}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const items = allQuestions.filter((other) => {
-        const otherKey = other.q.passageId ?? `_text_${other.q.passageText ?? ""}`;
-        return otherKey === key;
-      });
-      groups.push({ passageKey: key, passageText: q.passageText ?? null, items });
+      map.set(key, (map.get(key) ?? 0) + 1);
     }
-    return groups;
+    return map;
   }, [allQuestions]);
 
   // ── Expand/collapse ──
@@ -163,17 +155,8 @@ function AttemptResultComponent() {
     setFilterStatus("all");
   };
 
-  if (attemptQuery.isLoading) {
-    return (
-      <div className="min-h-screen pt-8 pb-32 px-6 md:px-12 lg:px-16 max-w-4xl mx-auto bg-[var(--warm-cream)]">
-        <div className="h-8 w-48 bg-[var(--oat-light)] animate-pulse rounded mb-4" />
-        <div className="h-64 bg-[var(--oat-light)] animate-pulse rounded-[var(--radius-xl)]" />
-      </div>
-    );
-  }
-
   const isCpnsAttempt = attempt?.sections?.some(
-    (sec: any) => sec.sectionTypeId === "TIU" || sec.sectionTypeId === "TWK" || sec.sectionTypeId === "TKP"
+    (sec) => sec.sectionTypeId === "TIU" || sec.sectionTypeId === "TWK" || sec.sectionTypeId === "TKP"
   ) ?? false;
   const packagesLink = isCpnsAttempt ? "/cpns/packages" : "/packages";
 
@@ -182,6 +165,15 @@ function AttemptResultComponent() {
       setMode(isCpnsAttempt ? "kedinasan" : "bahasa");
     }
   }, [attempt, isCpnsAttempt, setMode]);
+
+  if (attemptQuery.isLoading) {
+    return (
+      <div className="min-h-screen pt-8 pb-32 px-6 md:px-12 lg:px-16 max-w-4xl mx-auto bg-[var(--warm-cream)]">
+        <div className="h-8 w-48 bg-[var(--oat-light)] animate-pulse rounded mb-4" />
+        <div className="h-64 bg-[var(--oat-light)] animate-pulse rounded-[var(--radius-xl)]" />
+      </div>
+    );
+  }
 
   if (!attempt) {
     return (
@@ -427,10 +419,7 @@ function AttemptResultComponent() {
                 : null;
               const thisKey = q.passageId ?? `_text_${q.passageText ?? ""}`;
               const isFirstInGroup = prevKey !== thisKey;
-              const hasSharedPassage = !!(q.passageText && q.passageText.length >= 50 && (q.passageId != null || allQuestions.filter((o) => {
-                const oKey = o.q.passageId ?? `_text_${o.q.passageText ?? ""}`;
-                return oKey === thisKey;
-              }).length > 1));
+              const hasSharedPassage = !!(q.passageText && q.passageText.length >= 50 && (passageCountMap.get(thisKey) ?? 0) > 1);
 
               return (
                 <div key={q.id}>
