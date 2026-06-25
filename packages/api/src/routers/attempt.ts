@@ -625,7 +625,7 @@ export const attemptRouter = router({
         .set({
           status: "completed",
           finishedAt: new Date(),
-          totalScore,
+          totalScore: Math.round(totalScore),
           maxScore: totalQuestions,
           isOvertime,
         })
