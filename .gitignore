@@ -10,6 +10,7 @@ references
 dist
 build
 blog
+!apps/web/src/components/blog/
 *.tsbuildinfo
 
 # Environment variables
