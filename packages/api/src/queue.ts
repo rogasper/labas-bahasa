@@ -26,7 +26,7 @@ import {
   sectionQuestion,
   user,
 } from "@labas/db";
-import { and, eq, notInArray } from "drizzle-orm";
+import { and, eq, notInArray, sql } from "drizzle-orm";
 import { encryptApiKey, decryptApiKey } from "./lib/encryption";
 import {
   collectShardFailureCause,
