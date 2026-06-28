@@ -23,11 +23,13 @@ import { Route as GenerateRouteImport } from './routes/generate'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CpnsRouteImport } from './routes/cpns'
+import { Route as BlogRouteImport } from './routes/blog'
 import { Route as BankRouteImport } from './routes/bank'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BlogIndexRouteImport } from './routes/blog.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as ProfileUserIdRouteImport } from './routes/profile.$userId'
 import { Route as PackageIdRouteImport } from './routes/package.$id'
@@ -39,6 +41,7 @@ import { Route as CpnsGenerateRouteImport } from './routes/cpns.generate'
 import { Route as CpnsDashboardRouteImport } from './routes/cpns.dashboard'
 import { Route as CpnsBankRouteImport } from './routes/cpns.bank'
 import { Route as CpnsAnalyticsRouteImport } from './routes/cpns.analytics'
+import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AttemptIdRouteImport } from './routes/attempt.$id'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
@@ -121,6 +124,11 @@ const CpnsRoute = CpnsRouteImport.update({
   path: '/cpns',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BlogRoute = BlogRouteImport.update({
+  id: '/blog',
+  path: '/blog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BankRoute = BankRouteImport.update({
   id: '/bank',
   path: '/bank',
@@ -146,6 +154,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any).lazy(() => import('./routes/index.lazy').then((d) => d.Route))
+const BlogIndexRoute = BlogIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BlogRoute,
+} as any).lazy(() => import('./routes/blog.index.lazy').then((d) => d.Route))
 const AdminIndexRoute = AdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -201,6 +214,11 @@ const CpnsAnalyticsRoute = CpnsAnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => CpnsRoute,
 } as any)
+const BlogSlugRoute = BlogSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => BlogRoute,
+} as any).lazy(() => import('./routes/blog.$slug.lazy').then((d) => d.Route))
 const AttemptIdRoute = AttemptIdRouteImport.update({
   id: '/attempt/$id',
   path: '/attempt/$id',
@@ -264,6 +282,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/bank': typeof BankRoute
+  '/blog': typeof BlogRouteWithChildren
   '/cpns': typeof CpnsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -286,6 +305,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/attempt/$id': typeof AttemptIdRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/cpns/analytics': typeof CpnsAnalyticsRoute
   '/cpns/bank': typeof CpnsBankRoute
   '/cpns/dashboard': typeof CpnsDashboardRoute
@@ -297,6 +317,7 @@ export interface FileRoutesByFullPath {
   '/package/$id': typeof PackageIdRouteWithChildren
   '/profile/$userId': typeof ProfileUserIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/blog/': typeof BlogIndexRoute
   '/package/$id/take': typeof PackageIdTakeRoute
   '/package/$id/': typeof PackageIdIndexRoute
   '/package/$id/attempt/$attemptId': typeof PackageIdAttemptAttemptIdRoute
@@ -328,6 +349,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/attempt/$id': typeof AttemptIdRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/cpns/analytics': typeof CpnsAnalyticsRoute
   '/cpns/bank': typeof CpnsBankRoute
   '/cpns/dashboard': typeof CpnsDashboardRoute
@@ -338,6 +360,7 @@ export interface FileRoutesByTo {
   '/cpns/packages': typeof CpnsPackagesRoute
   '/profile/$userId': typeof ProfileUserIdRoute
   '/admin': typeof AdminIndexRoute
+  '/blog': typeof BlogIndexRoute
   '/package/$id/take': typeof PackageIdTakeRoute
   '/package/$id': typeof PackageIdIndexRoute
   '/package/$id/attempt/$attemptId': typeof PackageIdAttemptAttemptIdRoute
@@ -349,6 +372,7 @@ export interface FileRoutesById {
   '/admin': typeof AdminRouteWithChildren
   '/analytics': typeof AnalyticsRoute
   '/bank': typeof BankRoute
+  '/blog': typeof BlogRouteWithChildren
   '/cpns': typeof CpnsRouteWithChildren
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -371,6 +395,7 @@ export interface FileRoutesById {
   '/admin/settings': typeof AdminSettingsRoute
   '/admin/users': typeof AdminUsersRoute
   '/attempt/$id': typeof AttemptIdRoute
+  '/blog/$slug': typeof BlogSlugRoute
   '/cpns/analytics': typeof CpnsAnalyticsRoute
   '/cpns/bank': typeof CpnsBankRoute
   '/cpns/dashboard': typeof CpnsDashboardRoute
@@ -382,6 +407,7 @@ export interface FileRoutesById {
   '/package/$id': typeof PackageIdRouteWithChildren
   '/profile/$userId': typeof ProfileUserIdRoute
   '/admin/': typeof AdminIndexRoute
+  '/blog/': typeof BlogIndexRoute
   '/package/$id/take': typeof PackageIdTakeRoute
   '/package/$id/': typeof PackageIdIndexRoute
   '/package/$id/attempt/$attemptId': typeof PackageIdAttemptAttemptIdRoute
@@ -394,6 +420,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/bank'
+    | '/blog'
     | '/cpns'
     | '/dashboard'
     | '/forgot-password'
@@ -416,6 +443,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/attempt/$id'
+    | '/blog/$slug'
     | '/cpns/analytics'
     | '/cpns/bank'
     | '/cpns/dashboard'
@@ -427,6 +455,7 @@ export interface FileRouteTypes {
     | '/package/$id'
     | '/profile/$userId'
     | '/admin/'
+    | '/blog/'
     | '/package/$id/take'
     | '/package/$id/'
     | '/package/$id/attempt/$attemptId'
@@ -458,6 +487,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/attempt/$id'
+    | '/blog/$slug'
     | '/cpns/analytics'
     | '/cpns/bank'
     | '/cpns/dashboard'
@@ -468,6 +498,7 @@ export interface FileRouteTypes {
     | '/cpns/packages'
     | '/profile/$userId'
     | '/admin'
+    | '/blog'
     | '/package/$id/take'
     | '/package/$id'
     | '/package/$id/attempt/$attemptId'
@@ -478,6 +509,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/analytics'
     | '/bank'
+    | '/blog'
     | '/cpns'
     | '/dashboard'
     | '/forgot-password'
@@ -500,6 +532,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/users'
     | '/attempt/$id'
+    | '/blog/$slug'
     | '/cpns/analytics'
     | '/cpns/bank'
     | '/cpns/dashboard'
@@ -511,6 +544,7 @@ export interface FileRouteTypes {
     | '/package/$id'
     | '/profile/$userId'
     | '/admin/'
+    | '/blog/'
     | '/package/$id/take'
     | '/package/$id/'
     | '/package/$id/attempt/$attemptId'
@@ -522,6 +556,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AnalyticsRoute: typeof AnalyticsRoute
   BankRoute: typeof BankRoute
+  BlogRoute: typeof BlogRouteWithChildren
   CpnsRoute: typeof CpnsRouteWithChildren
   DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
@@ -641,6 +676,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CpnsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/bank': {
       id: '/bank'
       path: '/bank'
@@ -675,6 +717,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/blog/': {
+      id: '/blog/'
+      path: '/'
+      fullPath: '/blog/'
+      preLoaderRoute: typeof BlogIndexRouteImport
+      parentRoute: typeof BlogRoute
     }
     '/admin/': {
       id: '/admin/'
@@ -752,6 +801,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/cpns/analytics'
       preLoaderRoute: typeof CpnsAnalyticsRouteImport
       parentRoute: typeof CpnsRoute
+    }
+    '/blog/$slug': {
+      id: '/blog/$slug'
+      path: '/$slug'
+      fullPath: '/blog/$slug'
+      preLoaderRoute: typeof BlogSlugRouteImport
+      parentRoute: typeof BlogRoute
     }
     '/attempt/$id': {
       id: '/attempt/$id'
@@ -857,6 +913,18 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface BlogRouteChildren {
+  BlogSlugRoute: typeof BlogSlugRoute
+  BlogIndexRoute: typeof BlogIndexRoute
+}
+
+const BlogRouteChildren: BlogRouteChildren = {
+  BlogSlugRoute: BlogSlugRoute,
+  BlogIndexRoute: BlogIndexRoute,
+}
+
+const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
+
 interface CpnsRouteChildren {
   CpnsAnalyticsRoute: typeof CpnsAnalyticsRoute
   CpnsBankRoute: typeof CpnsBankRoute
@@ -903,6 +971,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AnalyticsRoute: AnalyticsRoute,
   BankRoute: BankRoute,
+  BlogRoute: BlogRouteWithChildren,
   CpnsRoute: CpnsRouteWithChildren,
   DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,

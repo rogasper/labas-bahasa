@@ -4,6 +4,7 @@ import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { authClient } from "@/lib/auth-client";
 import { routeShell } from "@/lib/route-shell";
 import { trpc } from "@/utils/trpc";
+import { env } from "@labas/env/web";
 import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
@@ -11,6 +12,8 @@ import { TourGuide } from "@/components/TourGuide";
 import { DonationModal } from "@/components/DonationModal";
 import { CommunityModal } from "@/components/CommunityModal";
 import { COMMUNITY_PROMPT_STORAGE_KEY } from "@/lib/community-links";
+import { BlogCard } from "@/components/blog/BlogCard";
+import { Skeleton } from "@labas/ui/components/skeleton";
 
 export const Route = createFileRoute("/dashboard")({
   staticData: routeShell.app,
@@ -78,6 +81,9 @@ function HomeComponent() {
   );
   const featured = useQuery(
     trpc.admin.getDashboardFeatured.queryOptions(),
+  );
+  const blogPosts = useQuery(
+    trpc.blog.posts.queryOptions({ perPage: 3 }, { enabled: env.VITE_BLOG_ENABLED }),
   );
 
   const stats = overview.data;
@@ -303,6 +309,29 @@ function HomeComponent() {
                   </CardContent>
                 </Card>
               </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Blog Section */}
+      {env.VITE_BLOG_ENABLED && blogPosts.data?.data && blogPosts.data.data.length > 0 && (
+        <section className="mb-10">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <MaterialIcon name="article" className="text-[var(--matcha-600)]" />
+              <h2 className="text-xl font-headline font-bold text-[var(--clay-black)]">
+                Artikel Terbaru
+              </h2>
+            </div>
+            <Link to="/blog" className="text-sm text-[var(--matcha-600)] font-semibold hover:underline flex items-center gap-1">
+              Lihat Semua
+              <MaterialIcon name="chevron_right" className="text-base" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {blogPosts.data.data.slice(0, 3).map((post) => (
+              <BlogCard key={post.slug} post={post} />
             ))}
           </div>
         </section>

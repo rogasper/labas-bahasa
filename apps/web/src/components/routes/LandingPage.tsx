@@ -3,7 +3,11 @@ import { Button } from "@labas/ui/components/button";
 import { Card, CardContent } from "@labas/ui/components/card";
 import { MaterialIcon } from "@/components/ui/MaterialIcon";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { CommunityModal } from "@/components/CommunityModal";
+import { trpc } from "@/utils/trpc";
+import { env } from "@labas/env/web";
+import { BlogCard } from "@/components/blog/BlogCard";
 
 function FaqItem({ question, answer, isDark }: { question: string; answer: string; isDark?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -39,6 +43,9 @@ function FaqItem({ question, answer, isDark }: { question: string; answer: strin
 
 export function LandingPage() {
   const [communityModalOpen, setCommunityModalOpen] = useState(false);
+  const blogPosts = useQuery(
+    trpc.blog.posts.queryOptions({ perPage: 3 }, { enabled: env.VITE_BLOG_ENABLED }),
+  );
 
   return (
     <div className="min-h-screen bg-[var(--warm-cream)] flex flex-col font-sans selection:bg-[var(--matcha-300)] selection:text-[var(--clay-black)]">
@@ -425,6 +432,45 @@ export function LandingPage() {
         </section>
 
 
+
+        {/* Blog Section */}
+        {env.VITE_BLOG_ENABLED && blogPosts.data?.data && blogPosts.data.data.length > 0 && (
+          <section className="w-full bg-[var(--pure-white)] py-24 border-b-2 border-dashed border-[var(--oat-border)]">
+            <div className="max-w-7xl mx-auto px-6 md:px-12 lg:px-16">
+              <div className="flex items-center justify-between mb-10">
+                <div>
+                  <h2 className="text-[40px] md:text-[48px] font-headline font-semibold text-[var(--clay-black)] tracking-[-1.5px] leading-tight">
+                    Artikel Terbaru
+                  </h2>
+                  <p className="text-lg text-[var(--warm-charcoal)] mt-2">
+                    Tips dan panduan persiapan ujian bahasa
+                  </p>
+                </div>
+                <Link
+                  to="/blog"
+                  className="text-[var(--matcha-600)] font-semibold hover:underline hidden sm:flex items-center gap-1"
+                >
+                  Lihat Semua
+                  <MaterialIcon name="chevron_right" className="text-lg" />
+                </Link>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {blogPosts.data.data.slice(0, 3).map((post) => (
+                  <BlogCard key={post.slug} post={post} />
+                ))}
+              </div>
+              <div className="text-center mt-8 sm:hidden">
+                <Link
+                  to="/blog"
+                  className="inline-flex items-center gap-1 text-[var(--matcha-600)] font-semibold"
+                >
+                  Lihat Semua Artikel
+                  <MaterialIcon name="chevron_right" className="text-lg" />
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* SWATCH ROOM 1: Ube FAQ Section */}
         <section className="w-full bg-[var(--ube-800)] py-32 rounded-t-[40px] mt-[-40px] z-10 relative shadow-[0_-10px_40px_rgba(0,0,0,0.1)] border-t-2 border-[var(--oat-border)]/20">
