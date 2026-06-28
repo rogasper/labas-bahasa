@@ -5,7 +5,6 @@ import { HeadContent, Outlet, createRootRouteWithContext, useRouterState } from 
 import { TanStackRouterDevtools } from "@tanstack/react-router-devtools";
 
 import { Sidebar } from "@/components/sidebar";
-import Header from "@/components/header";
 import { ThemeProvider } from "@/components/theme-provider";
 import { useSidebar } from "@/hooks/use-sidebar";
 import { GlobalGenerationProgress } from "@/components/generate/GlobalGenerationProgress";
@@ -117,7 +116,6 @@ function RootComponent() {
           <div className="min-h-screen bg-background relative">
             <SkipLink />
             <Sidebar />
-            <Header />
             <main
               id="main-content"
               className={`min-h-screen transition-all duration-300 relative z-0 ${collapsed ? "md:ml-16" : "md:ml-64"}`}
