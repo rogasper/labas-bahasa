@@ -15,6 +15,7 @@ import { verificationRouter } from "./verification";
 import { webhookRouter } from "./webhook";
 import { announcementRouter } from "./announcement";
 import { passageRouter } from "./passage";
+import { blogRouter } from "./blog";
 
 export const appRouter = router({
   healthCheck: publicProcedure.query(() => {
@@ -42,6 +43,7 @@ export const appRouter = router({
   webhook: webhookRouter,
   announcement: announcementRouter,
   passage: passageRouter,
+  blog: blogRouter,
 });
 
 export type AppRouter = typeof appRouter;
